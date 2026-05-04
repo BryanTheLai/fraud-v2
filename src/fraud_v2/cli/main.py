@@ -21,6 +21,11 @@ from fraud_v2.llm_lab.provider import NoveltyLedger, provider_from_env
 from fraud_v2.models.registry import JsonModelRegistry, ModelStatus
 from fraud_v2.models.shadow import write_shadow_scores
 from fraud_v2.models.train import train_baseline
+from fraud_v2.policy.registry import (
+    JsonThresholdPolicyRegistry,
+    PolicyStatus,
+    write_active_policy,
+)
 from fraud_v2.policy.thresholds import load_threshold_policy
 from fraud_v2.public_data.registry import describe_public_dataset
 from fraud_v2.replay.runner import run_replay
@@ -212,6 +217,44 @@ def public_dataset(name: str) -> None:
 @app.command()
 def policy_show(policy_path: Path | None = None) -> None:
     _print_json(load_threshold_policy(policy_path).model_dump(mode="json"))
+
+
+@app.command()
+def policy_register(
+    policy_path: Path,
+    registry_path: Path = Path("data/policies/registry.json"),
+    status: PolicyStatus = PolicyStatus.CANDIDATE,
+    notes: str = "",
+) -> None:
+    registered = JsonThresholdPolicyRegistry(registry_path).register(
+        policy_path=policy_path,
+        status=status,
+        notes=notes,
+    )
+    _print_json({"policy": registered.model_dump(mode="json"), "registry": str(registry_path)})
+
+
+@app.command()
+def policy_list(registry_path: Path = Path("data/policies/registry.json")) -> None:
+    policies = JsonThresholdPolicyRegistry(registry_path).list_policies()
+    _print_json({"policies": [policy.model_dump(mode="json") for policy in policies]})
+
+
+@app.command()
+def policy_promote(
+    policy_version: str,
+    registry_path: Path = Path("data/policies/registry.json"),
+    active_policy_path: Path = Path("data/policies/active-threshold-policy.json"),
+) -> None:
+    promoted = JsonThresholdPolicyRegistry(registry_path).promote(policy_version)
+    write_active_policy(promoted.policy, active_policy_path)
+    _print_json(
+        {
+            "policy": promoted.model_dump(mode="json"),
+            "registry": str(registry_path),
+            "active_policy_path": str(active_policy_path),
+        }
+    )
 
 
 @app.command()

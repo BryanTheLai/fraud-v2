@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.26.0 - 2026-05-05
+
+- Added a local threshold policy registry with candidate, active, and disabled
+  statuses plus SHA-256 hashes for registered policy files.
+- Added CLI commands to register, list, and promote threshold policies while
+  keeping exactly one active policy in the registry.
+- Added active-policy file export so promoted policies can be loaded by the API
+  through `FRAUD_POLICY_PATH`.
+
 ## 0.25.0 - 2026-05-05
 
 - Added persistent stream dead letters for invalid Redpanda messages, empty

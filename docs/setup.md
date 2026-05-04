@@ -191,6 +191,8 @@ uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite --execute
 uv run fraud-v2 policy-show
+uv run fraud-v2 policy-register data\policies\strict.json --status candidate
+uv run fraud-v2 policy-promote strict-policy-test
 uv run fraud-v2 model-register --status shadow
 uv run fraud-v2 model-promote baseline-20260505-001
 uv run fraud-v2 shadow-score --status active
@@ -332,6 +334,21 @@ For the API, set `FRAUD_POLICY_PATH` before starting Uvicorn. Policy packs
 validate green/yellow/red ordering, degraded-score floor, high-amount threshold,
 severity, safe reason, and version. They do not replace legal approval or a
 production policy promotion workflow.
+
+Local policy registry flow:
+
+```powershell
+uv run fraud-v2 policy-register data\policies\strict.json --status candidate
+uv run fraud-v2 policy-list
+uv run fraud-v2 policy-promote strict-policy-test `
+  --active-policy-path data\policies\active-threshold-policy.json
+$env:FRAUD_POLICY_PATH="data\policies\active-threshold-policy.json"
+```
+
+Promotion keeps one local active policy in `data\policies\registry.json` and
+writes the active policy JSON file that the API can load. This is a local
+governance rail, not a substitute for maker-checker approval, signatures, or
+legal policy review.
 
 ## Local Observability
 
@@ -503,6 +520,8 @@ tests/unit/domain/test_events.py
 | Promote model | `uv run fraud-v2 model-promote baseline-20260505-001` | Marks one model active and demotes the previous active model to shadow. |
 | Shadow score | `uv run fraud-v2 shadow-score --status active` | Scores registered model output without changing decisions. |
 | Show threshold policy | `uv run fraud-v2 policy-show` | Prints the built-in or file-backed threshold policy. |
+| Register policy | `uv run fraud-v2 policy-register data\policies\strict.json --status candidate` | Hashes and records a threshold policy candidate. |
+| Promote policy | `uv run fraud-v2 policy-promote strict-policy-test` | Marks one policy active and writes `data\policies\active-threshold-policy.json`. |
 
 ## Troubleshooting
 

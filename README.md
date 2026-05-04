@@ -149,6 +149,8 @@ uv run fraud-v2 retention-report --db-path data/local/fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data/local/fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data/local/fraud_v2.sqlite --execute
 uv run fraud-v2 policy-show
+uv run fraud-v2 policy-register data/policies/strict.json --status candidate
+uv run fraud-v2 policy-promote strict-policy-test
 uv run fraud-v2 model-register --status shadow
 uv run fraud-v2 model-promote baseline-20260505-001
 uv run fraud-v2 shadow-score --status active

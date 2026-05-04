@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-025 - Add Stream Dead Letters](tasks/active/TC-20260505-025-add-stream-dead-letters.md)
+- [TC-20260505-026 - Add Policy Promotion Registry](tasks/active/TC-20260505-026-add-policy-promotion-registry.md)
 
 ## Runs Waiting For Bryan
 
@@ -76,6 +76,7 @@ Updated: 2026-05-05
   boundaries.
 - Added persistent stream dead letters with admin inspection and retention
   coverage.
+- Added a local threshold policy promotion registry with active-policy export.
 
 ## Lessons Added
 
@@ -87,7 +88,7 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M25 persistent stream dead letters. Next implementation
-task should add lag/worker supervision, a Redpanda DLQ topic publisher, or a
-policy promotion workflow if Bryan chooses to go deeper on production
-hardening.
+Review local MVP through M26 local policy promotion registry. Next
+implementation task should add lag/worker supervision, a Redpanda DLQ topic
+publisher, or signed policy approvals if Bryan chooses to go deeper on
+production hardening.
