@@ -11,12 +11,14 @@ from fraud_v2.domain.decisions import DecisionRequest
 from fraud_v2.domain.entities import EntityRef
 from fraud_v2.domain.enums import EntityType
 from fraud_v2.evaluation.reports import write_monitoring_report
+from fraud_v2.infrastructure.redpanda_publisher import RedpandaEventPublisher
 from fraud_v2.llm_lab.provider import NoveltyLedger, provider_from_env
 from fraud_v2.models.train import train_baseline
 from fraud_v2.public_data.registry import describe_public_dataset
 from fraud_v2.replay.runner import run_replay
 from fraud_v2.storage.sqlite_store import SQLiteStore
 from fraud_v2.synthetic.generator import SyntheticFraudGenerator, load_events_jsonl
+from fraud_v2.workers.outbox import DryRunEventPublisher, OutboxWorker
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -66,7 +68,7 @@ def load(
     events = load_events_jsonl(input_path)
     store = SQLiteStore(db_path)
     inserted = store.add_events(events)
-    _print_json({"inserted": inserted, "db": str(db_path)})
+    _print_json({"inserted": inserted, "db": str(db_path), "outbox": store.outbox_counts()})
 
 
 @app.command()
@@ -155,3 +157,20 @@ def llm_generate(
 def public_dataset(name: str) -> None:
     dataset = describe_public_dataset(name)
     _print_json(dataset.__dict__)
+
+
+@app.command()
+def outbox_drain(
+    db_path: Path = Path("data/local/fraud_v2.sqlite"),
+    batch_size: int = typer.Option(100, min=1, max=1000),
+    dry_run: bool = typer.Option(True, "--dry-run/--publish"),
+    bootstrap_servers: str = "localhost:9092",
+) -> None:
+    store = SQLiteStore(db_path)
+    publisher = (
+        DryRunEventPublisher()
+        if dry_run
+        else RedpandaEventPublisher(bootstrap_servers=bootstrap_servers)
+    )
+    report = OutboxWorker(store=store, publisher=publisher, batch_size=batch_size).run_once()
+    _print_json({**report.__dict__, "outbox": store.outbox_counts()})

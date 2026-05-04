@@ -4,12 +4,13 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-002 - Implement Full Profile Adapters](tasks/active/TC-20260505-002-implement-full-profile-adapters.md)
+- [TC-20260505-003 - Implement Outbox And Converters](tasks/active/TC-20260505-003-implement-outbox-and-converters.md)
 
 ## Runs Waiting For Bryan
 
 - [RR-20260505-001](runs/RR-20260505-001.md)
 - [RR-20260505-002](runs/RR-20260505-002.md)
+- [RR-20260505-003](runs/RR-20260505-003.md)
 
 ## Blocked Work
 
@@ -23,6 +24,8 @@ Updated: 2026-05-05
 - Implemented the local MVP and left it waiting for review.
 - Added full-profile adapter boundaries, replay reports, monitoring reports,
   public dataset registry, and LLM provider boundaries.
+- Added transactional outbox, outbox drain worker, mock connectors, and raw
+  event converters.
 
 ## Lessons Added
 
@@ -34,6 +37,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review the local MVP and M2 adapter layer. Next implementation task should add
-actual worker loops, transactional outbox processing, and local full-profile
-integration tests when Docker services are running.
+Review local MVP, M2 adapter layer, and M3 ingestion/outbox layer. Next
+implementation task should add compliance draft exports, model threshold
+optimization, and Docker-backed integration tests.

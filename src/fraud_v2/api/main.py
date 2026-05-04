@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from starlette.responses import HTMLResponse, Response
 
+from fraud_v2 import __version__
 from fraud_v2.compliance.reasons import adverse_action_style_reasons
 from fraud_v2.config.settings import Settings, get_settings
 from fraud_v2.decision.engine import DecisionEngine
@@ -27,7 +28,7 @@ from fraud_v2.review.service import ReviewService
 from fraud_v2.storage.sqlite_store import SQLiteStore
 from fraud_v2.synthetic.generator import SyntheticFraudGenerator
 
-app = FastAPI(title="fraud-v2", version="0.1.0")
+app = FastAPI(title="fraud-v2", version=__version__)
 
 
 def store(settings: Settings = Depends(get_settings)) -> SQLiteStore:

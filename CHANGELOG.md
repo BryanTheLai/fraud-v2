@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 - 2026-05-05
+
+- Added a SQLite-backed transactional outbox and dry-run outbox worker so local
+  event ingestion has a replayable publish path.
+- Added mock KYC, device-intelligence, and consortium connector boundaries that
+  emit safe synthetic signals only.
+- Added raw application/payment converters that reject malformed local payloads
+  before they enter canonical event storage.
+- Synced API/package version metadata with the release version.
+
 ## 0.2.0 - 2026-05-05
 
 - Added full-profile adapter boundaries for Postgres, Redis, Redpanda, and

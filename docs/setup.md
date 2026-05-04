@@ -151,6 +151,7 @@ Reports and LLM scenario generation:
 uv run fraud-v2 replay --events-path data\synthetic\tiny\events.jsonl
 uv run fraud-v2 monitor --events-path data\synthetic\tiny\events.jsonl
 uv run fraud-v2 llm-generate --provider offline
+uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run
 ```
 
 Local URLs after implementation:
@@ -296,6 +297,7 @@ tests/unit/domain/test_events.py
 | Open dashboard | `uv run uvicorn fraud_v2.api.main:app --host 127.0.0.1 --port 8000` | Dashboard at `/dashboard`. |
 | Train baseline | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | CPU default. |
 | Evaluate model | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | Writes metrics report. |
+| Drain local outbox | `uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run` | Publishes through a dry-run publisher by default. |
 
 ## Troubleshooting
 
