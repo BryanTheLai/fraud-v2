@@ -123,8 +123,9 @@ events through the protected API, scores `user_00000`, submits a synthetic
 review decision, verifies retention prune dry-run and execute paths, checks the
 dashboard, verifies Prometheus metrics, checks graph evidence rendering, loads
 Grafana, verifies the Postgres adapter inside the Docker network, verifies
-Redis, Neo4j, and Redpanda adapters inside the Docker network, then shuts the
-stack down unless `-KeepRunning` is set.
+Redis and Neo4j adapters, publishes a Redpanda event, consumes it back into
+Postgres through the stream worker, then shuts the stack down unless
+`-KeepRunning` is set.
 
 `full-smoke.ps1` uses high host ports by default, for example API `18000`,
 Grafana `13000`, Prometheus `19090`, and Neo4j HTTP `17474`, so it can run while
@@ -140,6 +141,7 @@ uv run fraud-v2 monitor --events-path data/synthetic/tiny/events.jsonl
 uv run fraud-v2 llm-stub
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data/local/fraud_v2.sqlite --dry-run
+uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10
 uv run fraud-v2 compliance-draft <decision-id> --db-path data/local/fraud_v2.sqlite
 uv run fraud-v2 retention-report --db-path data/local/fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data/local/fraud_v2.sqlite

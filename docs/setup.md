@@ -124,7 +124,8 @@ host ports by default so it does not collide with a local dev API on `8000`: API
 `18000`, Grafana `13000`, Prometheus `19090`, and Neo4j HTTP `17474`. Override
 with parameters such as `-ApiPort 18001` if needed. It resets only that isolated
 smoke project, then verifies Postgres-backed API state, review decisions,
-Postgres, Redis, Neo4j, and Redpanda adapters from inside the API container.
+Postgres, Redis, Neo4j, Redpanda publish, and Redpanda consume-to-Postgres from
+inside the API container.
 
 Keep services running for manual inspection:
 
@@ -182,6 +183,7 @@ uv run fraud-v2 replay --events-path data\synthetic\tiny\events.jsonl
 uv run fraud-v2 monitor --events-path data\synthetic\tiny\events.jsonl
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run
+uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10
 uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite
@@ -282,6 +284,23 @@ uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite --execute
 The prune command defaults to dry-run. `--execute` deletes expired events,
 decisions, review records, and outbox messages. It preserves audit entries so
 hash-chain verification remains valid.
+
+Bounded stream consume from local Redpanda:
+
+```powershell
+uv run fraud-v2 stream-consume `
+  --bootstrap-servers localhost:19092 `
+  --topic fraud.events `
+  --group-id fraud-v2-local `
+  --store-backend sqlite `
+  --db-path data\local\fraud_v2.sqlite `
+  --max-messages 10
+```
+
+The stream consumer uses at-least-once semantics with idempotency keys. Exact
+duplicates are committed as safe no-ops. Invalid messages or idempotency-key
+payload conflicts are reported and not committed, so the operator can inspect
+the bad stream input instead of silently skipping it.
 
 ## Local Observability
 
@@ -444,6 +463,7 @@ tests/unit/domain/test_events.py
 | Train baseline | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | CPU default. |
 | Evaluate model | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | Writes metrics, cost, and threshold report. |
 | Drain local outbox | `uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run` | Publishes through a dry-run publisher by default. |
+| Consume Redpanda stream | `uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10` | Bounded local consumer for canonical event envelopes. |
 | Export compliance draft | `uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes a human-review-only local draft. |
 | Retention report | `uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite` | Counts expired records without deleting them. |
 | Retention prune | `uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite --execute` | Deletes expired local non-audit records. |

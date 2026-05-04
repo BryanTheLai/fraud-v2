@@ -37,7 +37,9 @@ Implemented:
 - Full-profile Docker image installs infra extras and smoke-tests the Postgres
   event-store adapter.
 - Full-profile smoke verifies Redis feature cache, Neo4j graph projector, and
-  Redpanda publisher adapters.
+  Redpanda publisher and consumer adapters.
+- Bounded Redpanda stream consumer CLI ingests canonical event envelopes into
+  SQLite/Postgres with idempotent duplicate handling.
 - GitHub Actions test, Docker build, and API image smoke workflow.
 
 ## Test Plan
@@ -57,19 +59,21 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: 56 passed
+- Pytest: 60 passed
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Redis feature cache, Neo4j projection, and
-  Redpanda publish
+  Redpanda publish-consume-to-Postgres
 
 ## Known Limits
 
 - Synthetic data only.
 - Mock vendors only.
 - Compliance drafts only; no filings.
-- Local bearer-token and HS256 JWT auth only; no external OIDC provider yet.
+- Local bearer-token/JWT auth only; no external user lifecycle or sessions yet.
+- Stream consumer is local and bounded; no long-running supervised worker, DLQ
+  topic, or lag alerting yet.
 - No real production deployment target yet.
 - GitHub push/PR creation is blocked locally until `gh auth login` succeeds
   and a remote is configured.

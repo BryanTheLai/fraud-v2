@@ -119,7 +119,9 @@ class PostgresStore:
                 """
             )
 
-    def add_event(self, event: EventEnvelope, outbox_topic: str = "fraud.events") -> EventEnvelope:
+    def add_event(
+        self, event: EventEnvelope, outbox_topic: str | None = "fraud.events"
+    ) -> EventEnvelope:
         event_json = event.model_dump_json()
         payload_hash = hashlib.sha256(event_json.encode("utf-8")).hexdigest()
         with self._connect() as conn:
@@ -153,7 +155,8 @@ class PostgresStore:
                     event_json,
                 ),
             )
-            self._enqueue_outbox(conn, event, event_json, outbox_topic)
+            if outbox_topic is not None:
+                self._enqueue_outbox(conn, event, event_json, outbox_topic)
             self._append_audit(
                 conn,
                 actor="local-system",

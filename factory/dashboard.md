@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-022 - Add JWKS Auth](tasks/active/TC-20260505-022-add-jwks-auth.md)
+- [TC-20260505-023 - Add Redpanda Stream Consumer](tasks/active/TC-20260505-023-add-redpanda-stream-consumer.md)
 
 ## Runs Waiting For Bryan
 
@@ -70,6 +70,8 @@ Updated: 2026-05-05
 - Switched Docker full mode to use Postgres as the primary app store.
 - Added explicit local retention pruning with dry-run defaults.
 - Added offline-testable JWKS/OIDC-shaped JWT verification.
+- Added a bounded Redpanda stream consumer with idempotent duplicate handling
+  and full-smoke publish-consume-Postgres proof.
 
 ## Lessons Added
 
@@ -81,6 +83,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M22 JWKS/OIDC-shaped JWT verification. Next
-implementation task should add a stream consumer worker or policy/versioned
-rule packs if Bryan chooses to go deeper on production hardening.
+Review local MVP through M23 Redpanda stream consumer. Next implementation task
+should add policy/versioned rule packs, a real DLQ path, or lag/worker
+supervision if Bryan chooses to go deeper on production hardening.

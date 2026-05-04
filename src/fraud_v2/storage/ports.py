@@ -14,7 +14,7 @@ from fraud_v2.domain.reviews import ReviewCase, ReviewDecision
 
 class FraudStore(Protocol):
     def add_event(
-        self, event: EventEnvelope, outbox_topic: str = "fraud.events"
+        self, event: EventEnvelope, outbox_topic: str | None = "fraud.events"
     ) -> EventEnvelope: ...
 
     def add_events(self, events: list[EventEnvelope]) -> int: ...

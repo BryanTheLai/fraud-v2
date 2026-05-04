@@ -24,9 +24,12 @@ from fraud_v2.models.train import train_baseline
 from fraud_v2.public_data.registry import describe_public_dataset
 from fraud_v2.replay.runner import run_replay
 from fraud_v2.security.auth import AuthRole
+from fraud_v2.storage.ports import FraudStore
+from fraud_v2.storage.postgres_store import PostgresStore
 from fraud_v2.storage.sqlite_store import SQLiteStore
 from fraud_v2.synthetic.generator import SyntheticFraudGenerator, load_events_jsonl
 from fraud_v2.workers.outbox import DryRunEventPublisher, OutboxWorker
+from fraud_v2.workers.stream_consumer import RedpandaConsumerFactory, StreamIngestionWorker
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -222,6 +225,41 @@ def outbox_drain(
 
 
 @app.command()
+def stream_consume(
+    bootstrap_servers: str = "localhost:19092",
+    topic: str = "fraud.events",
+    group_id: str = "fraud-v2-local",
+    max_messages: int = typer.Option(100, min=1, max=100000),
+    max_empty_polls: int = typer.Option(3, min=1, max=100),
+    poll_timeout_seconds: float = typer.Option(1.0, min=0.1, max=30.0),
+    store_backend: str = typer.Option("sqlite", "--store-backend"),
+    db_path: Path = Path("data/local/fraud_v2.sqlite"),
+    postgres_dsn: str = "postgresql://fraud:fraud@localhost:5432/fraud_v2",
+    fail_on_error: bool = typer.Option(True, "--fail-on-error/--allow-errors"),
+) -> None:
+    store = _store_from_cli(
+        store_backend=store_backend,
+        db_path=db_path,
+        postgres_dsn=postgres_dsn,
+    )
+    consumer = RedpandaConsumerFactory(
+        bootstrap_servers=bootstrap_servers,
+        group_id=group_id,
+    ).create()
+    report = StreamIngestionWorker(
+        store=store,
+        consumer=consumer,
+        topic=topic,
+        group_id=group_id,
+        poll_timeout_seconds=poll_timeout_seconds,
+        max_empty_polls=max_empty_polls,
+    ).run(max_messages=max_messages)
+    _print_json(report.__dict__)
+    if report.failed > 0 and fail_on_error:
+        raise typer.Exit(code=2)
+
+
+@app.command()
 def compliance_draft(
     decision_id: UUID,
     db_path: Path = Path("data/local/fraud_v2.sqlite"),
@@ -361,3 +399,12 @@ def _parse_auth_roles(raw_roles: str) -> list[str]:
     if not values:
         raise typer.BadParameter("at least one role is required")
     return sorted(set(values))
+
+
+def _store_from_cli(store_backend: str, db_path: Path, postgres_dsn: str) -> FraudStore:
+    backend = store_backend.lower()
+    if backend == "sqlite":
+        return SQLiteStore(db_path)
+    if backend == "postgres":
+        return PostgresStore(postgres_dsn)
+    raise typer.BadParameter("store backend must be 'sqlite' or 'postgres'")

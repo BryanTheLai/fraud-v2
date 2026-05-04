@@ -315,12 +315,21 @@ print(f"neo4j_edges={edges}")
   Assert-FraudCondition (($neo4jResult -join "`n") -like "*neo4j_edges=*") "Neo4j adapter smoke did not print edge count."
 
   $redpandaSmoke = @'
+from datetime import UTC, datetime
+from uuid import uuid4
+
 from fraud_v2.infrastructure.redpanda_publisher import RedpandaEventPublisher
 from fraud_v2.synthetic.generator import SyntheticFraudGenerator
 
-event = SyntheticFraudGenerator().generate(users=10).events[0]
+event = SyntheticFraudGenerator(seed=20260523).generate(users=10).events[0].model_copy(
+    update={
+        "event_id": uuid4(),
+        "idempotency_key": f"redpanda-smoke:{uuid4()}",
+        "occurred_at": datetime.now(UTC),
+    }
+)
 RedpandaEventPublisher("redpanda:9092").publish("fraud.events.smoke", event)
-print("redpanda_publish=1")
+print(f"redpanda_publish={event.idempotency_key}")
 '@
   $redpandaResult = $redpandaSmoke | docker compose `
     -p $ComposeProject `
@@ -329,7 +338,46 @@ print("redpanda_publish=1")
     exec -T api uv run --no-sync python - 2>&1
   Assert-FraudCondition ($LASTEXITCODE -eq 0) "Redpanda adapter smoke failed: $redpandaResult"
   Write-Host ($redpandaResult -join "`n")
-  Assert-FraudCondition (($redpandaResult -join "`n") -like "*redpanda_publish=1*") "Redpanda adapter smoke did not print publish proof."
+  $redpandaPublishLine = (($redpandaResult -join "`n") -split "`n" |
+    Where-Object { $_ -like "redpanda_publish=*" } |
+    Select-Object -Last 1)
+  Assert-FraudCondition (-not [string]::IsNullOrWhiteSpace($redpandaPublishLine)) "Redpanda adapter smoke did not print publish proof."
+  $redpandaIdempotencyKey = $redpandaPublishLine.Substring("redpanda_publish=".Length).Trim()
+
+  $redpandaConsumerGroup = "fraud-v2-smoke-$([guid]::NewGuid())"
+  $redpandaConsumeResult = docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync fraud-v2 stream-consume `
+      --bootstrap-servers redpanda:9092 `
+      --topic fraud.events.smoke `
+      --group-id $redpandaConsumerGroup `
+      --store-backend postgres `
+      --postgres-dsn postgresql://fraud:fraud@postgres:5432/fraud_v2 `
+      --max-messages 1 `
+      --max-empty-polls 20 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Redpanda stream consumer smoke failed: $redpandaConsumeResult"
+  Write-Host ($redpandaConsumeResult -join "`n")
+  Assert-FraudCondition (($redpandaConsumeResult -join "`n") -like '*"ingested": 1*') "Redpanda stream consumer did not ingest the published event."
+  Assert-FraudCondition (($redpandaConsumeResult -join "`n") -like '*"failed": 0*') "Redpanda stream consumer reported failures."
+
+  $redpandaProof = @"
+from fraud_v2.storage.postgres_store import PostgresStore
+
+store = PostgresStore("postgresql://fraud:fraud@postgres:5432/fraud_v2")
+key = "$redpandaIdempotencyKey"
+assert any(event.idempotency_key == key for event in store.list_events())
+print("redpanda_consume=1")
+"@
+  $redpandaProofResult = $redpandaProof | docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync python - 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Redpanda stream consumer Postgres proof failed: $redpandaProofResult"
+  Write-Host ($redpandaProofResult -join "`n")
+  Assert-FraudCondition (($redpandaProofResult -join "`n") -like "*redpanda_consume=1*") "Redpanda stream consumer proof did not print consume proof."
 
   $dashboard = Invoke-WebRequest -Uri "$ApiBase/dashboard" -TimeoutSec 10 -UseBasicParsing
   Assert-FraudCondition ($dashboard.Content -like "*Recent decisions*") "Dashboard missing recent decisions."

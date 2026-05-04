@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.23.0 - 2026-05-05
+
+- Added a Redpanda stream consumer CLI that reads canonical event envelopes and
+  stores them through the same SQLite/Postgres app-store boundary.
+- Made stream ingestion idempotent: exact duplicates are committed as safe
+  no-ops, while payload conflicts and invalid messages are reported without
+  advancing offsets.
+- Expanded the full-profile smoke to publish a Redpanda event, consume it into
+  Postgres, and prove the exact idempotency key exists in app state.
+
 ## 0.22.0 - 2026-05-05
 
 - Added JWKS/OIDC-shaped JWT verification for asymmetric tokens through local
