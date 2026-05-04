@@ -61,6 +61,8 @@ uv run fraud-v2 llm-stub
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data/local/fraud_v2.sqlite --dry-run
 uv run fraud-v2 compliance-draft <decision-id> --db-path data/local/fraud_v2.sqlite
+uv run fraud-v2 model-register --status shadow
+uv run fraud-v2 model-promote baseline-20260505-001
 uv run fraud-v2 public-dataset paysim
 ```
 

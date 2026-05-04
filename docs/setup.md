@@ -153,6 +153,8 @@ uv run fraud-v2 monitor --events-path data\synthetic\tiny\events.jsonl
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run
 uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite
+uv run fraud-v2 model-register --status shadow
+uv run fraud-v2 model-promote baseline-20260505-001
 ```
 
 Local URLs after implementation:
@@ -308,6 +310,8 @@ tests/unit/domain/test_events.py
 | Evaluate model | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | Writes metrics, cost, and threshold report. |
 | Drain local outbox | `uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run` | Publishes through a dry-run publisher by default. |
 | Export compliance draft | `uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes a human-review-only local draft. |
+| Register model | `uv run fraud-v2 model-register --status shadow` | Stores model/report hashes and metrics in `data\models\registry.json`. |
+| Promote model | `uv run fraud-v2 model-promote baseline-20260505-001` | Marks one model active and demotes the previous active model to shadow. |
 
 ## Troubleshooting
 

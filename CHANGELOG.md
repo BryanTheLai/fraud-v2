@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0 - 2026-05-05
+
+- Added a JSON-backed local model registry with artifact/report hashes,
+  feature columns, metrics, thresholds, notes, and deployment status.
+- Added model register, list, and promote CLI commands.
+- Added shadow/active controls so promoting one model demotes any prior active
+  model back to shadow.
+
 ## 0.5.0 - 2026-05-05
 
 - Hardened protected API endpoints so missing bearer tokens return `401`

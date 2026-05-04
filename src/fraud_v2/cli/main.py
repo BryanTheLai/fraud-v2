@@ -15,6 +15,7 @@ from fraud_v2.domain.enums import EntityType
 from fraud_v2.evaluation.reports import write_monitoring_report
 from fraud_v2.infrastructure.redpanda_publisher import RedpandaEventPublisher
 from fraud_v2.llm_lab.provider import NoveltyLedger, provider_from_env
+from fraud_v2.models.registry import JsonModelRegistry, ModelStatus
 from fraud_v2.models.train import train_baseline
 from fraud_v2.public_data.registry import describe_public_dataset
 from fraud_v2.replay.runner import run_replay
@@ -188,3 +189,35 @@ def compliance_draft(
     decision = store.get_decision(decision_id)
     draft = write_compliance_draft(decision, output_path)
     _print_json({"draft": draft.model_dump(mode="json"), "output": str(output_path)})
+
+
+@app.command()
+def model_register(
+    model_path: Path = Path("data/models/baseline/baseline.joblib"),
+    report_path: Path = Path("data/models/baseline/baseline-report.json"),
+    registry_path: Path = Path("data/models/registry.json"),
+    status: ModelStatus = ModelStatus.SHADOW,
+    notes: str = "",
+) -> None:
+    model = JsonModelRegistry(registry_path).register_from_report(
+        artifact_path=model_path,
+        report_path=report_path,
+        status=status,
+        notes=notes,
+    )
+    _print_json({"model": model.model_dump(mode="json"), "registry": str(registry_path)})
+
+
+@app.command()
+def model_list(registry_path: Path = Path("data/models/registry.json")) -> None:
+    models = JsonModelRegistry(registry_path).list_models()
+    _print_json({"models": [model.model_dump(mode="json") for model in models]})
+
+
+@app.command()
+def model_promote(
+    model_version: str,
+    registry_path: Path = Path("data/models/registry.json"),
+) -> None:
+    model = JsonModelRegistry(registry_path).promote(model_version)
+    _print_json({"model": model.model_dump(mode="json"), "registry": str(registry_path)})

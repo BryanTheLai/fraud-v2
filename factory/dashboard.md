@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-005 - Harden Local API Auth](tasks/active/TC-20260505-005-harden-local-api-auth.md)
+- [TC-20260505-006 - Add Model Registry Controls](tasks/active/TC-20260505-006-add-model-registry-controls.md)
 
 ## Runs Waiting For Bryan
 
@@ -13,6 +13,7 @@ Updated: 2026-05-05
 - [RR-20260505-003](runs/RR-20260505-003.md)
 - [RR-20260505-004](runs/RR-20260505-004.md)
 - [RR-20260505-005](runs/RR-20260505-005.md)
+- [RR-20260505-006](runs/RR-20260505-006.md)
 
 ## Blocked Work
 
@@ -31,6 +32,7 @@ Updated: 2026-05-05
 - Added human-review-only compliance drafts and cost-weighted threshold
   reporting.
 - Hardened protected API routes to require bearer tokens by default.
+- Added local model registry controls for shadow and active model governance.
 
 ## Lessons Added
 
@@ -42,5 +44,5 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M5 auth hardening. Next implementation task should add
-Docker-backed integration tests and analyst UI polish.
+Review local MVP through M6 model registry controls. Next implementation task
+should add Docker-backed integration tests and analyst UI polish.
