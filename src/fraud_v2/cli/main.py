@@ -16,6 +16,7 @@ from fraud_v2.evaluation.reports import write_monitoring_report
 from fraud_v2.infrastructure.redpanda_publisher import RedpandaEventPublisher
 from fraud_v2.llm_lab.provider import NoveltyLedger, provider_from_env
 from fraud_v2.models.registry import JsonModelRegistry, ModelStatus
+from fraud_v2.models.shadow import write_shadow_scores
 from fraud_v2.models.train import train_baseline
 from fraud_v2.public_data.registry import describe_public_dataset
 from fraud_v2.replay.runner import run_replay
@@ -221,3 +222,19 @@ def model_promote(
 ) -> None:
     model = JsonModelRegistry(registry_path).promote(model_version)
     _print_json({"model": model.model_dump(mode="json"), "registry": str(registry_path)})
+
+
+@app.command()
+def shadow_score(
+    events_path: Path = Path("data/synthetic/tiny/events.jsonl"),
+    registry_path: Path = Path("data/models/registry.json"),
+    output_path: Path = Path("data/models/shadow-scores.json"),
+    status: ModelStatus = ModelStatus.ACTIVE,
+) -> None:
+    report = write_shadow_scores(
+        events_path=events_path,
+        registry_path=registry_path,
+        output_path=output_path,
+        status=status,
+    )
+    _print_json(report)

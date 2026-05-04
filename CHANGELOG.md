@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0 - 2026-05-05
+
+- Added shadow scoring for registered active or shadow models against local
+  event streams.
+- Added `fraud-v2 shadow-score` to write model probability, threshold,
+  would-flag, and feature values without changing the rules/graph decision.
+
 ## 0.6.0 - 2026-05-05
 
 - Added a JSON-backed local model registry with artifact/report hashes,

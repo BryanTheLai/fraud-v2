@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-006 - Add Model Registry Controls](tasks/active/TC-20260505-006-add-model-registry-controls.md)
+- [TC-20260505-007 - Add Shadow Scoring](tasks/active/TC-20260505-007-add-shadow-scoring.md)
 
 ## Runs Waiting For Bryan
 
@@ -14,6 +14,7 @@ Updated: 2026-05-05
 - [RR-20260505-004](runs/RR-20260505-004.md)
 - [RR-20260505-005](runs/RR-20260505-005.md)
 - [RR-20260505-006](runs/RR-20260505-006.md)
+- [RR-20260505-007](runs/RR-20260505-007.md)
 
 ## Blocked Work
 
@@ -33,6 +34,7 @@ Updated: 2026-05-05
   reporting.
 - Hardened protected API routes to require bearer tokens by default.
 - Added local model registry controls for shadow and active model governance.
+- Added registered-model shadow scoring reports that do not alter decisions.
 
 ## Lessons Added
 
@@ -44,5 +46,5 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M6 model registry controls. Next implementation task
-should add Docker-backed integration tests and analyst UI polish.
+Review local MVP through M7 shadow scoring. Next implementation task should add
+Docker-backed integration tests and analyst UI polish.

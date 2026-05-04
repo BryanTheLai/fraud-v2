@@ -155,6 +155,7 @@ uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run
 uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 model-register --status shadow
 uv run fraud-v2 model-promote baseline-20260505-001
+uv run fraud-v2 shadow-score --status active
 ```
 
 Local URLs after implementation:
@@ -312,6 +313,7 @@ tests/unit/domain/test_events.py
 | Export compliance draft | `uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes a human-review-only local draft. |
 | Register model | `uv run fraud-v2 model-register --status shadow` | Stores model/report hashes and metrics in `data\models\registry.json`. |
 | Promote model | `uv run fraud-v2 model-promote baseline-20260505-001` | Marks one model active and demotes the previous active model to shadow. |
+| Shadow score | `uv run fraud-v2 shadow-score --status active` | Scores registered model output without changing decisions. |
 
 ## Troubleshooting
 
