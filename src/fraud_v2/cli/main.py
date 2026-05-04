@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ from fraud_v2.domain.enums import EntityType
 from fraud_v2.domain.retention import RetentionPolicy
 from fraud_v2.evaluation.reports import write_monitoring_report
 from fraud_v2.infrastructure.redpanda_dead_letter_publisher import RedpandaDeadLetterPublisher
+from fraud_v2.infrastructure.redpanda_lag import RedpandaLagProbe
 from fraud_v2.infrastructure.redpanda_publisher import RedpandaEventPublisher
 from fraud_v2.llm_lab.provider import NoveltyLedger, provider_from_env
 from fraud_v2.models.registry import JsonModelRegistry, ModelStatus
@@ -340,6 +342,21 @@ def stream_dead_letters(
             ]
         }
     )
+
+
+@app.command()
+def stream_lag(
+    bootstrap_servers: str = "localhost:19092",
+    topic: str = "fraud.events",
+    group_id: str = "fraud-v2-local",
+    timeout_seconds: float = typer.Option(10.0, min=1.0, max=60.0),
+) -> None:
+    report = RedpandaLagProbe(bootstrap_servers=bootstrap_servers).report(
+        topic=topic,
+        group_id=group_id,
+        timeout_seconds=timeout_seconds,
+    )
+    _print_json(asdict(report))
 
 
 @app.command()

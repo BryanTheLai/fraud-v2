@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.28.0 - 2026-05-05
+
+- Added a Redpanda consumer-group lag probe and `fraud-v2 stream-lag` CLI.
+- Added partition-level lag reporting with high watermark, committed offset,
+  and total lag.
+- Expanded the full-profile smoke to prove the valid stream consumer group has
+  zero lag after consuming the smoke event.
+
 ## 0.27.0 - 2026-05-05
 
 - Added optional Redpanda dead-letter-topic publishing for invalid stream

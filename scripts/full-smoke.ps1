@@ -362,6 +362,18 @@ print(f"redpanda_publish={event.idempotency_key}")
   Assert-FraudCondition (($redpandaConsumeResult -join "`n") -like '*"ingested": 1*') "Redpanda stream consumer did not ingest the published event."
   Assert-FraudCondition (($redpandaConsumeResult -join "`n") -like '*"failed": 0*') "Redpanda stream consumer reported failures."
 
+  $redpandaLagResult = docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync fraud-v2 stream-lag `
+      --bootstrap-servers redpanda:9092 `
+      --topic fraud.events.smoke `
+      --group-id $redpandaConsumerGroup 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Redpanda stream lag smoke failed: $redpandaLagResult"
+  Write-Host ($redpandaLagResult -join "`n")
+  Assert-FraudCondition (($redpandaLagResult -join "`n") -like '*"total_lag": 0*') "Redpanda stream lag should be zero after consuming the smoke event."
+
   $redpandaProof = @"
 from fraud_v2.storage.postgres_store import PostgresStore
 
