@@ -55,7 +55,7 @@ It now runs locally in two modes:
 | Secrets | `.env` pattern only. No vault/KMS. |
 | Audit immutability | Hash-chained SQLite only. No WORM/object-lock storage. |
 | Retention enforcement | Report-only. No deletion jobs, legal holds, or archive tiers. |
-| Persistence | SQLite lite path is primary; Postgres adapter exists but is not the default app store. |
+| Persistence | SQLite lite path is primary; Postgres event-store adapter is smoke-tested but not the default app store. |
 | Streaming | Redpanda publisher exists; real stream worker topology is not complete. |
 | Graph DB | Neo4j projector exists; decision engine still uses NetworkX fallback. |
 | Observability | Local metrics, dashboard, request logs, trace IDs, and Prometheus alerts exist; no distributed tracing backend yet. |

@@ -88,10 +88,11 @@ Full-profile smoke:
 .\scripts\full-smoke.ps1 -KeepRunning
 ```
 
-The smoke builds the API image, starts the full profile, generates synthetic
-events through the protected API, scores `user_00000`, checks the review queue
-and dashboard, verifies Prometheus metrics, loads Grafana, then shuts the stack
-down unless `-KeepRunning` is set.
+The smoke builds the API image with full-profile infra extras, starts the full
+profile, generates synthetic events through the protected API, scores
+`user_00000`, checks the review queue and dashboard, verifies Prometheus
+metrics, loads Grafana, verifies the Postgres adapter inside the Docker network,
+then shuts the stack down unless `-KeepRunning` is set.
 
 `full-smoke.ps1` uses high host ports by default, for example API `18000`,
 Grafana `13000`, Prometheus `19090`, and Neo4j HTTP `17474`, so it can run while

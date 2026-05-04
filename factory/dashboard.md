@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-014 - Add Retention Reporting](tasks/active/TC-20260505-014-add-retention-reporting.md)
+- [TC-20260505-015 - Prove Postgres Adapter](tasks/active/TC-20260505-015-prove-postgres-adapter.md)
 
 ## Runs Waiting For Bryan
 
@@ -22,6 +22,7 @@ Updated: 2026-05-05
 - [RR-20260505-012](runs/RR-20260505-012.md)
 - [RR-20260505-013](runs/RR-20260505-013.md)
 - [RR-20260505-014](runs/RR-20260505-014.md)
+- [RR-20260505-015](runs/RR-20260505-015.md)
 
 ## Blocked Work
 
@@ -52,6 +53,8 @@ Updated: 2026-05-05
   Prometheus alert rules.
 - Added a local tamper-evident audit log with admin verification endpoints.
 - Added dry-run local retention reporting through API and CLI.
+- Installed infra extras in the Docker API image and added a Postgres adapter
+  smoke inside the full profile.
 
 ## Lessons Added
 
@@ -63,6 +66,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M14 retention reporting. Next implementation task
-should add a real OIDC design or deeper Postgres-backed runtime path if Bryan
-chooses to go deeper on production hardening.
+Review local MVP through M15 Postgres adapter proof. Next implementation task
+should add a real OIDC design or move more runtime storage paths to Postgres if
+Bryan chooses to go deeper on production hardening.

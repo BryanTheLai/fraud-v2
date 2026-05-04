@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.0 - 2026-05-05
+
+- Updated the Docker API image to install full-profile infrastructure extras.
+- Expanded `scripts/full-smoke.ps1` to verify the Postgres event-store adapter
+  inside the Docker network.
+
 ## 0.14.0 - 2026-05-05
 
 - Added dry-run local retention reports with per-table expiry counts and

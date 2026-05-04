@@ -25,6 +25,8 @@ Implemented:
 - Tamper-evident local audit log and admin audit verification endpoints.
 - Dry-run local retention reporting for events, decisions, reviews, outbox, and
   audit records.
+- Full-profile Docker image installs infra extras and smoke-tests the Postgres
+  event-store adapter.
 - GitHub Actions test, Docker build, and API image smoke workflow.
 
 ## Test Plan
@@ -44,10 +46,10 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: 44 passed
+- Pytest: 45 passed
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, dashboard, metrics,
-  Grafana, Prometheus scrape, and Neo4j readiness
+  Grafana, Prometheus scrape, Neo4j readiness, and Postgres adapter insert/list
 
 ## Known Limits
 

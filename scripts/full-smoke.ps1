@@ -115,6 +115,26 @@ function Wait-PrometheusQuery {
   throw "Prometheus query did not return data before timeout: $Query"
 }
 
+function Wait-ComposeCommand {
+  param(
+    [string]$Name,
+    [string[]]$Arguments,
+    [int]$TimeoutSeconds
+  )
+
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  do {
+    $output = & docker compose -p $ComposeProject -f infra\docker-compose.yml --profile full @Arguments 2>&1
+    if ($LASTEXITCODE -eq 0) {
+      Write-Host "$Name ready"
+      return
+    }
+    Start-Sleep -Seconds 3
+  } while ((Get-Date) -lt $deadline)
+
+  throw "$Name did not become ready before timeout: $output"
+}
+
 Invoke-FraudCompose config --quiet
 Invoke-FraudCompose up -d --build
 
@@ -123,6 +143,10 @@ try {
   Wait-Http -Name "Prometheus" -Uri "$PrometheusBase/-/ready" -TimeoutSeconds $TimeoutSeconds
   Wait-Http -Name "Grafana" -Uri "$GrafanaBase/api/health" -TimeoutSeconds $TimeoutSeconds
   Wait-Http -Name "Neo4j" -Uri "$Neo4jBase/" -TimeoutSeconds $TimeoutSeconds
+  Wait-ComposeCommand `
+    -Name "Postgres" `
+    -Arguments @("exec", "-T", "postgres", "pg_isready", "-U", "fraud", "-d", "fraud_v2") `
+    -TimeoutSeconds $TimeoutSeconds
 
   $generated = Invoke-FraudApi `
     -Method "Post" `
@@ -157,6 +181,27 @@ try {
   Assert-FraudCondition ($auditVerify.valid -eq $true) "Expected audit hash chain to verify."
   $retention = Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/retention/report"
   Assert-FraudCondition ($retention.total_expired -ge 0) "Expected retention report to load."
+
+  $postgresSmoke = @'
+from fraud_v2.infrastructure.postgres_store import PostgresEventStore
+from fraud_v2.synthetic.generator import SyntheticFraudGenerator
+
+store = PostgresEventStore("postgresql://fraud:fraud@postgres:5432/fraud_v2")
+store.init_schema()
+event = SyntheticFraudGenerator().generate(users=10).events[0]
+store.add_event(event)
+events = store.list_events()
+assert any(str(existing.event_id) == str(event.event_id) for existing in events)
+print(f"postgres_events={len(events)}")
+'@
+  $postgresResult = $postgresSmoke | docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run python - 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Postgres adapter smoke failed: $postgresResult"
+  Write-Host ($postgresResult -join "`n")
+  Assert-FraudCondition (($postgresResult -join "`n") -like "*postgres_events=*") "Postgres adapter smoke did not print event count."
 
   $dashboard = Invoke-WebRequest -Uri "$ApiBase/dashboard" -TimeoutSec 10 -UseBasicParsing
   Assert-FraudCondition ($dashboard.Content -like "*Recent decisions*") "Dashboard missing recent decisions."

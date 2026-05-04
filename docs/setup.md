@@ -112,7 +112,8 @@ Full-profile smoke with cleanup:
 The smoke uses a separate Docker Compose project, `fraud-v2-smoke`, and high
 host ports by default so it does not collide with a local dev API on `8000`: API
 `18000`, Grafana `13000`, Prometheus `19090`, and Neo4j HTTP `17474`. Override
-with parameters such as `-ApiPort 18001` if needed.
+with parameters such as `-ApiPort 18001` if needed. It also verifies the
+Postgres event-store adapter from inside the API container.
 
 Keep services running for manual inspection:
 
