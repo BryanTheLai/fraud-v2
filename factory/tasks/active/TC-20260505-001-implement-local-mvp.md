@@ -60,7 +60,7 @@ Required:
 - [x] local smoke command for synthetic data
 - [x] local smoke command for API and decision CLI
 - [x] Docker image build and container health smoke
-- [ ] local git commit
+- [x] local git commit
 
 ## Stop Conditions
 
