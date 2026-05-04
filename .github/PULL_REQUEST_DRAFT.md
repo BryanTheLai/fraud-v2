@@ -38,6 +38,8 @@ Implemented:
   floors, and high-amount signals.
 - Local threshold policy registry for candidate/active promotion and active
   policy file export.
+- Local Ed25519 signed policy approvals and approved-promotion CLI for
+  maker-checker governance rehearsal.
 - Full-profile Docker image installs infra extras and smoke-tests the Postgres
   event-store adapter.
 - Full-profile smoke verifies Redis feature cache, Neo4j graph projector, and
@@ -71,7 +73,7 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: pass, 77 collected tests
+- Pytest: pass, 80 collected tests
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
@@ -90,8 +92,9 @@ Latest local result:
   lag dashboard yet.
 - Stream dead letters persist safe local diagnostics, not production PII-safe
   evidence storage.
-- Policy packs and promotion registry are local JSON only; no real
-  maker-checker approval, signatures, or production policy registry yet.
+- Policy packs, promotion registry, and signed approvals are local files only;
+  no external KMS/HSM, legal approval workflow, or production policy registry
+  yet.
 - No real production deployment target yet.
 - GitHub push/PR creation is blocked locally until `gh auth login` succeeds
   and a remote is configured.

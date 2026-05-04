@@ -195,7 +195,11 @@ uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite --execute
 uv run fraud-v2 policy-show
 uv run fraud-v2 policy-register data\policies\strict.json --status candidate
+uv run fraud-v2 policy-keygen --private-key-path data\policies\alice-policy.pem --public-key-path data\policies\alice-policy.pub.pem
+uv run fraud-v2 policy-approve strict-policy-test --approver-id alice --private-key-path data\policies\alice-policy.pem
+uv run fraud-v2 policy-approval-status strict-policy-test
 uv run fraud-v2 policy-promote strict-policy-test
+uv run fraud-v2 policy-promote-approved strict-policy-test --required-approvals 2
 uv run fraud-v2 model-register --status shadow
 uv run fraud-v2 model-promote baseline-20260505-001
 uv run fraud-v2 shadow-score --status active
@@ -403,6 +407,35 @@ writes the active policy JSON file that the API can load. This is a local
 governance rail, not a substitute for maker-checker approval, signatures, or
 legal policy review.
 
+Local signed policy approval flow:
+
+```powershell
+uv run fraud-v2 policy-keygen `
+  --private-key-path data\policies\alice-policy.pem `
+  --public-key-path data\policies\alice-policy.pub.pem
+uv run fraud-v2 policy-keygen `
+  --private-key-path data\policies\bob-policy.pem `
+  --public-key-path data\policies\bob-policy.pub.pem
+uv run fraud-v2 policy-approve strict-policy-test `
+  --approver-id alice `
+  --approver-role risk `
+  --private-key-path data\policies\alice-policy.pem `
+  --notes "local risk approval"
+uv run fraud-v2 policy-approve strict-policy-test `
+  --approver-id bob `
+  --approver-role compliance `
+  --private-key-path data\policies\bob-policy.pem `
+  --notes "local compliance approval"
+uv run fraud-v2 policy-approval-status strict-policy-test --required-approvals 2
+uv run fraud-v2 policy-promote-approved strict-policy-test --required-approvals 2
+```
+
+Approvals are local Ed25519 signatures over policy version, policy SHA-256,
+approver ID, approver role, approval timestamp, notes, and signature algorithm.
+The approved-promotion path counts distinct verified approvers. It is still
+local governance rehearsal, not a production legal approval system or external
+KMS/HSM-backed signing process.
+
 ## Local Observability
 
 The API emits:
@@ -578,6 +611,10 @@ tests/unit/domain/test_events.py
 | Show threshold policy | `uv run fraud-v2 policy-show` | Prints the built-in or file-backed threshold policy. |
 | Register policy | `uv run fraud-v2 policy-register data\policies\strict.json --status candidate` | Hashes and records a threshold policy candidate. |
 | Promote policy | `uv run fraud-v2 policy-promote strict-policy-test` | Marks one policy active and writes `data\policies\active-threshold-policy.json`. |
+| Generate policy approval key | `uv run fraud-v2 policy-keygen --private-key-path data\policies\alice-policy.pem --public-key-path data\policies\alice-policy.pub.pem` | Creates a local Ed25519 keypair for signing policy approvals. Do not commit private keys. |
+| Approve policy | `uv run fraud-v2 policy-approve strict-policy-test --approver-id alice --private-key-path data\policies\alice-policy.pem` | Writes a signed local approval record bound to the registered policy hash. |
+| Check policy approvals | `uv run fraud-v2 policy-approval-status strict-policy-test --required-approvals 2` | Counts distinct verified approvers and reports whether the policy is approved. |
+| Promote approved policy | `uv run fraud-v2 policy-promote-approved strict-policy-test --required-approvals 2` | Promotes only after enough verified approvals exist. |
 
 ## Troubleshooting
 

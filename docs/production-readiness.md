@@ -32,6 +32,7 @@ It now runs locally in two modes:
 | Rules/graph decisions | Done | Rules + NetworkX graph service, graph evidence dashboard, safe reasons, trace IDs. |
 | Versioned threshold policy | Local-safe done | Green/yellow/red thresholds, degraded floors, and high-amount signals load from validated JSON policy packs. |
 | Policy promotion registry | Local-safe done | Local JSON registry hashes candidate policies and promotes one active policy file for API loading. |
+| Signed policy approvals | Local-safe done | Ed25519 approval records bind policy version/hash to distinct approvers; `policy-promote-approved` enforces the configured approval count. |
 | Review workflow | Done | Manual-review decisions create cases and confirmed analyst outcomes append replayable label events. |
 | Compliance drafts | Local-safe done | Draft export only; no filings, no legal claim. |
 | Baseline ML | Done | sklearn random forest training report. |
@@ -62,7 +63,7 @@ It now runs locally in two modes:
 | Audit immutability | Hash-chained SQLite only. No WORM/object-lock storage. |
 | Retention enforcement | Explicit local prune exists for non-audit records. No schedules, legal holds, archive tiers, or WORM audit archival yet. |
 | Persistence | SQLite remains the lite default; Docker full mode uses Postgres for app state. |
-| Policy governance | JSON policy packs and local promotion registry exist. No real maker-checker approvals, signatures, registry service, or legal policy governance yet. |
+| Policy governance | JSON policy packs, local promotion registry, and local signed approvals exist. No external KMS/HSM, registry service, legal approval system, or enterprise change-management integration yet. |
 | Streaming | Redpanda publisher, bounded consumer, local supervisor CLI, lag CLI, app-store dead letters, and optional Redpanda DLQ topic publishing are smoke-tested locally. There is no OS service manager, lag dashboard, or Flink/managed-stream deployment yet. |
 | Graph DB | Neo4j projector is smoke-tested; decision engine still uses NetworkX fallback. |
 | Observability | Local metrics, dashboard, request logs, trace IDs, and Prometheus alerts exist; no distributed tracing backend yet. |

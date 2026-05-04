@@ -26,6 +26,8 @@ label events for replay/training. Full mode uses Postgres as the primary app
 store and includes Redis, Redpanda, Neo4j, Prometheus, and a provisioned Grafana
 dashboard. Stream ingestion now has bounded consume, supervised consume,
 dead-letter, DLQ publishing, and lag-inspection CLIs for local reliability work.
+Threshold policies also have local signed approval commands for governance
+rehearsal before promotion.
 
 ## Run Lite Mode
 
@@ -155,7 +157,11 @@ uv run fraud-v2 retention-prune --db-path data/local/fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data/local/fraud_v2.sqlite --execute
 uv run fraud-v2 policy-show
 uv run fraud-v2 policy-register data/policies/strict.json --status candidate
+uv run fraud-v2 policy-keygen --private-key-path data/policies/alice-policy.pem --public-key-path data/policies/alice-policy.pub.pem
+uv run fraud-v2 policy-approve strict-policy-test --approver-id alice --private-key-path data/policies/alice-policy.pem
+uv run fraud-v2 policy-approval-status strict-policy-test
 uv run fraud-v2 policy-promote strict-policy-test
+uv run fraud-v2 policy-promote-approved strict-policy-test --required-approvals 2
 uv run fraud-v2 model-register --status shadow
 uv run fraud-v2 model-promote baseline-20260505-001
 uv run fraud-v2 shadow-score --status active

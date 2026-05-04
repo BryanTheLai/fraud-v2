@@ -14,6 +14,7 @@ data/offline/
 data/synthetic/manifests/
 data/synthetic/demo/
 data/synthetic/stress/
+data/policies/*.pem
 *.sqlite
 *.db
 .coverage

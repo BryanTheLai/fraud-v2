@@ -24,9 +24,15 @@ from fraud_v2.llm_lab.provider import NoveltyLedger, provider_from_env
 from fraud_v2.models.registry import JsonModelRegistry, ModelStatus
 from fraud_v2.models.shadow import write_shadow_scores
 from fraud_v2.models.train import train_baseline
+from fraud_v2.policy.approvals import (
+    JsonPolicyApprovalStore,
+    create_policy_approval,
+    generate_policy_signing_keypair,
+)
 from fraud_v2.policy.registry import (
     JsonThresholdPolicyRegistry,
     PolicyStatus,
+    RegisteredThresholdPolicy,
     write_active_policy,
 )
 from fraud_v2.policy.thresholds import load_threshold_policy
@@ -255,6 +261,89 @@ def policy_promote(
     _print_json(
         {
             "policy": promoted.model_dump(mode="json"),
+            "registry": str(registry_path),
+            "active_policy_path": str(active_policy_path),
+        }
+    )
+
+
+@app.command()
+def policy_keygen(
+    private_key_path: Path = Path("data/policies/local-policy-approval-ed25519.pem"),
+    public_key_path: Path = Path("data/policies/local-policy-approval-ed25519.pub.pem"),
+    overwrite: bool = typer.Option(False, "--overwrite"),
+) -> None:
+    _print_json(
+        generate_policy_signing_keypair(
+            private_key_path=private_key_path,
+            public_key_path=public_key_path,
+            overwrite=overwrite,
+        )
+    )
+
+
+@app.command()
+def policy_approve(
+    policy_version: str,
+    approver_id: str = typer.Option(..., "--approver-id"),
+    private_key_path: Path = typer.Option(..., "--private-key-path"),
+    approver_role: str = "policy_approver",
+    registry_path: Path = Path("data/policies/registry.json"),
+    approvals_path: Path = Path("data/policies/approvals.json"),
+    notes: str = "",
+) -> None:
+    policy = _registered_policy(registry_path, policy_version)
+    approval = create_policy_approval(
+        policy_version=policy.version,
+        policy_sha256=policy.policy_sha256,
+        approver_id=approver_id,
+        approver_role=approver_role,
+        private_key_path=private_key_path,
+        notes=notes,
+    )
+    saved = JsonPolicyApprovalStore(approvals_path).add(approval)
+    _print_json({"approval": saved.model_dump(mode="json"), "approvals_path": str(approvals_path)})
+
+
+@app.command()
+def policy_approval_status(
+    policy_version: str,
+    registry_path: Path = Path("data/policies/registry.json"),
+    approvals_path: Path = Path("data/policies/approvals.json"),
+    required_approvals: int = typer.Option(2, min=1, max=10),
+) -> None:
+    policy = _registered_policy(registry_path, policy_version)
+    status = JsonPolicyApprovalStore(approvals_path).status(
+        policy_version=policy.version,
+        policy_sha256=policy.policy_sha256,
+        required_approvals=required_approvals,
+    )
+    _print_json(status.model_dump(mode="json"))
+
+
+@app.command()
+def policy_promote_approved(
+    policy_version: str,
+    registry_path: Path = Path("data/policies/registry.json"),
+    approvals_path: Path = Path("data/policies/approvals.json"),
+    active_policy_path: Path = Path("data/policies/active-threshold-policy.json"),
+    required_approvals: int = typer.Option(2, min=1, max=10),
+) -> None:
+    policy = _registered_policy(registry_path, policy_version)
+    approval_status = JsonPolicyApprovalStore(approvals_path).status(
+        policy_version=policy.version,
+        policy_sha256=policy.policy_sha256,
+        required_approvals=required_approvals,
+    )
+    if not approval_status.approved:
+        _print_json(approval_status.model_dump(mode="json"))
+        raise typer.Exit(code=2)
+    promoted = JsonThresholdPolicyRegistry(registry_path).promote(policy_version)
+    write_active_policy(promoted.policy, active_policy_path)
+    _print_json(
+        {
+            "policy": promoted.model_dump(mode="json"),
+            "approval_status": approval_status.model_dump(mode="json"),
             "registry": str(registry_path),
             "active_policy_path": str(active_policy_path),
         }
@@ -565,3 +654,10 @@ def _store_from_cli(store_backend: str, db_path: Path, postgres_dsn: str) -> Fra
     if backend == "postgres":
         return PostgresStore(postgres_dsn)
     raise typer.BadParameter("store backend must be 'sqlite' or 'postgres'")
+
+
+def _registered_policy(registry_path: Path, policy_version: str) -> RegisteredThresholdPolicy:
+    for policy in JsonThresholdPolicyRegistry(registry_path).list_policies():
+        if policy.version == policy_version:
+            return policy
+    raise typer.BadParameter(f"policy version not found in registry: {policy_version}")

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.30.0 - 2026-05-05
+
+- Added local Ed25519-signed threshold-policy approval records bound to policy
+  version, policy SHA-256, approver, role, timestamp, and notes.
+- Added policy approval key generation, approval, approval-status, and
+  approved-promotion CLIs.
+- Added distinct-approver counting so a local policy can require maker-checker
+  style approval before using the approved promotion path.
+
 ## 0.29.0 - 2026-05-05
 
 - Added a local `fraud-v2 stream-supervise` worker loop for repeated bounded
