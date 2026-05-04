@@ -4,13 +4,14 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-003 - Implement Outbox And Converters](tasks/active/TC-20260505-003-implement-outbox-and-converters.md)
+- [TC-20260505-004 - Add Compliance And Cost Evaluation](tasks/active/TC-20260505-004-add-compliance-and-cost-eval.md)
 
 ## Runs Waiting For Bryan
 
 - [RR-20260505-001](runs/RR-20260505-001.md)
 - [RR-20260505-002](runs/RR-20260505-002.md)
 - [RR-20260505-003](runs/RR-20260505-003.md)
+- [RR-20260505-004](runs/RR-20260505-004.md)
 
 ## Blocked Work
 
@@ -26,6 +27,8 @@ Updated: 2026-05-05
   public dataset registry, and LLM provider boundaries.
 - Added transactional outbox, outbox drain worker, mock connectors, and raw
   event converters.
+- Added human-review-only compliance drafts and cost-weighted threshold
+  reporting.
 
 ## Lessons Added
 
@@ -37,6 +40,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP, M2 adapter layer, and M3 ingestion/outbox layer. Next
-implementation task should add compliance draft exports, model threshold
-optimization, and Docker-backed integration tests.
+Review local MVP, M2 adapter layer, M3 ingestion/outbox layer, and M4
+compliance/cost evaluation layer. Next implementation task should add
+Docker-backed integration tests and analyst UI polish.

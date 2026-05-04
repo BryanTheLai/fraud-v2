@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 - 2026-05-05
+
+- Added human-review-only compliance draft JSON exports with safe reasons and
+  explicit no-filing/no-legal-advice disclaimers.
+- Added cost-weighted threshold candidates, profit estimates, and
+  recall-under-1-percent-FPR reporting to baseline model training.
+- Added CLI support for local compliance draft generation from stored decisions.
+
 ## 0.3.0 - 2026-05-05
 
 - Added a SQLite-backed transactional outbox and dry-run outbox worker so local

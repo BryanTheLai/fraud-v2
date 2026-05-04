@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 import typer
 
+from fraud_v2.compliance.drafts import write_compliance_draft
 from fraud_v2.decision.engine import DecisionEngine
 from fraud_v2.domain.decisions import DecisionRequest
 from fraud_v2.domain.entities import EntityRef
@@ -174,3 +176,15 @@ def outbox_drain(
     )
     report = OutboxWorker(store=store, publisher=publisher, batch_size=batch_size).run_once()
     _print_json({**report.__dict__, "outbox": store.outbox_counts()})
+
+
+@app.command()
+def compliance_draft(
+    decision_id: UUID,
+    db_path: Path = Path("data/local/fraud_v2.sqlite"),
+    output_path: Path = Path("data/local/compliance-draft.json"),
+) -> None:
+    store = SQLiteStore(db_path)
+    decision = store.get_decision(decision_id)
+    draft = write_compliance_draft(decision, output_path)
+    _print_json({"draft": draft.model_dump(mode="json"), "output": str(output_path)})

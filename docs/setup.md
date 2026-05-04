@@ -152,6 +152,7 @@ uv run fraud-v2 replay --events-path data\synthetic\tiny\events.jsonl
 uv run fraud-v2 monitor --events-path data\synthetic\tiny\events.jsonl
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run
+uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite
 ```
 
 Local URLs after implementation:
@@ -296,8 +297,9 @@ tests/unit/domain/test_events.py
 | Start API | `uv run fastapi dev src\fraud_v2\api\main.py --port 8000` | API docs at `/docs`. |
 | Open dashboard | `uv run uvicorn fraud_v2.api.main:app --host 127.0.0.1 --port 8000` | Dashboard at `/dashboard`. |
 | Train baseline | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | CPU default. |
-| Evaluate model | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | Writes metrics report. |
+| Evaluate model | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | Writes metrics, cost, and threshold report. |
 | Drain local outbox | `uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run` | Publishes through a dry-run publisher by default. |
+| Export compliance draft | `uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes a human-review-only local draft. |
 
 ## Troubleshooting
 
