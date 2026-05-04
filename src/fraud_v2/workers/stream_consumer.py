@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from typing import Protocol, cast
 
@@ -7,6 +8,7 @@ from pydantic import ValidationError
 
 from fraud_v2.domain.errors import DuplicatePayloadConflict
 from fraud_v2.domain.events import EventEnvelope
+from fraud_v2.domain.stream import StreamDeadLetter, StreamDeadLetterReason
 from fraud_v2.infrastructure.optional_imports import optional_module
 from fraud_v2.storage.ports import FraudStore
 
@@ -42,6 +44,7 @@ class StreamConsumeReport:
     failed: int
     conflicts: int
     invalid_messages: int
+    dead_lettered: int
     empty_polls: int
 
 
@@ -83,6 +86,7 @@ class StreamIngestionWorker:
         failed = 0
         conflicts = 0
         invalid_messages = 0
+        dead_lettered = 0
         empty_polls = 0
         try:
             while scanned < max_messages and empty_polls < self.max_empty_polls:
@@ -94,23 +98,51 @@ class StreamIngestionWorker:
                 scanned += 1
                 if message.error() is not None:
                     failed += 1
+                    self._dead_letter(
+                        reason=StreamDeadLetterReason.MESSAGE_ERROR,
+                        raw_value=message.value(),
+                        safe_error=f"stream message error: {message.error()}",
+                    )
+                    dead_lettered += 1
+                    self.consumer.commit(message=message, asynchronous=False)
                     continue
                 raw_value = message.value()
                 if raw_value is None:
                     failed += 1
                     invalid_messages += 1
+                    self._dead_letter(
+                        reason=StreamDeadLetterReason.EMPTY_PAYLOAD,
+                        raw_value=None,
+                        safe_error="stream message had no payload",
+                    )
+                    dead_lettered += 1
+                    self.consumer.commit(message=message, asynchronous=False)
                     continue
                 try:
                     event = EventEnvelope.model_validate_json(_message_text(raw_value))
                     already_known = event.idempotency_key in known_idempotency_keys
                     self.store.add_event(event, outbox_topic=None)
-                except DuplicatePayloadConflict:
+                except DuplicatePayloadConflict as exc:
                     conflicts += 1
                     failed += 1
+                    self._dead_letter(
+                        reason=StreamDeadLetterReason.IDEMPOTENCY_CONFLICT,
+                        raw_value=raw_value,
+                        safe_error=str(exc),
+                    )
+                    dead_lettered += 1
+                    self.consumer.commit(message=message, asynchronous=False)
                     continue
-                except ValidationError:
+                except ValidationError as exc:
                     invalid_messages += 1
                     failed += 1
+                    self._dead_letter(
+                        reason=StreamDeadLetterReason.INVALID_EVENT,
+                        raw_value=raw_value,
+                        safe_error=str(exc).splitlines()[0],
+                    )
+                    dead_lettered += 1
+                    self.consumer.commit(message=message, asynchronous=False)
                     continue
                 self.consumer.commit(message=message, asynchronous=False)
                 if already_known:
@@ -130,11 +162,46 @@ class StreamIngestionWorker:
             failed=failed,
             conflicts=conflicts,
             invalid_messages=invalid_messages,
+            dead_lettered=dead_lettered,
             empty_polls=empty_polls,
         )
+
+    def _dead_letter(
+        self,
+        *,
+        reason: StreamDeadLetterReason,
+        raw_value: bytes | str | None,
+        safe_error: str,
+    ) -> StreamDeadLetter:
+        dead_letter = StreamDeadLetter(
+            source_topic=self.topic,
+            consumer_group=self.group_id,
+            reason=reason,
+            payload_hash=_payload_hash(raw_value),
+            payload_preview=_payload_preview(raw_value),
+            safe_error=safe_error[:500],
+        )
+        return self.store.save_stream_dead_letter(dead_letter)
 
 
 def _message_text(raw_value: bytes | str) -> str:
     if isinstance(raw_value, bytes):
         return raw_value.decode("utf-8")
     return raw_value
+
+
+def _payload_hash(raw_value: bytes | str | None) -> str | None:
+    if raw_value is None:
+        return None
+    raw_bytes = raw_value.encode("utf-8") if isinstance(raw_value, str) else raw_value
+    return hashlib.sha256(raw_bytes).hexdigest()
+
+
+def _payload_preview(raw_value: bytes | str | None) -> str:
+    if raw_value is None:
+        return ""
+    if isinstance(raw_value, bytes):
+        text = raw_value.decode("utf-8", errors="replace")
+    else:
+        text = raw_value
+    return text.replace("\r", " ").replace("\n", " ")[:500]

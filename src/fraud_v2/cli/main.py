@@ -267,6 +267,28 @@ def stream_consume(
 
 
 @app.command()
+def stream_dead_letters(
+    store_backend: str = typer.Option("sqlite", "--store-backend"),
+    db_path: Path = Path("data/local/fraud_v2.sqlite"),
+    postgres_dsn: str = "postgresql://fraud:fraud@localhost:5432/fraud_v2",
+    limit: int = typer.Option(100, min=1, max=1000),
+) -> None:
+    store = _store_from_cli(
+        store_backend=store_backend,
+        db_path=db_path,
+        postgres_dsn=postgres_dsn,
+    )
+    _print_json(
+        {
+            "dead_letters": [
+                dead_letter.model_dump(mode="json")
+                for dead_letter in store.list_stream_dead_letters(limit=limit)
+            ]
+        }
+    )
+
+
+@app.command()
 def compliance_draft(
     decision_id: UUID,
     db_path: Path = Path("data/local/fraud_v2.sqlite"),
@@ -286,6 +308,7 @@ def retention_report(
     decision_days: int = typer.Option(365, min=1),
     review_days: int = typer.Option(365, min=1),
     outbox_days: int = typer.Option(30, min=1),
+    stream_dead_letter_days: int = typer.Option(30, min=1),
     audit_days: int = typer.Option(3650, min=1),
 ) -> None:
     report_as_of = _parse_as_of(as_of)
@@ -296,6 +319,7 @@ def retention_report(
             decision_days=decision_days,
             review_days=review_days,
             outbox_days=outbox_days,
+            stream_dead_letter_days=stream_dead_letter_days,
             audit_days=audit_days,
         ),
     )
@@ -311,6 +335,7 @@ def retention_prune(
     decision_days: int = typer.Option(365, min=1),
     review_days: int = typer.Option(365, min=1),
     outbox_days: int = typer.Option(30, min=1),
+    stream_dead_letter_days: int = typer.Option(30, min=1),
     audit_days: int = typer.Option(3650, min=1),
 ) -> None:
     report_as_of = _parse_as_of(as_of)
@@ -319,6 +344,7 @@ def retention_prune(
         decision_days=decision_days,
         review_days=review_days,
         outbox_days=outbox_days,
+        stream_dead_letter_days=stream_dead_letter_days,
         audit_days=audit_days,
     )
     store = SQLiteStore(db_path)

@@ -112,7 +112,11 @@ def test_stream_consumer_does_not_commit_idempotency_conflict(tmp_path) -> None:
     assert report.ingested == 0
     assert report.conflicts == 1
     assert report.failed == 1
-    assert consumer.committed == []
+    assert report.dead_lettered == 1
+    assert len(consumer.committed) == 1
+    dead_letters = store.list_stream_dead_letters()
+    assert len(dead_letters) == 1
+    assert dead_letters[0].reason.value == "IDEMPOTENCY_CONFLICT"
 
 
 def test_stream_consumer_reports_invalid_messages(tmp_path) -> None:  # type: ignore[no-untyped-def]
@@ -129,7 +133,12 @@ def test_stream_consumer_reports_invalid_messages(tmp_path) -> None:  # type: ig
     assert report.scanned == 1
     assert report.invalid_messages == 1
     assert report.failed == 1
-    assert consumer.committed == []
+    assert report.dead_lettered == 1
+    assert len(consumer.committed) == 1
+    dead_letters = store.list_stream_dead_letters()
+    assert len(dead_letters) == 1
+    assert dead_letters[0].reason.value == "INVALID_EVENT"
+    assert dead_letters[0].payload_hash is not None
 
 
 def _event() -> EventEnvelope:

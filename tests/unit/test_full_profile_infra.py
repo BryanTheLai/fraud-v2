@@ -56,6 +56,8 @@ def test_full_smoke_exercises_functional_api_and_observability() -> None:
     assert "Neo4jGraphProjector" in smoke_script
     assert "cypher-shell" in smoke_script
     assert "RedpandaEventPublisher" in smoke_script
+    assert "stream-consume" in smoke_script
+    assert "/v1/stream/dead-letters" in smoke_script
     assert "rpk" in smoke_script
 
 

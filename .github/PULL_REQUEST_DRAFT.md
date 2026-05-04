@@ -42,6 +42,8 @@ Implemented:
   Redpanda publisher and consumer adapters.
 - Bounded Redpanda stream consumer CLI ingests canonical event envelopes into
   SQLite/Postgres with idempotent duplicate handling.
+- Persistent stream dead letters capture invalid/conflicting Redpanda records
+  for admin inspection and retention pruning.
 - GitHub Actions test, Docker build, and API image smoke workflow.
 
 ## Test Plan
@@ -61,12 +63,13 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: 63 passed
+- Pytest: 64 passed
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Redis feature cache, Neo4j projection, and
-  Redpanda publish-consume-to-Postgres
+  Redpanda publish-consume-to-Postgres with zero stream dead letters on the
+  valid path
 
 ## Known Limits
 
@@ -76,6 +79,8 @@ Latest local result:
 - Local bearer-token/JWT auth only; no external user lifecycle or sessions yet.
 - Stream consumer is local and bounded; no long-running supervised worker, DLQ
   topic, or lag alerting yet.
+- Stream dead letters persist safe local diagnostics, not production PII-safe
+  evidence storage.
 - Policy packs are local JSON only; no maker-checker approval workflow or
   production policy registry yet.
 - No real production deployment target yet.

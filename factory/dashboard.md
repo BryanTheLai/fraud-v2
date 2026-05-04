@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-024 - Add Versioned Threshold Policy](tasks/active/TC-20260505-024-add-versioned-threshold-policy.md)
+- [TC-20260505-025 - Add Stream Dead Letters](tasks/active/TC-20260505-025-add-stream-dead-letters.md)
 
 ## Runs Waiting For Bryan
 
@@ -74,6 +74,8 @@ Updated: 2026-05-05
   and full-smoke publish-consume-Postgres proof.
 - Added versioned threshold policy packs for local green/yellow/red decision
   boundaries.
+- Added persistent stream dead letters with admin inspection and retention
+  coverage.
 
 ## Lessons Added
 
@@ -85,7 +87,7 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M24 versioned threshold policy packs. Next
-implementation task should add a real DLQ path, lag/worker supervision, or a
+Review local MVP through M25 persistent stream dead letters. Next implementation
+task should add lag/worker supervision, a Redpanda DLQ topic publisher, or a
 policy promotion workflow if Bryan chooses to go deeper on production
 hardening.

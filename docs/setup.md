@@ -185,6 +185,7 @@ uv run fraud-v2 monitor --events-path data\synthetic\tiny\events.jsonl
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run
 uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10
+uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite
@@ -284,8 +285,8 @@ uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite --execute
 ```
 
 The prune command defaults to dry-run. `--execute` deletes expired events,
-decisions, review records, and outbox messages. It preserves audit entries so
-hash-chain verification remains valid.
+decisions, review records, outbox messages, and stream dead letters. It
+preserves audit entries so hash-chain verification remains valid.
 
 Bounded stream consume from local Redpanda:
 
@@ -300,9 +301,18 @@ uv run fraud-v2 stream-consume `
 ```
 
 The stream consumer uses at-least-once semantics with idempotency keys. Exact
-duplicates are committed as safe no-ops. Invalid messages or idempotency-key
-payload conflicts are reported and not committed, so the operator can inspect
-the bad stream input instead of silently skipping it.
+duplicates are committed as safe no-ops. Invalid messages, empty payloads,
+stream message errors, and idempotency-key payload conflicts are written to a
+local dead-letter table before the worker commits the offset.
+
+Inspect stream dead letters:
+
+```powershell
+uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite
+```
+
+Dead letters store safe error text, payload hash, and a short payload preview
+for synthetic/local debugging. Do not use this repo with real PII.
 
 Show the active default threshold policy:
 
@@ -485,6 +495,7 @@ tests/unit/domain/test_events.py
 | Evaluate model | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | Writes metrics, cost, and threshold report. |
 | Drain local outbox | `uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run` | Publishes through a dry-run publisher by default. |
 | Consume Redpanda stream | `uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10` | Bounded local consumer for canonical event envelopes. |
+| Inspect stream dead letters | `uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite` | Shows invalid/conflicting stream records stored for admin inspection. |
 | Export compliance draft | `uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes a human-review-only local draft. |
 | Retention report | `uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite` | Counts expired records without deleting them. |
 | Retention prune | `uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite --execute` | Deletes expired local non-audit records. |

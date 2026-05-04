@@ -10,6 +10,7 @@ class RetentionPolicy(BaseModel):
     decision_days: int = Field(default=365, ge=1)
     review_days: int = Field(default=365, ge=1)
     outbox_days: int = Field(default=30, ge=1)
+    stream_dead_letter_days: int = Field(default=30, ge=1)
     audit_days: int = Field(default=3650, ge=1)
 
 

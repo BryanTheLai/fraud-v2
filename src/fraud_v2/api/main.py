@@ -25,6 +25,7 @@ from fraud_v2.domain.errors import DecisionNotFound, DuplicatePayloadConflict
 from fraud_v2.domain.events import EventEnvelope
 from fraud_v2.domain.retention import RetentionPolicy, RetentionReport
 from fraud_v2.domain.reviews import ReviewCase, ReviewDecision, ReviewDecisionRequest
+from fraud_v2.domain.stream import StreamDeadLetter
 from fraud_v2.graph.service import GraphService
 from fraud_v2.observability.logging import (
     configure_logging,
@@ -428,6 +429,7 @@ def retention_report(
     decision_days: int = Query(default=365, ge=1),
     review_days: int = Query(default=365, ge=1),
     outbox_days: int = Query(default=30, ge=1),
+    stream_dead_letter_days: int = Query(default=30, ge=1),
     audit_days: int = Query(default=3650, ge=1),
     db: FraudStore = Depends(store),
 ) -> RetentionReport:
@@ -438,6 +440,7 @@ def retention_report(
             decision_days=decision_days,
             review_days=review_days,
             outbox_days=outbox_days,
+            stream_dead_letter_days=stream_dead_letter_days,
             audit_days=audit_days,
         ),
     )
@@ -455,6 +458,7 @@ def prune_retention(
     decision_days: int = Query(default=365, ge=1),
     review_days: int = Query(default=365, ge=1),
     outbox_days: int = Query(default=30, ge=1),
+    stream_dead_letter_days: int = Query(default=30, ge=1),
     audit_days: int = Query(default=3650, ge=1),
     db: FraudStore = Depends(store),
 ) -> RetentionReport:
@@ -463,6 +467,7 @@ def prune_retention(
         decision_days=decision_days,
         review_days=review_days,
         outbox_days=outbox_days,
+        stream_dead_letter_days=stream_dead_letter_days,
         audit_days=audit_days,
     )
     if not execute:
@@ -483,6 +488,7 @@ def _retention_policy(
     decision_days: int,
     review_days: int,
     outbox_days: int,
+    stream_dead_letter_days: int,
     audit_days: int,
 ) -> RetentionPolicy:
     return RetentionPolicy(
@@ -490,6 +496,7 @@ def _retention_policy(
         decision_days=decision_days,
         review_days=review_days,
         outbox_days=outbox_days,
+        stream_dead_letter_days=stream_dead_letter_days,
         audit_days=audit_days,
     )
 
@@ -584,6 +591,18 @@ def graph_neighborhood(
     return GraphService(db.list_events()).neighborhood(
         EntityRef(entity_type=entity_type, entity_id=entity_id), depth=depth
     )
+
+
+@app.get(
+    "/v1/stream/dead-letters",
+    response_model=list[StreamDeadLetter],
+    dependencies=[Depends(require_roles(AuthRole.ADMIN))],
+)
+def list_stream_dead_letters(
+    limit: int = Query(default=100, ge=1, le=1000),
+    db: FraudStore = Depends(store),
+) -> list[StreamDeadLetter]:
+    return db.list_stream_dead_letters(limit=limit)
 
 
 @app.get(

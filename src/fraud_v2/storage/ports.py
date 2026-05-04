@@ -10,6 +10,7 @@ from fraud_v2.domain.events import EventEnvelope
 from fraud_v2.domain.outbox import OutboxMessage, OutboxStatus
 from fraud_v2.domain.retention import RetentionPolicy, RetentionReport
 from fraud_v2.domain.reviews import ReviewCase, ReviewDecision
+from fraud_v2.domain.stream import StreamDeadLetter
 
 
 class FraudStore(Protocol):
@@ -46,6 +47,10 @@ class FraudStore(Protocol):
     def list_review_cases(self) -> list[ReviewCase]: ...
 
     def save_review_decision(self, decision: ReviewDecision) -> ReviewDecision: ...
+
+    def save_stream_dead_letter(self, dead_letter: StreamDeadLetter) -> StreamDeadLetter: ...
+
+    def list_stream_dead_letters(self, limit: int = 100) -> list[StreamDeadLetter]: ...
 
     def list_audit_entries(self, limit: int = 100) -> list[AuditEntry]: ...
 

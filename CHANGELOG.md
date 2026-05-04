@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.25.0 - 2026-05-05
+
+- Added persistent stream dead letters for invalid Redpanda messages, empty
+  payloads, stream errors, and idempotency-key payload conflicts.
+- Added admin API and CLI inspection paths for stream dead letters.
+- Added retention reporting/pruning coverage for stream dead-letter records.
+- Updated the full-profile smoke to prove the valid Redpanda consume path does
+  not create dead letters.
+
 ## 0.24.0 - 2026-05-05
 
 - Added versioned threshold policy packs so green/yellow/red boundaries,

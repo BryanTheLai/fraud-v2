@@ -15,6 +15,7 @@ from fraud_v2.domain.events import EventEnvelope
 from fraud_v2.domain.outbox import OutboxMessage, OutboxStatus
 from fraud_v2.domain.retention import RetentionPolicy, RetentionReport, RetentionTableReport
 from fraud_v2.domain.reviews import ReviewCase, ReviewDecision
+from fraud_v2.domain.stream import StreamDeadLetter
 from fraud_v2.infrastructure.optional_imports import optional_module
 from fraud_v2.observability.logging import get_trace_id
 from fraud_v2.storage.sqlite_store import GENESIS_AUDIT_HASH
@@ -94,6 +95,27 @@ class PostgresStore:
                 """
                 create index if not exists ix_outbox_status_created
                 on outbox_messages(status, created_at)
+                """
+            )
+            conn.execute(
+                """
+                create table if not exists stream_dead_letters (
+                  dead_letter_id text primary key,
+                  source_topic text not null,
+                  consumer_group text not null,
+                  reason text not null,
+                  payload_hash text,
+                  payload_preview text not null,
+                  safe_error text not null,
+                  created_at timestamptz not null,
+                  dead_letter_json jsonb not null
+                )
+                """
+            )
+            conn.execute(
+                """
+                create index if not exists ix_stream_dead_letters_created
+                on stream_dead_letters(created_at)
                 """
             )
             conn.execute(
@@ -420,6 +442,65 @@ class PostgresStore:
             )
         return decision
 
+    def save_stream_dead_letter(self, dead_letter: StreamDeadLetter) -> StreamDeadLetter:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                insert into stream_dead_letters(
+                  dead_letter_id, source_topic, consumer_group, reason, payload_hash,
+                  payload_preview, safe_error, created_at, dead_letter_json
+                )
+                values (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+                on conflict (dead_letter_id) do update set
+                  source_topic = excluded.source_topic,
+                  consumer_group = excluded.consumer_group,
+                  reason = excluded.reason,
+                  payload_hash = excluded.payload_hash,
+                  payload_preview = excluded.payload_preview,
+                  safe_error = excluded.safe_error,
+                  created_at = excluded.created_at,
+                  dead_letter_json = excluded.dead_letter_json
+                """,
+                (
+                    str(dead_letter.dead_letter_id),
+                    dead_letter.source_topic,
+                    dead_letter.consumer_group,
+                    dead_letter.reason.value,
+                    dead_letter.payload_hash,
+                    dead_letter.payload_preview,
+                    dead_letter.safe_error,
+                    dead_letter.created_at,
+                    dead_letter.model_dump_json(),
+                ),
+            )
+            self._append_audit(
+                conn,
+                actor="local-system",
+                action="stream.dead_lettered",
+                target_type="stream_dead_letter",
+                target_id=str(dead_letter.dead_letter_id),
+                payload={
+                    "source_topic": dead_letter.source_topic,
+                    "consumer_group": dead_letter.consumer_group,
+                    "reason": dead_letter.reason.value,
+                    "payload_hash": dead_letter.payload_hash or "",
+                },
+            )
+        return dead_letter
+
+    def list_stream_dead_letters(self, limit: int = 100) -> list[StreamDeadLetter]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                select dead_letter_json::text as dead_letter_json
+                from stream_dead_letters
+                order by created_at desc
+                limit %s
+                """,
+                (limit,),
+            ).fetchall()
+        return [StreamDeadLetter.model_validate_json(str(row["dead_letter_json"])) for row in rows]
+
     def list_audit_entries(self, limit: int = 100) -> list[AuditEntry]:
         with self._connect() as conn:
             rows = conn.execute(
@@ -518,6 +599,16 @@ class PostgresStore:
                 ),
             ),
             self._retention_table_report(
+                table="stream_dead_letters",
+                retention_days=active_policy.stream_dead_letter_days,
+                as_of=report_as_of,
+                expired_count=self._count_iso_column_before(
+                    table="stream_dead_letters",
+                    column="created_at",
+                    cutoff_at=report_as_of - timedelta(days=active_policy.stream_dead_letter_days),
+                ),
+            ),
+            self._retention_table_report(
                 table="audit_entries",
                 retention_days=active_policy.audit_days,
                 as_of=report_as_of,
@@ -554,6 +645,12 @@ class PostgresStore:
                 column="created_at",
                 cutoff_at=report_as_of - timedelta(days=active_policy.outbox_days),
             )
+            deleted_stream_dead_letters = self._delete_iso_column_before(
+                conn,
+                table="stream_dead_letters",
+                column="created_at",
+                cutoff_at=report_as_of - timedelta(days=active_policy.stream_dead_letter_days),
+            )
             deleted_events = self._delete_events_before(
                 conn, report_as_of - timedelta(days=active_policy.event_days)
             )
@@ -580,6 +677,7 @@ class PostgresStore:
                 "review_cases": deleted_review_cases,
                 "review_decisions": deleted_review_decisions,
                 "outbox_messages": deleted_outbox,
+                "stream_dead_letters": deleted_stream_dead_letters,
                 "audit_entries": 0,
             }
             self._append_audit(
@@ -627,6 +725,13 @@ class PostgresStore:
                 retention_days=active_policy.outbox_days,
                 as_of=report_as_of,
                 expired_count=deleted_outbox,
+                action="delete_expired",
+            ),
+            self._retention_table_report(
+                table="stream_dead_letters",
+                retention_days=active_policy.stream_dead_letter_days,
+                as_of=report_as_of,
+                expired_count=deleted_stream_dead_letters,
                 action="delete_expired",
             ),
             self._retention_table_report(
@@ -831,7 +936,7 @@ class PostgresStore:
         return count
 
     def _count_iso_column_before(self, table: str, column: str, cutoff_at: datetime) -> int:
-        if table not in {"outbox_messages", "audit_entries"}:
+        if table not in {"outbox_messages", "stream_dead_letters", "audit_entries"}:
             raise ValueError(f"unsupported retention table: {table}")
         if column != "created_at":
             raise ValueError(f"unsupported retention column: {column}")
@@ -903,7 +1008,7 @@ class PostgresStore:
         column: str,
         cutoff_at: datetime,
     ) -> int:
-        if table != "outbox_messages":
+        if table not in {"outbox_messages", "stream_dead_letters"}:
             raise ValueError(f"unsupported retention delete table: {table}")
         if column != "created_at":
             raise ValueError(f"unsupported retention column: {column}")

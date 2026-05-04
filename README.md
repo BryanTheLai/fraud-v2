@@ -91,6 +91,7 @@ Admin-only audit endpoints:
 - `GET /v1/audit/verify`
 - `GET /v1/retention/report`
 - `POST /v1/retention/prune?execute=false`
+- `GET /v1/stream/dead-letters`
 
 The audit log is hash-chained in SQLite. This is tamper-evident for local
 development, not a substitute for production WORM storage.
@@ -142,6 +143,7 @@ uv run fraud-v2 llm-stub
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data/local/fraud_v2.sqlite --dry-run
 uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10
+uv run fraud-v2 stream-dead-letters --db-path data/local/fraud_v2.sqlite
 uv run fraud-v2 compliance-draft <decision-id> --db-path data/local/fraud_v2.sqlite
 uv run fraud-v2 retention-report --db-path data/local/fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data/local/fraud_v2.sqlite

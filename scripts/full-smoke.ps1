@@ -378,6 +378,9 @@ print("redpanda_consume=1")
   Assert-FraudCondition ($LASTEXITCODE -eq 0) "Redpanda stream consumer Postgres proof failed: $redpandaProofResult"
   Write-Host ($redpandaProofResult -join "`n")
   Assert-FraudCondition (($redpandaProofResult -join "`n") -like "*redpanda_consume=1*") "Redpanda stream consumer proof did not print consume proof."
+  $streamDeadLetters = Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/stream/dead-letters"
+  $streamDeadLetterCount = if ($null -eq $streamDeadLetters) { 0 } else { @($streamDeadLetters).Count }
+  Assert-FraudCondition ($streamDeadLetterCount -eq 0) "Expected no stream dead letters after valid smoke consume."
 
   $dashboard = Invoke-WebRequest -Uri "$ApiBase/dashboard" -TimeoutSec 10 -UseBasicParsing
   Assert-FraudCondition ($dashboard.Content -like "*Recent decisions*") "Dashboard missing recent decisions."
