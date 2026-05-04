@@ -28,7 +28,7 @@ It now runs locally in two modes:
 | Domain contracts | Done | Pydantic events, decisions, reviews, outbox, compliance drafts. |
 | Synthetic data | Done | Deterministic local generator and JSONL loader. |
 | Lite storage | Done | SQLite event store, decisions, review cases, and outbox. |
-| API | Done | FastAPI routes, token-protected `/v1/*`, health, metrics, docs. |
+| API | Done | FastAPI routes, role-protected `/v1/*`, health, metrics, docs. |
 | Rules/graph decisions | Done | Rules + NetworkX graph service, safe reasons, trace IDs. |
 | Review workflow | Done | Yellow/red decisions create review cases. |
 | Compliance drafts | Local-safe done | Draft export only; no filings, no legal claim. |
@@ -48,7 +48,7 @@ It now runs locally in two modes:
 | KYC/device/consortium | Mock connectors only. No real vendors. |
 | SAR/adverse action | Drafts only. No filing. No legal compliance claim. |
 | Data | Synthetic only unless public datasets are manually downloaded. |
-| Auth | Local bearer token only. No RBAC/users/sessions. |
+| Auth | Local role-token RBAC only. No OIDC/users/sessions. |
 | Secrets | `.env` pattern only. No vault/KMS. |
 | Persistence | SQLite lite path is primary; Postgres adapter exists but is not the default app store. |
 | Streaming | Redpanda publisher exists; real stream worker topology is not complete. |
@@ -63,7 +63,7 @@ It now runs locally in two modes:
 | Real fraud domain and action authority | Rules/legal obligations change by product. | Choose first wedge: instant cash, ATO, card testing, ecommerce, crypto, or lending. |
 | Real labels | ML quality is fake without verified fraud/legit outcomes. | Load public datasets or real redacted labels after governance. |
 | Vendor/legal approval | KYC, liveness, sanctions, SAR, credit decisions need contracts and counsel. | Keep mock adapters until approved. |
-| Data security | Real PII cannot live in this local repo casually. | Add RBAC, encryption, audit retention, secrets manager, DLP rules. |
+| Data security | Real PII cannot live in this local repo casually. | Add OIDC, encryption, audit retention, secrets manager, DLP rules. |
 | Production deployment target | Architecture differs for VM, Kubernetes, managed cloud, or on-prem. | Pick target environment and SLOs. |
 | GitHub auth | Push/PR cannot happen from this machine yet. | Run `gh auth login`, then push branch and create PR. |
 

@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from fraud_v2.api.main import app, store
+from fraud_v2.config.settings import Settings, get_settings
 from fraud_v2.storage.sqlite_store import SQLiteStore
 
 
@@ -30,6 +31,9 @@ def test_api_generate_and_score(tmp_path) -> None:  # type: ignore[no-untyped-de
 
     cases = client.get("/v1/review/cases", headers=headers)
     assert cases.status_code == 200
+    whoami = client.get("/v1/auth/whoami", headers=headers)
+    assert whoami.status_code == 200
+    assert whoami.json()["roles"] == ["admin", "analyst", "system"]
     dashboard = client.get("/dashboard")
     assert dashboard.status_code == 200
     assert "Recent decisions" in dashboard.text
@@ -47,4 +51,31 @@ def test_api_rejects_missing_token(tmp_path) -> None:  # type: ignore[no-untyped
     response = client.post("/v1/synthetic/generate?users=30")
 
     assert response.status_code == 401
+    app.dependency_overrides.clear()
+
+
+def test_role_tokens_enforce_api_boundaries(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    db = SQLiteStore(tmp_path / "api.sqlite")
+    app.dependency_overrides[store] = lambda: db
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        api_token="",
+        api_tokens="analyst:analyst-token,system:system-token,admin:admin-token",
+    )
+    client = TestClient(app)
+
+    analyst_headers = {"Authorization": "Bearer analyst-token"}
+    system_headers = {"Authorization": "Bearer system-token"}
+
+    analyst_generate = client.post("/v1/synthetic/generate?users=30", headers=analyst_headers)
+    assert analyst_generate.status_code == 403
+
+    system_generate = client.post("/v1/synthetic/generate?users=30", headers=system_headers)
+    assert system_generate.status_code == 200
+
+    analyst_cases = client.get("/v1/review/cases", headers=analyst_headers)
+    assert analyst_cases.status_code == 200
+
+    system_cases = client.get("/v1/review/cases", headers=system_headers)
+    assert system_cases.status_code == 403
+
     app.dependency_overrides.clear()

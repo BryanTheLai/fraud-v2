@@ -129,6 +129,10 @@ try {
     -Uri "$ApiBase/v1/synthetic/generate?users=30"
   Assert-FraudCondition ($generated.events -gt 0) "Synthetic generation returned no events."
 
+  $principal = Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/auth/whoami"
+  Assert-FraudCondition ($principal.roles -contains "admin") "Expected dev token to include admin role."
+  Assert-FraudCondition ($principal.roles -contains "system") "Expected dev token to include system role."
+
   $decision = Invoke-FraudApi `
     -Method "Post" `
     -Uri "$ApiBase/v1/decisions/score" `

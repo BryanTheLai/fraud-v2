@@ -42,6 +42,18 @@ Local URLs:
 
 Protected `/v1/*` endpoints require `Authorization: Bearer dev-token-change-me`
 by default. Override `FRAUD_API_TOKEN` locally instead of committing secrets.
+For local role testing, set `FRAUD_API_TOKENS` with comma-separated
+`role:token` pairs, such as:
+
+```text
+FRAUD_API_TOKENS=admin:local-admin-token,analyst:local-analyst-token,system:local-system-token
+```
+
+Roles are intentionally small:
+
+- `system`: ingest/generate/score.
+- `analyst`: read decisions, graph, and review queue.
+- `admin`: all local actions.
 
 ## Run Full Local Infra
 

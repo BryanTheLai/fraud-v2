@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-010 - Harden Full Profile Observability](tasks/active/TC-20260505-010-harden-full-profile-observability.md)
+- [TC-20260505-011 - Add Local RBAC](tasks/active/TC-20260505-011-add-local-rbac.md)
 
 ## Runs Waiting For Bryan
 
@@ -18,6 +18,7 @@ Updated: 2026-05-05
 - [RR-20260505-008](runs/RR-20260505-008.md)
 - [RR-20260505-009](runs/RR-20260505-009.md)
 - [RR-20260505-010](runs/RR-20260505-010.md)
+- [RR-20260505-011](runs/RR-20260505-011.md)
 
 ## Blocked Work
 
@@ -42,6 +43,8 @@ Updated: 2026-05-05
 - Upgraded the analyst dashboard with recent decisions and open review queue.
 - Added Grafana provisioning and expanded the full-profile smoke to verify API
   scoring, dashboard content, metrics, Grafana, and Prometheus scraping.
+- Added local role-aware API authorization for admin, analyst, and system
+  tokens.
 
 ## Lessons Added
 
@@ -53,6 +56,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M10 full-profile observability hardening. Next
-implementation task should add OIDC/RBAC design or local logs/traces if Bryan
-chooses to go deeper on production hardening.
+Review local MVP through M11 local RBAC. Next implementation task should add
+local logs/traces/SLO alerts or a real OIDC design if Bryan chooses to go
+deeper on production hardening.

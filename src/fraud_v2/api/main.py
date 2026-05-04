@@ -5,7 +5,7 @@ from html import escape
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from starlette.responses import HTMLResponse, Response
 
 from fraud_v2 import __version__
@@ -26,6 +26,7 @@ from fraud_v2.observability.metrics import (
     metrics_response,
 )
 from fraud_v2.review.service import ReviewService
+from fraud_v2.security.auth import AuthPrincipal, AuthRole, require_roles
 from fraud_v2.storage.sqlite_store import SQLiteStore
 from fraud_v2.synthetic.generator import SyntheticFraudGenerator
 
@@ -34,17 +35,6 @@ app = FastAPI(title="fraud-v2", version=__version__)
 
 def store(settings: Settings = Depends(get_settings)) -> SQLiteStore:
     return SQLiteStore(settings.sqlite_path)
-
-
-def require_token(
-    authorization: str | None = Header(default=None),
-    settings: Settings = Depends(get_settings),
-) -> None:
-    if settings.api_token == "":
-        return
-    expected = f"Bearer {settings.api_token}"
-    if authorization != expected:
-        raise HTTPException(status_code=401, detail="invalid local token")
 
 
 @app.get("/")
@@ -179,7 +169,19 @@ def metrics() -> Response:
     return metrics_response()
 
 
-@app.post("/v1/events", dependencies=[Depends(require_token)])
+@app.get("/v1/auth/whoami")
+def whoami(
+    principal: AuthPrincipal = Depends(
+        require_roles(AuthRole.ADMIN, AuthRole.ANALYST, AuthRole.SYSTEM)
+    ),
+) -> dict[str, object]:
+    return {
+        "subject": principal.subject,
+        "roles": sorted(role.value for role in principal.roles),
+    }
+
+
+@app.post("/v1/events", dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.SYSTEM))])
 def ingest_event(event: EventEnvelope, db: SQLiteStore = Depends(store)) -> EventEnvelope:
     try:
         stored = db.add_event(event)
@@ -189,7 +191,9 @@ def ingest_event(event: EventEnvelope, db: SQLiteStore = Depends(store)) -> Even
     return stored
 
 
-@app.post("/v1/synthetic/generate", dependencies=[Depends(require_token)])
+@app.post(
+    "/v1/synthetic/generate", dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.SYSTEM))]
+)
 def generate_synthetic(
     users: int = Query(default=120, ge=10, le=10000),
     output: Path | None = None,
@@ -203,7 +207,9 @@ def generate_synthetic(
 
 
 @app.post(
-    "/v1/decisions/score", response_model=DecisionResponse, dependencies=[Depends(require_token)]
+    "/v1/decisions/score",
+    response_model=DecisionResponse,
+    dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.SYSTEM))],
 )
 def score_decision(request: DecisionRequest, db: SQLiteStore = Depends(store)) -> DecisionResponse:
     start = time.perf_counter()
@@ -214,7 +220,10 @@ def score_decision(request: DecisionRequest, db: SQLiteStore = Depends(store)) -
     return decision
 
 
-@app.get("/v1/decisions/{decision_id}", dependencies=[Depends(require_token)])
+@app.get(
+    "/v1/decisions/{decision_id}",
+    dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.ANALYST, AuthRole.SYSTEM))],
+)
 def get_decision(decision_id: UUID, db: SQLiteStore = Depends(store)) -> dict[str, object]:
     try:
         decision = db.get_decision(decision_id)
@@ -227,13 +236,18 @@ def get_decision(decision_id: UUID, db: SQLiteStore = Depends(store)) -> dict[st
 
 
 @app.get(
-    "/v1/decisions", response_model=list[DecisionResponse], dependencies=[Depends(require_token)]
+    "/v1/decisions",
+    response_model=list[DecisionResponse],
+    dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.ANALYST, AuthRole.SYSTEM))],
 )
 def list_decisions(db: SQLiteStore = Depends(store)) -> list[DecisionResponse]:
     return db.list_decisions()
 
 
-@app.get("/v1/graph/neighborhood", dependencies=[Depends(require_token)])
+@app.get(
+    "/v1/graph/neighborhood",
+    dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.ANALYST))],
+)
 def graph_neighborhood(
     entity_id: str,
     entity_type: EntityType = EntityType.USER,
@@ -245,7 +259,11 @@ def graph_neighborhood(
     )
 
 
-@app.get("/v1/review/cases", response_model=list[ReviewCase], dependencies=[Depends(require_token)])
+@app.get(
+    "/v1/review/cases",
+    response_model=list[ReviewCase],
+    dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.ANALYST))],
+)
 def list_review_cases(db: SQLiteStore = Depends(store)) -> list[ReviewCase]:
     return ReviewService(db).list_cases()
 
@@ -253,7 +271,7 @@ def list_review_cases(db: SQLiteStore = Depends(store)) -> list[ReviewCase]:
 @app.post(
     "/v1/review/cases/{case_id}/decision",
     response_model=ReviewDecision,
-    dependencies=[Depends(require_token)],
+    dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.ANALYST))],
 )
 def decide_review_case(
     case_id: UUID,

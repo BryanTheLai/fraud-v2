@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     env: str = "local"
     sqlite_path: Path = Path("data/local/fraud_v2.sqlite")
     api_token: str = "dev-token-change-me"
+    api_tokens: str = ""
 
 
 def get_settings() -> Settings:

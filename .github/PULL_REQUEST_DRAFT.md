@@ -19,6 +19,7 @@ Implemented:
 - Analyst dashboard with recent decisions and open review queue.
 - Docker Compose full profile and `scripts/full-smoke.ps1`.
 - Provisioned Grafana dashboard for full-profile observability.
+- Local role-aware API authorization for admin, analyst, and system tokens.
 - GitHub Actions test, Docker build, and API image smoke workflow.
 
 ## Test Plan
@@ -38,7 +39,7 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: 34 passed
+- Pytest: 39 passed
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, dashboard, metrics,
   Grafana, Prometheus scrape, and Neo4j readiness

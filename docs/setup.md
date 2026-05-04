@@ -192,6 +192,29 @@ Authorization: Bearer dev-token-change-me
 ```
 
 Use a different local `FRAUD_API_TOKEN` in `.env`; do not commit real secrets.
+The legacy token has all local roles for dev speed.
+
+For local role testing:
+
+```text
+FRAUD_API_TOKENS=admin:local-admin-token,analyst:local-analyst-token,system:local-system-token
+```
+
+Role boundaries:
+
+| Role | Local Scope |
+|---|---|
+| `system` | Ingest events, generate synthetic data, score decisions. |
+| `analyst` | Read decisions, graph neighborhoods, and review queue; submit review outcomes. |
+| `admin` | All local actions. |
+
+Check the current token:
+
+```powershell
+Invoke-RestMethod `
+  -Headers @{ Authorization = "Bearer dev-token-change-me" } `
+  -Uri http://127.0.0.1:8000/v1/auth/whoami
+```
 
 ## Test
 

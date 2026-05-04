@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.0 - 2026-05-05
+
+- Added local role-aware API authorization with `admin`, `analyst`, and
+  `system` roles.
+- Added `FRAUD_API_TOKENS` support for role-specific local tokens while keeping
+  the legacy `FRAUD_API_TOKEN` as an all-roles dev token.
+- Added `/v1/auth/whoami` and tests proving role boundaries.
+
 ## 0.10.0 - 2026-05-05
 
 - Added Grafana provisioning for the full local profile with a Fraud V2 overview
