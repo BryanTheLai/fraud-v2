@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-023 - Add Redpanda Stream Consumer](tasks/active/TC-20260505-023-add-redpanda-stream-consumer.md)
+- [TC-20260505-024 - Add Versioned Threshold Policy](tasks/active/TC-20260505-024-add-versioned-threshold-policy.md)
 
 ## Runs Waiting For Bryan
 
@@ -72,6 +72,8 @@ Updated: 2026-05-05
 - Added offline-testable JWKS/OIDC-shaped JWT verification.
 - Added a bounded Redpanda stream consumer with idempotent duplicate handling
   and full-smoke publish-consume-Postgres proof.
+- Added versioned threshold policy packs for local green/yellow/red decision
+  boundaries.
 
 ## Lessons Added
 
@@ -83,6 +85,7 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M23 Redpanda stream consumer. Next implementation task
-should add policy/versioned rule packs, a real DLQ path, or lag/worker
-supervision if Bryan chooses to go deeper on production hardening.
+Review local MVP through M24 versioned threshold policy packs. Next
+implementation task should add a real DLQ path, lag/worker supervision, or a
+policy promotion workflow if Bryan chooses to go deeper on production
+hardening.

@@ -53,6 +53,7 @@ Target local services:
 | `FRAUD_ENV` | yes | `local` | Environment name. |
 | `FRAUD_STORE_BACKEND` | no | `sqlite` or `postgres` | Lite mode defaults to SQLite. Docker full mode sets Postgres. |
 | `FRAUD_POSTGRES_DSN` | only for Postgres | `postgresql://fraud:fraud@localhost:5432/fraud_v2` | App-state Postgres DSN. |
+| `FRAUD_POLICY_PATH` | no | `data\policies\strict.json` | Optional local threshold policy JSON. Defaults to the built-in local policy. |
 | `FRAUD_API_TOKEN` | yes | `dev-token-change-me` | Local only. Do not commit real secrets. |
 | `FRAUD_AUTH_MODE` | no | `token` or `jwt` | `token` keeps the default local path. `jwt` validates local HS256 JWTs. |
 | `FRAUD_JWT_SECRET` | only for JWT | 32+ byte local secret | Required when `FRAUD_AUTH_MODE=jwt`. Do not commit it. |
@@ -188,6 +189,7 @@ uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sql
 uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite --execute
+uv run fraud-v2 policy-show
 uv run fraud-v2 model-register --status shadow
 uv run fraud-v2 model-promote baseline-20260505-001
 uv run fraud-v2 shadow-score --status active
@@ -301,6 +303,25 @@ The stream consumer uses at-least-once semantics with idempotency keys. Exact
 duplicates are committed as safe no-ops. Invalid messages or idempotency-key
 payload conflicts are reported and not committed, so the operator can inspect
 the bad stream input instead of silently skipping it.
+
+Show the active default threshold policy:
+
+```powershell
+uv run fraud-v2 policy-show
+```
+
+Use a local threshold policy JSON for CLI scoring:
+
+```powershell
+uv run fraud-v2 score user_00049 `
+  --db-path data\local\fraud_v2.sqlite `
+  --policy-path data\policies\strict.json
+```
+
+For the API, set `FRAUD_POLICY_PATH` before starting Uvicorn. Policy packs
+validate green/yellow/red ordering, degraded-score floor, high-amount threshold,
+severity, safe reason, and version. They do not replace legal approval or a
+production policy promotion workflow.
 
 ## Local Observability
 
@@ -470,6 +491,7 @@ tests/unit/domain/test_events.py
 | Register model | `uv run fraud-v2 model-register --status shadow` | Stores model/report hashes and metrics in `data\models\registry.json`. |
 | Promote model | `uv run fraud-v2 model-promote baseline-20260505-001` | Marks one model active and demotes the previous active model to shadow. |
 | Shadow score | `uv run fraud-v2 shadow-score --status active` | Scores registered model output without changing decisions. |
+| Show threshold policy | `uv run fraud-v2 policy-show` | Prints the built-in or file-backed threshold policy. |
 
 ## Troubleshooting
 

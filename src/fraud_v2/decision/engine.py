@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 from fraud_v2.domain.decisions import DecisionRequest, DecisionResponse, FeatureVector, RiskSignal
-from fraud_v2.domain.enums import DecisionAction, FeatureFreshnessStatus, RiskTier
+from fraud_v2.domain.enums import FeatureFreshnessStatus
 from fraud_v2.features.builder import FeatureBuilder
 from fraud_v2.graph.service import GraphService
+from fraud_v2.policy.thresholds import ThresholdPolicy, default_threshold_policy
 from fraud_v2.rules.engine import RuleEngine
 from fraud_v2.storage.ports import FraudStore
 
 
 class DecisionEngine:
-    policy_version = "local-policy-20260505-001"
-
-    def __init__(self, store: FraudStore) -> None:
+    def __init__(self, store: FraudStore, policy: ThresholdPolicy | None = None) -> None:
         self.store = store
+        self.policy = policy or default_threshold_policy()
         self.rules = RuleEngine()
 
     def score(self, request: DecisionRequest) -> DecisionResponse:
@@ -21,17 +21,18 @@ class DecisionEngine:
         graph = GraphService(events)
         graph_distance = graph.distance_to_confirmed_fraud(request.target_entity)
         signals = self.rules.evaluate(features, graph_distance)
-        if request.amount >= 750:
+        if request.amount >= self.policy.high_request_amount_threshold:
             signals.append(
                 RiskSignal(
                     code="HIGH_REQUEST_AMOUNT",
-                    severity=15,
-                    safe_reason="The requested amount is high for the local policy.",
+                    severity=self.policy.high_request_amount_severity,
+                    safe_reason=self.policy.high_request_amount_reason,
                     source="policy",
                 )
             )
         score = self._score(signals, features)
-        tier, action = self._tier_action(score, features)
+        degraded = self._is_degraded(features)
+        tier, action = self.policy.tier_action(score, degraded)
         response = DecisionResponse(
             target_entity=request.target_entity,
             risk_score=score,
@@ -39,9 +40,9 @@ class DecisionEngine:
             action=action,
             signals=signals,
             feature_vector=features,
-            policy_version=self.policy_version,
+            policy_version=self.policy.version,
             model_version="rules-graph-local-v1",
-            degraded=self._is_degraded(features),
+            degraded=degraded,
             safe_reasons=[signal.safe_reason for signal in signals]
             or ["No major risk signals found."],
         )
@@ -50,17 +51,9 @@ class DecisionEngine:
 
     def _score(self, signals: list[RiskSignal], features: FeatureVector) -> int:
         if self._is_degraded(features):
-            return max(21, min(100, sum(signal.severity for signal in signals)))
+            raw_score = min(100, sum(signal.severity for signal in signals))
+            return max(self.policy.degraded_min_score, raw_score)
         return min(100, sum(signal.severity for signal in signals))
-
-    def _tier_action(self, score: int, features: FeatureVector) -> tuple[RiskTier, DecisionAction]:
-        if self._is_degraded(features):
-            return RiskTier.YELLOW, DecisionAction.MANUAL_REVIEW
-        if score <= 20:
-            return RiskTier.GREEN, DecisionAction.APPROVE
-        if score < 80:
-            return RiskTier.YELLOW, DecisionAction.MANUAL_REVIEW
-        return RiskTier.RED, DecisionAction.BLOCK
 
     def _is_degraded(self, features: FeatureVector) -> bool:
         return any(

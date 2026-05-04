@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.24.0 - 2026-05-05
+
+- Added versioned threshold policy packs so green/yellow/red boundaries,
+  degraded-mode floors, and high-amount friction signals can be changed through
+  JSON instead of hardcoded decision-engine constants.
+- Added CLI/API support for loading a local policy file while preserving the
+  default local policy behavior.
+- Added policy validation and tests for custom policy loading and decision
+  outcomes.
+
 ## 0.23.0 - 2026-05-05
 
 - Added a Redpanda stream consumer CLI that reads canonical event envelopes and

@@ -34,6 +34,8 @@ Implemented:
 - Tamper-evident local audit log and admin audit verification endpoints.
 - Dry-run local retention reporting plus explicit local retention pruning for
   expired events, decisions, reviews, and outbox records.
+- Versioned threshold policy packs for green/yellow/red bands, degraded-mode
+  floors, and high-amount signals.
 - Full-profile Docker image installs infra extras and smoke-tests the Postgres
   event-store adapter.
 - Full-profile smoke verifies Redis feature cache, Neo4j graph projector, and
@@ -59,7 +61,7 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: 60 passed
+- Pytest: 63 passed
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
@@ -74,6 +76,8 @@ Latest local result:
 - Local bearer-token/JWT auth only; no external user lifecycle or sessions yet.
 - Stream consumer is local and bounded; no long-running supervised worker, DLQ
   topic, or lag alerting yet.
+- Policy packs are local JSON only; no maker-checker approval workflow or
+  production policy registry yet.
 - No real production deployment target yet.
 - GitHub push/PR creation is blocked locally until `gh auth login` succeeds
   and a remote is configured.

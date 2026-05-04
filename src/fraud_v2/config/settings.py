@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     sqlite_path: Path = Path("data/local/fraud_v2.sqlite")
     store_backend: str = "sqlite"
     postgres_dsn: str = "postgresql://fraud:fraud@localhost:5432/fraud_v2"
+    policy_path: Path | None = None
     api_token: str = "dev-token-change-me"
     api_tokens: str = ""
     auth_mode: str = "token"

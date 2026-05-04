@@ -40,6 +40,7 @@ from fraud_v2.observability.metrics import (
     http_request_latency,
     metrics_response,
 )
+from fraud_v2.policy.thresholds import load_threshold_policy
 from fraud_v2.review.service import ReviewService
 from fraud_v2.security.auth import AuthPrincipal, AuthRole, require_roles
 from fraud_v2.storage.ports import FraudStore
@@ -532,9 +533,14 @@ def generate_synthetic(
     response_model=DecisionResponse,
     dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.SYSTEM))],
 )
-def score_decision(request: DecisionRequest, db: FraudStore = Depends(store)) -> DecisionResponse:
+def score_decision(
+    request: DecisionRequest,
+    db: FraudStore = Depends(store),
+    settings: Settings = Depends(get_settings),
+) -> DecisionResponse:
     start = time.perf_counter()
-    decision = DecisionEngine(db).score(request)
+    policy = load_threshold_policy(settings.policy_path)
+    decision = DecisionEngine(db, policy=policy).score(request)
     ReviewService(db).ensure_case_for_decision(decision.decision_id)
     decision_counter.labels(tier=decision.risk_tier.value, action=decision.action.value).inc()
     decision_latency.observe(time.perf_counter() - start)

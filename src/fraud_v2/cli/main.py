@@ -21,6 +21,7 @@ from fraud_v2.llm_lab.provider import NoveltyLedger, provider_from_env
 from fraud_v2.models.registry import JsonModelRegistry, ModelStatus
 from fraud_v2.models.shadow import write_shadow_scores
 from fraud_v2.models.train import train_baseline
+from fraud_v2.policy.thresholds import load_threshold_policy
 from fraud_v2.public_data.registry import describe_public_dataset
 from fraud_v2.replay.runner import run_replay
 from fraud_v2.security.auth import AuthRole
@@ -123,6 +124,7 @@ def load(
 def score(
     user_id: str,
     db_path: Path = Path("data/local/fraud_v2.sqlite"),
+    policy_path: Path | None = None,
 ) -> None:
     store = SQLiteStore(db_path)
     events = store.list_events()
@@ -132,7 +134,7 @@ def score(
         target_entity=EntityRef(entity_type=EntityType.USER, entity_id=user_id),
         as_of=max(event.occurred_at for event in events),
     )
-    decision = DecisionEngine(store).score(request)
+    decision = DecisionEngine(store, policy=load_threshold_policy(policy_path)).score(request)
     _print_json(decision.model_dump(mode="json"))
 
 
@@ -205,6 +207,11 @@ def llm_generate(
 def public_dataset(name: str) -> None:
     dataset = describe_public_dataset(name)
     _print_json(dataset.__dict__)
+
+
+@app.command()
+def policy_show(policy_path: Path | None = None) -> None:
+    _print_json(load_threshold_policy(policy_path).model_dump(mode="json"))
 
 
 @app.command()
