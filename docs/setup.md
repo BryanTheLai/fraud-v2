@@ -37,7 +37,7 @@ Target local services:
 | NiceGUI | 8088 | Analyst/operator UI. |
 | Postgres | 5432 | Durable app state. |
 | Redis | 6379 | Online features and circuit state. |
-| Redpanda | 9092 | Kafka-compatible event bus. |
+| Redpanda | 19092 | Kafka-compatible event bus. |
 | Redpanda Console | 8080 | Topic inspection. |
 | Neo4j HTTP | 7474 | Graph browser/API. |
 | Neo4j Bolt | 7687 | Graph driver. |
@@ -54,7 +54,7 @@ Target local services:
 | `FRAUD_API_TOKEN` | yes | `dev-token-change-me` | Local only. Do not commit real secrets. |
 | `DATABASE_URL` | yes | `postgresql+psycopg://fraud:fraud@localhost:5432/fraud_v2` | App database. |
 | `REDIS_URL` | yes | `redis://localhost:6379/0` | Online feature store. |
-| `REDPANDA_BOOTSTRAP_SERVERS` | yes | `localhost:9092` | Event bus. |
+| `REDPANDA_BOOTSTRAP_SERVERS` | yes | `localhost:19092` | Event bus. |
 | `NEO4J_URI` | yes | `bolt://localhost:7687` | Graph DB. |
 | `NEO4J_USER` | yes | `neo4j` | Local graph user. |
 | `NEO4J_PASSWORD` | yes | `fraud-local-password` | Local secret. |
@@ -113,7 +113,7 @@ The smoke uses a separate Docker Compose project, `fraud-v2-smoke`, and high
 host ports by default so it does not collide with a local dev API on `8000`: API
 `18000`, Grafana `13000`, Prometheus `19090`, and Neo4j HTTP `17474`. Override
 with parameters such as `-ApiPort 18001` if needed. It also verifies the
-Postgres event-store adapter from inside the API container.
+Postgres, Redis, Neo4j, and Redpanda adapters from inside the API container.
 
 Keep services running for manual inspection:
 

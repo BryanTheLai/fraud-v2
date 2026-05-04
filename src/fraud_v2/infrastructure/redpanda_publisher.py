@@ -8,7 +8,7 @@ from fraud_v2.infrastructure.optional_imports import optional_module
 
 @dataclass(frozen=True)
 class RedpandaEventPublisher:
-    bootstrap_servers: str = "localhost:9092"
+    bootstrap_servers: str = "localhost:19092"
 
     def publish(self, topic: str, event: EventEnvelope) -> None:
         kafka = optional_module("confluent_kafka", "infra")

@@ -44,6 +44,13 @@ def test_full_smoke_exercises_functional_api_and_observability() -> None:
     assert "FraudV2APIUnavailable" in smoke_script
     assert "PostgresEventStore" in smoke_script
     assert "pg_isready" in smoke_script
+    assert "uv run --no-sync python -" in smoke_script
+    assert "RedisFeatureCache" in smoke_script
+    assert "redis-cli" in smoke_script
+    assert "Neo4jGraphProjector" in smoke_script
+    assert "cypher-shell" in smoke_script
+    assert "RedpandaEventPublisher" in smoke_script
+    assert "rpk" in smoke_script
 
 
 def test_prometheus_alert_rules_are_loaded_by_config() -> None:
@@ -60,3 +67,11 @@ def test_docker_image_installs_full_profile_infra_extra() -> None:
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
 
     assert "uv sync --frozen --no-dev --extra infra" in dockerfile
+
+
+def test_redpanda_has_internal_and_host_listeners() -> None:
+    compose = (ROOT / "infra" / "docker-compose.yml").read_text(encoding="utf-8")
+
+    assert "internal://redpanda:9092" in compose
+    assert "external://localhost:${FRAUD_REDPANDA_PORT:-19092}" in compose
+    assert '"${FRAUD_REDPANDA_PORT:-19092}:19092"' in compose

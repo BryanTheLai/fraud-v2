@@ -147,6 +147,18 @@ try {
     -Name "Postgres" `
     -Arguments @("exec", "-T", "postgres", "pg_isready", "-U", "fraud", "-d", "fraud_v2") `
     -TimeoutSeconds $TimeoutSeconds
+  Wait-ComposeCommand `
+    -Name "Redis" `
+    -Arguments @("exec", "-T", "redis", "redis-cli", "ping") `
+    -TimeoutSeconds $TimeoutSeconds
+  Wait-ComposeCommand `
+    -Name "Redpanda" `
+    -Arguments @("exec", "-T", "redpanda", "rpk", "cluster", "info") `
+    -TimeoutSeconds $TimeoutSeconds
+  Wait-ComposeCommand `
+    -Name "Neo4j Bolt" `
+    -Arguments @("exec", "-T", "neo4j", "cypher-shell", "-u", "neo4j", "-p", "fraud-local-password", "RETURN 1") `
+    -TimeoutSeconds $TimeoutSeconds
 
   $generated = Invoke-FraudApi `
     -Method "Post" `
@@ -198,10 +210,75 @@ print(f"postgres_events={len(events)}")
     -p $ComposeProject `
     -f infra\docker-compose.yml `
     --profile full `
-    exec -T api uv run python - 2>&1
+    exec -T api uv run --no-sync python - 2>&1
   Assert-FraudCondition ($LASTEXITCODE -eq 0) "Postgres adapter smoke failed: $postgresResult"
   Write-Host ($postgresResult -join "`n")
   Assert-FraudCondition (($postgresResult -join "`n") -like "*postgres_events=*") "Postgres adapter smoke did not print event count."
+
+  $redisSmoke = @'
+from fraud_v2.domain.entities import EntityRef
+from fraud_v2.domain.enums import EntityType
+from fraud_v2.features.builder import FeatureBuilder
+from fraud_v2.infrastructure.redis_feature_cache import RedisFeatureCache
+from fraud_v2.synthetic.generator import SyntheticFraudGenerator
+
+events = SyntheticFraudGenerator().generate(users=10).events
+target = EntityRef(entity_type=EntityType.USER, entity_id="user_00000")
+vector = FeatureBuilder(events).build(target, max(event.occurred_at for event in events))
+cache = RedisFeatureCache("redis://redis:6379/0")
+cache.put(vector)
+loaded = cache.get(target)
+assert loaded is not None
+assert loaded.target_entity == target
+print(f"redis_feature_cache={loaded.target_entity.entity_id}")
+'@
+  $redisResult = $redisSmoke | docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync python - 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Redis adapter smoke failed: $redisResult"
+  Write-Host ($redisResult -join "`n")
+  Assert-FraudCondition (($redisResult -join "`n") -like "*redis_feature_cache=*") "Redis adapter smoke did not print feature cache proof."
+
+  $neo4jSmoke = @'
+from fraud_v2.infrastructure.neo4j_projector import Neo4jGraphProjector
+from fraud_v2.synthetic.generator import SyntheticFraudGenerator
+
+events = SyntheticFraudGenerator().generate(users=10).events
+edges = Neo4jGraphProjector(
+    uri="bolt://neo4j:7687",
+    user="neo4j",
+    password="fraud-local-password",
+).project(events)
+assert edges > 0
+print(f"neo4j_edges={edges}")
+'@
+  $neo4jResult = $neo4jSmoke | docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync python - 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Neo4j adapter smoke failed: $neo4jResult"
+  Write-Host ($neo4jResult -join "`n")
+  Assert-FraudCondition (($neo4jResult -join "`n") -like "*neo4j_edges=*") "Neo4j adapter smoke did not print edge count."
+
+  $redpandaSmoke = @'
+from fraud_v2.infrastructure.redpanda_publisher import RedpandaEventPublisher
+from fraud_v2.synthetic.generator import SyntheticFraudGenerator
+
+event = SyntheticFraudGenerator().generate(users=10).events[0]
+RedpandaEventPublisher("redpanda:9092").publish("fraud.events.smoke", event)
+print("redpanda_publish=1")
+'@
+  $redpandaResult = $redpandaSmoke | docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync python - 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Redpanda adapter smoke failed: $redpandaResult"
+  Write-Host ($redpandaResult -join "`n")
+  Assert-FraudCondition (($redpandaResult -join "`n") -like "*redpanda_publish=1*") "Redpanda adapter smoke did not print publish proof."
 
   $dashboard = Invoke-WebRequest -Uri "$ApiBase/dashboard" -TimeoutSec 10 -UseBasicParsing
   Assert-FraudCondition ($dashboard.Content -like "*Recent decisions*") "Dashboard missing recent decisions."

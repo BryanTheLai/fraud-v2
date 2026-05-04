@@ -37,7 +37,7 @@ It now runs locally in two modes:
 | Model registry | Done | JSON-backed artifact/report hashing and status controls. |
 | Shadow scoring | Done | Registered model probabilities logged without changing decisions. |
 | LLM synthetic lab | Local-safe done | Offline default plus OpenAI/Azure provider boundary. |
-| Full Docker profile | Done | Full profile smoke passed locally. |
+| Full Docker profile | Done | Full profile smoke passed locally and exercises Postgres, Redis, Neo4j, and Redpanda adapters. |
 | Grafana observability | Local-safe done | Provisioned dashboard for decisions, latency, ingested events, and API target health. |
 | Request tracing/logging | Local-safe done | `X-Trace-ID`, structured JSON request logs, HTTP metrics, and Prometheus alert rules. |
 | Audit log | Local-safe done | SQLite hash chain for event, decision, review, and outbox actions. |
@@ -56,8 +56,8 @@ It now runs locally in two modes:
 | Audit immutability | Hash-chained SQLite only. No WORM/object-lock storage. |
 | Retention enforcement | Report-only. No deletion jobs, legal holds, or archive tiers. |
 | Persistence | SQLite lite path is primary; Postgres event-store adapter is smoke-tested but not the default app store. |
-| Streaming | Redpanda publisher exists; real stream worker topology is not complete. |
-| Graph DB | Neo4j projector exists; decision engine still uses NetworkX fallback. |
+| Streaming | Redpanda publisher is smoke-tested; real stream worker topology is not complete. |
+| Graph DB | Neo4j projector is smoke-tested; decision engine still uses NetworkX fallback. |
 | Observability | Local metrics, dashboard, request logs, trace IDs, and Prometheus alerts exist; no distributed tracing backend yet. |
 | Deployment | Local Docker only. No cloud/IaC/production deploy. |
 

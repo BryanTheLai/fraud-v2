@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.16.0 - 2026-05-05
+
+- Expanded the full-profile smoke to verify Redis, Neo4j, and Redpanda adapter
+  boundaries inside the Docker network.
+- Fixed Redpanda Compose advertised listeners so container clients and laptop
+  clients use the correct bootstrap addresses.
+
 ## 0.15.0 - 2026-05-05
 
 - Updated the Docker API image to install full-profile infrastructure extras.

@@ -27,6 +27,8 @@ Implemented:
   audit records.
 - Full-profile Docker image installs infra extras and smoke-tests the Postgres
   event-store adapter.
+- Full-profile smoke verifies Redis feature cache, Neo4j graph projector, and
+  Redpanda publisher adapters.
 - GitHub Actions test, Docker build, and API image smoke workflow.
 
 ## Test Plan
@@ -46,10 +48,11 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: 45 passed
+- Pytest: 46 passed
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, dashboard, metrics,
-  Grafana, Prometheus scrape, Neo4j readiness, and Postgres adapter insert/list
+  Grafana, Prometheus scrape, Postgres insert/list, Redis feature cache,
+  Neo4j projection, and Redpanda publish
 
 ## Known Limits
 

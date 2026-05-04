@@ -170,7 +170,7 @@ def outbox_drain(
     db_path: Path = Path("data/local/fraud_v2.sqlite"),
     batch_size: int = typer.Option(100, min=1, max=1000),
     dry_run: bool = typer.Option(True, "--dry-run/--publish"),
-    bootstrap_servers: str = "localhost:9092",
+    bootstrap_servers: str = "localhost:19092",
 ) -> None:
     store = SQLiteStore(db_path)
     publisher = (

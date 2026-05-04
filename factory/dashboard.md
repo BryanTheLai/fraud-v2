@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-015 - Prove Postgres Adapter](tasks/active/TC-20260505-015-prove-postgres-adapter.md)
+- [TC-20260505-016 - Prove Remaining Infra Adapters](tasks/active/TC-20260505-016-prove-remaining-infra-adapters.md)
 
 ## Runs Waiting For Bryan
 
@@ -23,6 +23,7 @@ Updated: 2026-05-05
 - [RR-20260505-013](runs/RR-20260505-013.md)
 - [RR-20260505-014](runs/RR-20260505-014.md)
 - [RR-20260505-015](runs/RR-20260505-015.md)
+- [RR-20260505-016](runs/RR-20260505-016.md)
 
 ## Blocked Work
 
@@ -55,6 +56,7 @@ Updated: 2026-05-05
 - Added dry-run local retention reporting through API and CLI.
 - Installed infra extras in the Docker API image and added a Postgres adapter
   smoke inside the full profile.
+- Added full-profile smoke coverage for Redis, Neo4j, and Redpanda adapters.
 
 ## Lessons Added
 
@@ -66,6 +68,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M15 Postgres adapter proof. Next implementation task
-should add a real OIDC design or move more runtime storage paths to Postgres if
-Bryan chooses to go deeper on production hardening.
+Review local MVP through M16 full-profile adapter proof. Next implementation
+task should add a real OIDC design or move more runtime storage paths to
+Postgres if Bryan chooses to go deeper on production hardening.
