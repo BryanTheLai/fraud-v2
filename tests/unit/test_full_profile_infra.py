@@ -58,6 +58,8 @@ def test_full_smoke_exercises_functional_api_and_observability() -> None:
     assert "RedpandaEventPublisher" in smoke_script
     assert "stream-consume" in smoke_script
     assert "/v1/stream/dead-letters" in smoke_script
+    assert "--publish-dead-letters" in smoke_script
+    assert "redpanda_dlq=1" in smoke_script
     assert "rpk" in smoke_script
 
 

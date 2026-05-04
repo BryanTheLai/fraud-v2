@@ -34,6 +34,10 @@ class StreamConsumer(Protocol):
     def close(self) -> None: ...
 
 
+class StreamDeadLetterPublisher(Protocol):
+    def publish(self, topic: str, dead_letter: StreamDeadLetter) -> None: ...
+
+
 @dataclass(frozen=True)
 class StreamConsumeReport:
     topic: str
@@ -45,6 +49,8 @@ class StreamConsumeReport:
     conflicts: int
     invalid_messages: int
     dead_lettered: int
+    dead_letter_published: int
+    dead_letter_publish_failed: int
     empty_polls: int
 
 
@@ -73,6 +79,8 @@ class StreamIngestionWorker:
     consumer: StreamConsumer
     topic: str
     group_id: str = "fraud-v2-local"
+    dead_letter_publisher: StreamDeadLetterPublisher | None = None
+    dead_letter_topic: str = "fraud.dead_letters"
     poll_timeout_seconds: float = 1.0
     max_empty_polls: int = 3
     close_consumer: bool = True
@@ -87,6 +95,8 @@ class StreamIngestionWorker:
         conflicts = 0
         invalid_messages = 0
         dead_lettered = 0
+        dead_letter_published = 0
+        dead_letter_publish_failed = 0
         empty_polls = 0
         try:
             while scanned < max_messages and empty_polls < self.max_empty_polls:
@@ -98,25 +108,33 @@ class StreamIngestionWorker:
                 scanned += 1
                 if message.error() is not None:
                     failed += 1
-                    self._dead_letter(
+                    published = self._dead_letter(
                         reason=StreamDeadLetterReason.MESSAGE_ERROR,
                         raw_value=message.value(),
                         safe_error=f"stream message error: {message.error()}",
                     )
                     dead_lettered += 1
-                    self.consumer.commit(message=message, asynchronous=False)
+                    if published:
+                        dead_letter_published += int(self.dead_letter_publisher is not None)
+                        self.consumer.commit(message=message, asynchronous=False)
+                    else:
+                        dead_letter_publish_failed += 1
                     continue
                 raw_value = message.value()
                 if raw_value is None:
                     failed += 1
                     invalid_messages += 1
-                    self._dead_letter(
+                    published = self._dead_letter(
                         reason=StreamDeadLetterReason.EMPTY_PAYLOAD,
                         raw_value=None,
                         safe_error="stream message had no payload",
                     )
                     dead_lettered += 1
-                    self.consumer.commit(message=message, asynchronous=False)
+                    if published:
+                        dead_letter_published += int(self.dead_letter_publisher is not None)
+                        self.consumer.commit(message=message, asynchronous=False)
+                    else:
+                        dead_letter_publish_failed += 1
                     continue
                 try:
                     event = EventEnvelope.model_validate_json(_message_text(raw_value))
@@ -125,24 +143,32 @@ class StreamIngestionWorker:
                 except DuplicatePayloadConflict as exc:
                     conflicts += 1
                     failed += 1
-                    self._dead_letter(
+                    published = self._dead_letter(
                         reason=StreamDeadLetterReason.IDEMPOTENCY_CONFLICT,
                         raw_value=raw_value,
                         safe_error=str(exc),
                     )
                     dead_lettered += 1
-                    self.consumer.commit(message=message, asynchronous=False)
+                    if published:
+                        dead_letter_published += int(self.dead_letter_publisher is not None)
+                        self.consumer.commit(message=message, asynchronous=False)
+                    else:
+                        dead_letter_publish_failed += 1
                     continue
                 except ValidationError as exc:
                     invalid_messages += 1
                     failed += 1
-                    self._dead_letter(
+                    published = self._dead_letter(
                         reason=StreamDeadLetterReason.INVALID_EVENT,
                         raw_value=raw_value,
                         safe_error=str(exc).splitlines()[0],
                     )
                     dead_lettered += 1
-                    self.consumer.commit(message=message, asynchronous=False)
+                    if published:
+                        dead_letter_published += int(self.dead_letter_publisher is not None)
+                        self.consumer.commit(message=message, asynchronous=False)
+                    else:
+                        dead_letter_publish_failed += 1
                     continue
                 self.consumer.commit(message=message, asynchronous=False)
                 if already_known:
@@ -163,6 +189,8 @@ class StreamIngestionWorker:
             conflicts=conflicts,
             invalid_messages=invalid_messages,
             dead_lettered=dead_lettered,
+            dead_letter_published=dead_letter_published,
+            dead_letter_publish_failed=dead_letter_publish_failed,
             empty_polls=empty_polls,
         )
 
@@ -172,7 +200,7 @@ class StreamIngestionWorker:
         reason: StreamDeadLetterReason,
         raw_value: bytes | str | None,
         safe_error: str,
-    ) -> StreamDeadLetter:
+    ) -> bool:
         dead_letter = StreamDeadLetter(
             source_topic=self.topic,
             consumer_group=self.group_id,
@@ -181,7 +209,14 @@ class StreamIngestionWorker:
             payload_preview=_payload_preview(raw_value),
             safe_error=safe_error[:500],
         )
-        return self.store.save_stream_dead_letter(dead_letter)
+        saved = self.store.save_stream_dead_letter(dead_letter)
+        if self.dead_letter_publisher is None:
+            return True
+        try:
+            self.dead_letter_publisher.publish(self.dead_letter_topic, saved)
+        except RuntimeError:
+            return False
+        return True
 
 
 def _message_text(raw_value: bytes | str) -> str:

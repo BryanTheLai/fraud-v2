@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.27.0 - 2026-05-05
+
+- Added optional Redpanda dead-letter-topic publishing for invalid stream
+  records while keeping database dead letters as the default local path.
+- Added stream-consumer reporting for published and failed DLQ publishes.
+- Expanded the full-profile smoke to publish an invalid Redpanda record,
+  consume it with `--publish-dead-letters`, and prove the DLQ topic received a
+  structured dead-letter payload.
+
 ## 0.26.0 - 2026-05-05
 
 - Added a local threshold policy registry with candidate, active, and disabled

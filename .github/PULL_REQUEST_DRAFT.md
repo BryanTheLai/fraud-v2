@@ -46,6 +46,8 @@ Implemented:
   SQLite/Postgres with idempotent duplicate handling.
 - Persistent stream dead letters capture invalid/conflicting Redpanda records
   for admin inspection and retention pruning.
+- Optional Redpanda DLQ topic publishing for stream dead letters, with full
+  smoke proof.
 - GitHub Actions test, Docker build, and API image smoke workflow.
 
 ## Test Plan
@@ -65,13 +67,13 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: 68 passed
+- Pytest: 70 passed
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Redis feature cache, Neo4j projection, and
   Redpanda publish-consume-to-Postgres with zero stream dead letters on the
-  valid path
+  valid path plus invalid-record DLQ topic proof
 
 ## Known Limits
 

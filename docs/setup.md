@@ -185,6 +185,7 @@ uv run fraud-v2 monitor --events-path data\synthetic\tiny\events.jsonl
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run
 uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10
+uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10 --publish-dead-letters --dead-letter-topic fraud.dead_letters --allow-errors
 uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite
@@ -315,6 +316,23 @@ uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite
 
 Dead letters store safe error text, payload hash, and a short payload preview
 for synthetic/local debugging. Do not use this repo with real PII.
+
+Optionally also publish stream dead letters to Redpanda:
+
+```powershell
+uv run fraud-v2 stream-consume `
+  --bootstrap-servers localhost:19092 `
+  --topic fraud.events `
+  --max-messages 10 `
+  --publish-dead-letters `
+  --dead-letter-topic fraud.dead_letters `
+  --allow-errors
+```
+
+When DLQ publishing is enabled, the worker commits the bad input only after the
+dead letter is saved locally and published to the DLQ topic. If DLQ publishing
+fails, the worker records `dead_letter_publish_failed` and does not commit the
+source offset.
 
 Show the active default threshold policy:
 
@@ -512,6 +530,7 @@ tests/unit/domain/test_events.py
 | Evaluate model | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | Writes metrics, cost, and threshold report. |
 | Drain local outbox | `uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run` | Publishes through a dry-run publisher by default. |
 | Consume Redpanda stream | `uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10` | Bounded local consumer for canonical event envelopes. |
+| Consume with Redpanda DLQ | `uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --publish-dead-letters --dead-letter-topic fraud.dead_letters --allow-errors` | Writes bad records to app-store dead letters and a Redpanda DLQ topic. |
 | Inspect stream dead letters | `uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite` | Shows invalid/conflicting stream records stored for admin inspection. |
 | Export compliance draft | `uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes a human-review-only local draft. |
 | Retention report | `uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite` | Counts expired records without deleting them. |

@@ -16,6 +16,7 @@ from fraud_v2.domain.entities import EntityRef
 from fraud_v2.domain.enums import EntityType
 from fraud_v2.domain.retention import RetentionPolicy
 from fraud_v2.evaluation.reports import write_monitoring_report
+from fraud_v2.infrastructure.redpanda_dead_letter_publisher import RedpandaDeadLetterPublisher
 from fraud_v2.infrastructure.redpanda_publisher import RedpandaEventPublisher
 from fraud_v2.llm_lab.provider import NoveltyLedger, provider_from_env
 from fraud_v2.models.registry import JsonModelRegistry, ModelStatus
@@ -285,6 +286,10 @@ def stream_consume(
     store_backend: str = typer.Option("sqlite", "--store-backend"),
     db_path: Path = Path("data/local/fraud_v2.sqlite"),
     postgres_dsn: str = "postgresql://fraud:fraud@localhost:5432/fraud_v2",
+    publish_dead_letters: bool = typer.Option(
+        False, "--publish-dead-letters/--db-dead-letters-only"
+    ),
+    dead_letter_topic: str = "fraud.dead_letters",
     fail_on_error: bool = typer.Option(True, "--fail-on-error/--allow-errors"),
 ) -> None:
     store = _store_from_cli(
@@ -301,6 +306,12 @@ def stream_consume(
         consumer=consumer,
         topic=topic,
         group_id=group_id,
+        dead_letter_publisher=(
+            RedpandaDeadLetterPublisher(bootstrap_servers=bootstrap_servers)
+            if publish_dead_letters
+            else None
+        ),
+        dead_letter_topic=dead_letter_topic,
         poll_timeout_seconds=poll_timeout_seconds,
         max_empty_polls=max_empty_polls,
     ).run(max_messages=max_messages)

@@ -382,6 +382,87 @@ print("redpanda_consume=1")
   $streamDeadLetterCount = if ($null -eq $streamDeadLetters) { 0 } else { @($streamDeadLetters).Count }
   Assert-FraudCondition ($streamDeadLetterCount -eq 0) "Expected no stream dead letters after valid smoke consume."
 
+  $deadLetterSuffix = ([guid]::NewGuid()).ToString()
+  $invalidTopic = "fraud.events.invalid.$deadLetterSuffix"
+  $deadLetterTopic = "fraud.dead_letters.$deadLetterSuffix"
+  $invalidPublish = @"
+from confluent_kafka import Producer
+
+producer = Producer({"bootstrap.servers": "redpanda:9092"})
+producer.produce("$invalidTopic", key=b"invalid-smoke", value=b'{"not":"an event"}')
+producer.flush(10)
+print("redpanda_invalid_publish=1")
+"@
+  $invalidPublishResult = $invalidPublish | docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync python - 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Redpanda invalid publish smoke failed: $invalidPublishResult"
+  Write-Host ($invalidPublishResult -join "`n")
+  Assert-FraudCondition (($invalidPublishResult -join "`n") -like "*redpanda_invalid_publish=1*") "Redpanda invalid publish did not print proof."
+
+  $deadLetterConsumerGroup = "fraud-v2-dlq-smoke-$([guid]::NewGuid())"
+  $deadLetterConsumeResult = docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync fraud-v2 stream-consume `
+      --bootstrap-servers redpanda:9092 `
+      --topic $invalidTopic `
+      --group-id $deadLetterConsumerGroup `
+      --store-backend postgres `
+      --postgres-dsn postgresql://fraud:fraud@postgres:5432/fraud_v2 `
+      --max-messages 1 `
+      --max-empty-polls 20 `
+      --publish-dead-letters `
+      --dead-letter-topic $deadLetterTopic `
+      --allow-errors 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Redpanda DLQ stream consumer smoke failed: $deadLetterConsumeResult"
+  Write-Host ($deadLetterConsumeResult -join "`n")
+  Assert-FraudCondition (($deadLetterConsumeResult -join "`n") -like '*"dead_lettered": 1*') "Redpanda DLQ stream consumer did not dead-letter invalid event."
+  Assert-FraudCondition (($deadLetterConsumeResult -join "`n") -like '*"dead_letter_published": 1*') "Redpanda DLQ stream consumer did not publish dead letter."
+
+  $deadLetterProof = @"
+import json
+import time
+from confluent_kafka import Consumer
+
+consumer = Consumer({
+    "bootstrap.servers": "redpanda:9092",
+    "group.id": "fraud-v2-dlq-proof-$deadLetterSuffix",
+    "auto.offset.reset": "earliest",
+    "enable.auto.commit": False,
+})
+consumer.subscribe(["$deadLetterTopic"])
+try:
+    deadline = time.time() + 20
+    while time.time() < deadline:
+        message = consumer.poll(1.0)
+        if message is None or message.error() is not None:
+            continue
+        payload = json.loads(message.value().decode("utf-8"))
+        assert payload["reason"] == "INVALID_EVENT"
+        assert payload["source_topic"] == "$invalidTopic"
+        print("redpanda_dlq=1")
+        break
+    else:
+        raise AssertionError("dead letter topic did not receive payload")
+finally:
+    consumer.close()
+"@
+  $deadLetterProofResult = $deadLetterProof | docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync python - 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Redpanda DLQ proof failed: $deadLetterProofResult"
+  Write-Host ($deadLetterProofResult -join "`n")
+  Assert-FraudCondition (($deadLetterProofResult -join "`n") -like "*redpanda_dlq=1*") "Redpanda DLQ proof did not print proof."
+
+  $streamDeadLettersAfterInvalid = @(Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/stream/dead-letters")
+  Assert-FraudCondition ($streamDeadLettersAfterInvalid.Count -gt 0) "Expected stream dead letter after invalid smoke consume."
+
   $dashboard = Invoke-WebRequest -Uri "$ApiBase/dashboard" -TimeoutSec 10 -UseBasicParsing
   Assert-FraudCondition ($dashboard.Content -like "*Recent decisions*") "Dashboard missing recent decisions."
   Assert-FraudCondition ($dashboard.Content -like "*Open review queue*") "Dashboard missing review queue."
