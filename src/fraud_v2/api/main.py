@@ -39,9 +39,9 @@ def require_token(
     authorization: str | None = Header(default=None),
     settings: Settings = Depends(get_settings),
 ) -> None:
-    expected = f"Bearer {settings.api_token}"
-    if authorization is None:
+    if settings.api_token == "":
         return
+    expected = f"Bearer {settings.api_token}"
     if authorization != expected:
         raise HTTPException(status_code=401, detail="invalid local token")
 

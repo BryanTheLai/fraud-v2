@@ -163,6 +163,14 @@ Local URLs after implementation:
 - Redpanda Console: `http://localhost:8080`
 - Neo4j Browser: `http://localhost:7474`
 
+Protected API calls require:
+
+```text
+Authorization: Bearer dev-token-change-me
+```
+
+Use a different local `FRAUD_API_TOKEN` in `.env`; do not commit real secrets.
+
 ## Test
 
 Quality gate:

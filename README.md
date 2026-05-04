@@ -39,6 +39,9 @@ Local URLs:
 - Dashboard: `http://127.0.0.1:8000/dashboard`
 - Metrics: `http://127.0.0.1:8000/metrics`
 
+Protected `/v1/*` endpoints require `Authorization: Bearer dev-token-change-me`
+by default. Override `FRAUD_API_TOKEN` locally instead of committing secrets.
+
 ## Run Full Local Infra
 
 ```powershell

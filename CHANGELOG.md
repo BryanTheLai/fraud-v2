@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 - 2026-05-05
+
+- Hardened protected API endpoints so missing bearer tokens return `401`
+  unless auth is explicitly disabled with an empty local token.
+- Updated integration tests to prove both authorized and unauthorized paths.
+
 ## 0.4.0 - 2026-05-05
 
 - Added human-review-only compliance draft JSON exports with safe reasons and

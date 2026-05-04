@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-004 - Add Compliance And Cost Evaluation](tasks/active/TC-20260505-004-add-compliance-and-cost-eval.md)
+- [TC-20260505-005 - Harden Local API Auth](tasks/active/TC-20260505-005-harden-local-api-auth.md)
 
 ## Runs Waiting For Bryan
 
@@ -12,6 +12,7 @@ Updated: 2026-05-05
 - [RR-20260505-002](runs/RR-20260505-002.md)
 - [RR-20260505-003](runs/RR-20260505-003.md)
 - [RR-20260505-004](runs/RR-20260505-004.md)
+- [RR-20260505-005](runs/RR-20260505-005.md)
 
 ## Blocked Work
 
@@ -29,6 +30,7 @@ Updated: 2026-05-05
   event converters.
 - Added human-review-only compliance drafts and cost-weighted threshold
   reporting.
+- Hardened protected API routes to require bearer tokens by default.
 
 ## Lessons Added
 
@@ -40,6 +42,5 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP, M2 adapter layer, M3 ingestion/outbox layer, and M4
-compliance/cost evaluation layer. Next implementation task should add
+Review local MVP through M5 auth hardening. Next implementation task should add
 Docker-backed integration tests and analyst UI polish.
