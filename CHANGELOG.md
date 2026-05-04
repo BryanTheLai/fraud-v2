@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.0 - 2026-05-05
+
+- Added Grafana provisioning for the full local profile with a Fraud V2 overview
+  dashboard backed by Prometheus.
+- Expanded `scripts/full-smoke.ps1` to exercise synthetic generation, scoring,
+  review queue creation, dashboard rendering, API metrics, Grafana, and
+  Prometheus scraping.
+
 ## 0.9.0 - 2026-05-05
 
 - Upgraded the local dashboard into a denser analyst cockpit with recent

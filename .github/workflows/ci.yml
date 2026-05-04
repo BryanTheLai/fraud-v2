@@ -33,3 +33,30 @@ jobs:
         run: docker compose -f infra/docker-compose.yml --profile full config --quiet
       - name: Build API image
         run: docker build -t fraud-v2:ci .
+      - name: Smoke API image
+        shell: bash
+        run: |
+          docker run -d --rm --name fraud-v2-ci -p 8000:8000 -e FRAUD_API_TOKEN=dev-token-change-me fraud-v2:ci
+          trap 'docker stop fraud-v2-ci' EXIT
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:8000/health/live; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8000/health/ready
+          curl -fsS -X POST -H "Authorization: Bearer dev-token-change-me" "http://127.0.0.1:8000/v1/synthetic/generate?users=30"
+          curl -fsS -X POST \
+            -H "Authorization: Bearer dev-token-change-me" \
+            -H "Content-Type: application/json" \
+            -d '{"target_entity":{"entity_type":"USER","entity_id":"user_00000"},"as_of":"2026-05-10T00:00:00Z","amount":1000,"context":{}}' \
+            http://127.0.0.1:8000/v1/decisions/score > /tmp/decision.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          decision = json.loads(Path("/tmp/decision.json").read_text())
+          assert decision["risk_score"] >= 80
+          assert decision["risk_tier"] == "RED"
+          PY
+          curl -fsS http://127.0.0.1:8000/metrics | grep fraud_decisions_total

@@ -22,7 +22,7 @@ Current state: local MVP plus full-profile adapter layer implemented. It runs in
 lite mode with synthetic data, SQLite storage, rules/graph scoring, baseline
 model training, FastAPI endpoints, dashboard, metrics, tests, CI workflow, and
 Docker Compose scaffolding. Full mode includes replaceable Postgres, Redis,
-Redpanda, and Neo4j adapter boundaries.
+Redpanda, Neo4j, Prometheus, and a provisioned Grafana dashboard.
 
 ## Run Lite Mode
 
@@ -53,12 +53,26 @@ docker compose -f infra\docker-compose.yml --profile full ps
 The full profile starts the API container plus Postgres, Redis, Redpanda, Neo4j,
 Prometheus, and Grafana.
 
+Grafana opens at `http://127.0.0.1:3000/d/fraud-v2-overview/fraud-v2-overview`
+with anonymous local viewer access enabled by the Docker profile.
+
 Full-profile smoke:
 
 ```powershell
 .\scripts\full-smoke.ps1
 .\scripts\full-smoke.ps1 -KeepRunning
 ```
+
+The smoke builds the API image, starts the full profile, generates synthetic
+events through the protected API, scores `user_00000`, checks the review queue
+and dashboard, verifies Prometheus metrics, loads Grafana, then shuts the stack
+down unless `-KeepRunning` is set.
+
+`full-smoke.ps1` uses high host ports by default, for example API `18000`,
+Grafana `13000`, Prometheus `19090`, and Neo4j HTTP `17474`, so it can run while
+a normal dev API is already listening on `8000`. It also uses a separate Docker
+Compose project name, `fraud-v2-smoke`, to avoid disturbing a manually started
+full stack.
 
 ## Reports
 

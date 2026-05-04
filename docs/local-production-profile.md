@@ -163,6 +163,7 @@ Why:
 | Circuit breaker | per dependency state in Redis or process fallback |
 | Health | `/health/live` and `/health/ready` |
 | Metrics | `/metrics` plus Prometheus |
+| Dashboards | Grafana provisioned with local Fraud V2 overview |
 | Traces | OTel spans around decision path |
 | Logs | JSON logs with redaction |
 | Replay | read event stream from Parquet/DuckDB and compare decisions |
@@ -203,4 +204,3 @@ Before any real data or real action:
 10. incident response runbook
 11. model governance and rollback procedure
 12. fairness/disparate impact analysis
-

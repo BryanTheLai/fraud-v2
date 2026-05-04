@@ -18,7 +18,8 @@ Implemented:
 - Cost-weighted model threshold reporting.
 - Analyst dashboard with recent decisions and open review queue.
 - Docker Compose full profile and `scripts/full-smoke.ps1`.
-- GitHub Actions test and Docker build workflow.
+- Provisioned Grafana dashboard for full-profile observability.
+- GitHub Actions test, Docker build, and API image smoke workflow.
 
 ## Test Plan
 
@@ -37,9 +38,10 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: 31 passed
+- Pytest: 34 passed
 - Docker build: pass
-- Full profile smoke: pass
+- Full profile smoke: pass, including API scoring, dashboard, metrics,
+  Grafana, Prometheus scrape, and Neo4j readiness
 
 ## Known Limits
 

@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-009 - Polish Analyst Dashboard](tasks/active/TC-20260505-009-polish-analyst-dashboard.md)
+- [TC-20260505-010 - Harden Full Profile Observability](tasks/active/TC-20260505-010-harden-full-profile-observability.md)
 
 ## Runs Waiting For Bryan
 
@@ -17,6 +17,7 @@ Updated: 2026-05-05
 - [RR-20260505-007](runs/RR-20260505-007.md)
 - [RR-20260505-008](runs/RR-20260505-008.md)
 - [RR-20260505-009](runs/RR-20260505-009.md)
+- [RR-20260505-010](runs/RR-20260505-010.md)
 
 ## Blocked Work
 
@@ -39,6 +40,8 @@ Updated: 2026-05-05
 - Added registered-model shadow scoring reports that do not alter decisions.
 - Added full-profile Docker smoke script.
 - Upgraded the analyst dashboard with recent decisions and open review queue.
+- Added Grafana provisioning and expanded the full-profile smoke to verify API
+  scoring, dashboard content, metrics, Grafana, and Prometheus scraping.
 
 ## Lessons Added
 
@@ -50,5 +53,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M9 dashboard polish. Next implementation task should
-add deeper Docker-backed integration tests and production-readiness review.
+Review local MVP through M10 full-profile observability hardening. Next
+implementation task should add OIDC/RBAC design or local logs/traces if Bryan
+chooses to go deeper on production hardening.

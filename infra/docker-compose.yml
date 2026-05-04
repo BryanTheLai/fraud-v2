@@ -8,7 +8,7 @@ services:
       FRAUD_SQLITE_PATH: /app/data/local/fraud_v2.sqlite
       FRAUD_API_TOKEN: dev-token-change-me
     ports:
-      - "8000:8000"
+      - "${FRAUD_API_PORT:-8000}:8000"
     profiles: ["full"]
 
   postgres:
@@ -18,13 +18,13 @@ services:
       POSTGRES_PASSWORD: fraud
       POSTGRES_DB: fraud_v2
     ports:
-      - "5432:5432"
+      - "${FRAUD_POSTGRES_PORT:-5432}:5432"
     profiles: ["full"]
 
   redis:
     image: redis:7
     ports:
-      - "6379:6379"
+      - "${FRAUD_REDIS_PORT:-6379}:6379"
     profiles: ["full"]
 
   redpanda:
@@ -43,8 +43,8 @@ services:
       - "0"
       - --check=false
     ports:
-      - "9092:9092"
-      - "9644:9644"
+      - "${FRAUD_REDPANDA_PORT:-9092}:9092"
+      - "${FRAUD_REDPANDA_ADMIN_PORT:-9644}:9644"
     profiles: ["full"]
 
   neo4j:
@@ -54,8 +54,8 @@ services:
       NEO4J_server_memory_heap_initial__size: 512m
       NEO4J_server_memory_heap_max__size: 1G
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - "${FRAUD_NEO4J_HTTP_PORT:-7474}:7474"
+      - "${FRAUD_NEO4J_BOLT_PORT:-7687}:7687"
     profiles: ["full"]
 
   prometheus:
@@ -63,11 +63,18 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
-      - "9090:9090"
+      - "${FRAUD_PROMETHEUS_PORT:-9090}:9090"
     profiles: ["full"]
 
   grafana:
     image: grafana/grafana:latest
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/fraud-v2-overview.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
-      - "3000:3000"
+      - "${FRAUD_GRAFANA_PORT:-3000}:3000"
     profiles: ["full"]

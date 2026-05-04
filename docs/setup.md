@@ -13,7 +13,8 @@ version: 2
 Current state: local MVP plus full-profile adapter layer implemented. Lite mode
 runs with Python, SQLite, synthetic data, FastAPI, dashboard, metrics,
 rules/graph scoring, and baseline model training. Full local infrastructure is
-scaffolded with Docker Compose and replaceable adapters.
+scaffolded with Docker Compose, replaceable adapters, Prometheus, and a
+provisioned Grafana dashboard.
 
 ## Prerequisites
 
@@ -108,6 +109,11 @@ Full-profile smoke with cleanup:
 .\scripts\full-smoke.ps1
 ```
 
+The smoke uses a separate Docker Compose project, `fraud-v2-smoke`, and high
+host ports by default so it does not collide with a local dev API on `8000`: API
+`18000`, Grafana `13000`, Prometheus `19090`, and Neo4j HTTP `17474`. Override
+with parameters such as `-ApiPort 18001` if needed.
+
 Keep services running for manual inspection:
 
 ```powershell
@@ -175,6 +181,7 @@ Local URLs after implementation:
 - API docs: `http://localhost:8000/docs`
 - Analyst dashboard: `http://localhost:8000/dashboard`
 - Grafana: `http://localhost:3000`
+- Grafana Fraud V2 overview: `http://localhost:3000/d/fraud-v2-overview/fraud-v2-overview`
 - Redpanda Console: `http://localhost:8080`
 - Neo4j Browser: `http://localhost:7474`
 
@@ -314,7 +321,7 @@ tests/unit/domain/test_events.py
 | Task | Command | Notes |
 |---|---|---|
 | Start infra | `docker compose -f infra\docker-compose.yml up -d` | Runs local dependencies. |
-| Full-profile smoke | `.\scripts\full-smoke.ps1` | Builds and starts full profile, checks API/Prometheus/Neo4j, then stops it. |
+| Full-profile smoke | `.\scripts\full-smoke.ps1` | Builds and starts full profile, scores data through the API, checks dashboard/metrics/Grafana/Prometheus/Neo4j, then stops it. |
 | Stop infra | `docker compose -f infra\docker-compose.yml down` | Does not delete volumes by default. |
 | Reset local data | `docker compose -f infra\docker-compose.yml down -v` | Destructive. Requires explicit approval in Code Factory runs. |
 | Seed synthetic data | `uv run python -m fraud_v2.seed.synthetic --events 10000` | No real PII. |
@@ -332,7 +339,7 @@ tests/unit/domain/test_events.py
 
 | Symptom | Likely Cause | Fix |
 |---|---|---|
-| Docker ports already in use | Another local stack is running. | Change ports in `.env` or stop conflicting container. |
+| Docker ports already in use | Another local stack is running. | Change Compose port env vars or pass full-smoke port parameters such as `-ApiPort 18001`. |
 | GPU install fails | CUDA/PyTorch package mismatch or 4GB VRAM limit. | Use CPU install. GPU is optional. |
 | API returns degraded decisions | Model, graph, Redis, or feature freshness policy is failing. | Check `/health/ready`, Grafana, and DLQ. |
 | Graph query is slow | Supernode or wide neighborhood query. | Lower depth, filter edge types, inspect supernode guard. |

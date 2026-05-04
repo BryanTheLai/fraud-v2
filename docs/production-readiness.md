@@ -18,7 +18,8 @@ It now runs locally in two modes:
   baseline ML, replay, monitoring, compliance drafts, model registry, shadow
   scoring, and analyst dashboard.
 - Full mode: Docker Compose starts API, Postgres, Redis, Redpanda, Neo4j,
-  Prometheus, and Grafana, verified by `scripts/full-smoke.ps1`.
+  Prometheus, and Grafana with a provisioned local dashboard, verified by
+  `scripts/full-smoke.ps1`.
 
 ## Implemented
 
@@ -37,7 +38,8 @@ It now runs locally in two modes:
 | Shadow scoring | Done | Registered model probabilities logged without changing decisions. |
 | LLM synthetic lab | Local-safe done | Offline default plus OpenAI/Azure provider boundary. |
 | Full Docker profile | Done | Full profile smoke passed locally. |
-| CI | Done | GitHub Actions for tests and Docker build. |
+| Grafana observability | Local-safe done | Provisioned dashboard for decisions, latency, ingested events, and API target health. |
+| CI | Done | GitHub Actions for tests, Docker build, and API image smoke. |
 
 ## Still Fake Or Local-Only
 
@@ -51,7 +53,7 @@ It now runs locally in two modes:
 | Persistence | SQLite lite path is primary; Postgres adapter exists but is not the default app store. |
 | Streaming | Redpanda publisher exists; real stream worker topology is not complete. |
 | Graph DB | Neo4j projector exists; decision engine still uses NetworkX fallback. |
-| Observability | Prometheus metrics exist; Grafana dashboards are not curated yet. |
+| Observability | Prometheus metrics and a basic Grafana dashboard exist; no logs/traces/SLO alerting yet. |
 | Deployment | Local Docker only. No cloud/IaC/production deploy. |
 
 ## Hard Blockers To Real Production
