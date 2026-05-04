@@ -22,6 +22,7 @@ Implemented:
 - Local role-aware API authorization for admin, analyst, and system tokens.
 - Request trace IDs, structured JSON request logs, HTTP metrics, and local
   Prometheus alert rules.
+- Tamper-evident local audit log and admin audit verification endpoints.
 - GitHub Actions test, Docker build, and API image smoke workflow.
 
 ## Test Plan
@@ -41,7 +42,7 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: 41 passed
+- Pytest: 43 passed
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, dashboard, metrics,
   Grafana, Prometheus scrape, and Neo4j readiness

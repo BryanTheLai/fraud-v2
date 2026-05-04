@@ -211,6 +211,17 @@ Role boundaries:
 | `analyst` | Read decisions, graph neighborhoods, and review queue; submit review outcomes. |
 | `admin` | All local actions. |
 
+Admin-only audit checks:
+
+```powershell
+Invoke-RestMethod `
+  -Headers @{ Authorization = "Bearer dev-token-change-me" } `
+  -Uri http://127.0.0.1:8000/v1/audit/verify
+```
+
+The local audit log is hash-chained in SQLite. It detects local tampering but is
+not production WORM storage.
+
 ## Local Observability
 
 The API emits:

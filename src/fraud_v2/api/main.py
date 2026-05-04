@@ -15,6 +15,7 @@ from fraud_v2 import __version__
 from fraud_v2.compliance.reasons import adverse_action_style_reasons
 from fraud_v2.config.settings import Settings, get_settings
 from fraud_v2.decision.engine import DecisionEngine
+from fraud_v2.domain.audit import AuditEntry, AuditVerificationReport
 from fraud_v2.domain.decisions import DecisionRequest, DecisionResponse
 from fraud_v2.domain.entities import EntityRef
 from fraud_v2.domain.enums import EntityType
@@ -239,6 +240,27 @@ def whoami(
         "subject": principal.subject,
         "roles": sorted(role.value for role in principal.roles),
     }
+
+
+@app.get(
+    "/v1/audit/entries",
+    response_model=list[AuditEntry],
+    dependencies=[Depends(require_roles(AuthRole.ADMIN))],
+)
+def list_audit_entries(
+    limit: int = Query(default=100, ge=1, le=1000),
+    db: SQLiteStore = Depends(store),
+) -> list[AuditEntry]:
+    return db.list_audit_entries(limit=limit)
+
+
+@app.get(
+    "/v1/audit/verify",
+    response_model=AuditVerificationReport,
+    dependencies=[Depends(require_roles(AuthRole.ADMIN))],
+)
+def verify_audit_chain(db: SQLiteStore = Depends(store)) -> AuditVerificationReport:
+    return db.verify_audit_chain()
 
 
 @app.post("/v1/events", dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.SYSTEM))])

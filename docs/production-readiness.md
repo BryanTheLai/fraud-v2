@@ -40,6 +40,7 @@ It now runs locally in two modes:
 | Full Docker profile | Done | Full profile smoke passed locally. |
 | Grafana observability | Local-safe done | Provisioned dashboard for decisions, latency, ingested events, and API target health. |
 | Request tracing/logging | Local-safe done | `X-Trace-ID`, structured JSON request logs, HTTP metrics, and Prometheus alert rules. |
+| Audit log | Local-safe done | SQLite hash chain for event, decision, review, and outbox actions. |
 | CI | Done | GitHub Actions for tests, Docker build, and API image smoke. |
 
 ## Still Fake Or Local-Only
@@ -51,6 +52,7 @@ It now runs locally in two modes:
 | Data | Synthetic only unless public datasets are manually downloaded. |
 | Auth | Local role-token RBAC only. No OIDC/users/sessions. |
 | Secrets | `.env` pattern only. No vault/KMS. |
+| Audit immutability | Hash-chained SQLite only. No WORM/object-lock storage. |
 | Persistence | SQLite lite path is primary; Postgres adapter exists but is not the default app store. |
 | Streaming | Redpanda publisher exists; real stream worker topology is not complete. |
 | Graph DB | Neo4j projector exists; decision engine still uses NetworkX fallback. |

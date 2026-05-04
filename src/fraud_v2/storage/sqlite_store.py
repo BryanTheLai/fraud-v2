@@ -1,16 +1,22 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from uuid import UUID, uuid4
 
+from fraud_v2.domain.audit import AuditEntry, AuditVerificationReport
 from fraud_v2.domain.decisions import DecisionResponse
 from fraud_v2.domain.errors import DecisionNotFound, DuplicatePayloadConflict
 from fraud_v2.domain.events import EventEnvelope
 from fraud_v2.domain.outbox import OutboxMessage, OutboxStatus
 from fraud_v2.domain.reviews import ReviewCase, ReviewDecision
+from fraud_v2.observability.logging import get_trace_id
+
+GENESIS_AUDIT_HASH = "0" * 64
 
 
 class SQLiteStore:
@@ -73,6 +79,21 @@ class SQLiteStore:
                 );
                 create index if not exists ix_outbox_status_created
                   on outbox_messages(status, created_at);
+
+                create table if not exists audit_entries (
+                  sequence integer primary key,
+                  created_at text not null,
+                  actor text not null,
+                  action text not null,
+                  target_type text not null,
+                  target_id text not null,
+                  trace_id text not null,
+                  payload_hash text not null,
+                  previous_hash text not null,
+                  entry_hash text not null unique
+                );
+                create index if not exists ix_audit_action_created
+                  on audit_entries(action, created_at);
                 """
             )
 
@@ -107,6 +128,17 @@ class SQLiteStore:
                 ),
             )
             self._enqueue_outbox(conn, event, event_json, outbox_topic)
+            self._append_audit(
+                conn,
+                actor="local-system",
+                action="event.ingested",
+                target_type="event",
+                target_id=str(event.event_id),
+                payload={
+                    "event_type": event.event_type.value,
+                    "idempotency_key": event.idempotency_key,
+                },
+            )
         return event
 
     def add_events(self, events: list[EventEnvelope]) -> int:
@@ -159,6 +191,14 @@ class SQLiteStore:
                 """,
                 (OutboxStatus.PUBLISHED.value, now, str(message_id)),
             )
+            self._append_audit(
+                conn,
+                actor="local-system",
+                action="outbox.published",
+                target_type="outbox_message",
+                target_id=str(message_id),
+                payload={"status": OutboxStatus.PUBLISHED.value},
+            )
             row = conn.execute(
                 "select * from outbox_messages where message_id = ?",
                 (str(message_id),),
@@ -184,6 +224,14 @@ class SQLiteStore:
                 """,
                 (status.value, attempts, safe_error[:500], now, str(message_id)),
             )
+            self._append_audit(
+                conn,
+                actor="local-system",
+                action="outbox.failed",
+                target_type="outbox_message",
+                target_id=str(message_id),
+                payload={"status": status.value, "attempts": attempts},
+            )
             row = conn.execute(
                 "select * from outbox_messages where message_id = ?",
                 (str(message_id),),
@@ -206,6 +254,21 @@ class SQLiteStore:
                     decision.action.value,
                     decision.model_dump_json(),
                 ),
+            )
+            self._append_audit(
+                conn,
+                actor="local-system",
+                action="decision.created",
+                target_type="decision",
+                target_id=str(decision.decision_id),
+                payload={
+                    "target_entity_id": decision.target_entity.entity_id,
+                    "risk_score": decision.risk_score,
+                    "risk_tier": decision.risk_tier.value,
+                    "action": decision.action.value,
+                    "policy_version": decision.policy_version,
+                    "model_version": decision.model_version or "",
+                },
             )
         return decision
 
@@ -233,6 +296,19 @@ class SQLiteStore:
                 """,
                 (str(case.case_id), str(case.decision_id), case.status, case.model_dump_json()),
             )
+            self._append_audit(
+                conn,
+                actor="local-system",
+                action="review.case_created",
+                target_type="review_case",
+                target_id=str(case.case_id),
+                payload={
+                    "decision_id": str(case.decision_id),
+                    "target_entity_id": case.target_entity_id,
+                    "priority": case.priority,
+                    "status": case.status,
+                },
+            )
         return case
 
     def list_review_cases(self) -> list[ReviewCase]:
@@ -257,7 +333,62 @@ class SQLiteStore:
                 "update review_cases set status = ? where case_id = ?",
                 ("closed", str(decision.case_id)),
             )
+            self._append_audit(
+                conn,
+                actor=decision.analyst_id,
+                action="review.decided",
+                target_type="review_decision",
+                target_id=str(decision.review_decision_id),
+                payload={
+                    "case_id": str(decision.case_id),
+                    "outcome": decision.outcome.value,
+                    "confidence": decision.confidence,
+                },
+            )
         return decision
+
+    def list_audit_entries(self, limit: int = 100) -> list[AuditEntry]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "select * from audit_entries order by sequence desc limit ?",
+                (limit,),
+            ).fetchall()
+        return [self._audit_from_row(row) for row in reversed(rows)]
+
+    def verify_audit_chain(self) -> AuditVerificationReport:
+        with self._connect() as conn:
+            rows = conn.execute("select * from audit_entries order by sequence asc").fetchall()
+        previous_hash = GENESIS_AUDIT_HASH
+        for row in rows:
+            entry = self._audit_from_row(row)
+            if entry.previous_hash != previous_hash:
+                return AuditVerificationReport(
+                    valid=False,
+                    entries_checked=entry.sequence - 1,
+                    failure_sequence=entry.sequence,
+                    failure_reason="previous hash mismatch",
+                )
+            payload = self._audit_hash_payload(
+                sequence=entry.sequence,
+                created_at=entry.created_at.isoformat(),
+                actor=entry.actor,
+                action=entry.action,
+                target_type=entry.target_type,
+                target_id=entry.target_id,
+                trace_id=entry.trace_id,
+                payload_hash=entry.payload_hash,
+                previous_hash=entry.previous_hash,
+            )
+            expected_hash = self._hash_json(payload)
+            if entry.entry_hash != expected_hash:
+                return AuditVerificationReport(
+                    valid=False,
+                    entries_checked=entry.sequence - 1,
+                    failure_sequence=entry.sequence,
+                    failure_reason="entry hash mismatch",
+                )
+            previous_hash = entry.entry_hash
+        return AuditVerificationReport(valid=True, entries_checked=len(rows))
 
     def _enqueue_outbox(
         self, conn: sqlite3.Connection, event: EventEnvelope, event_json: str, topic: str
@@ -281,6 +412,113 @@ class SQLiteStore:
                 now,
                 now,
             ),
+        )
+
+    def _append_audit(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        actor: str,
+        action: str,
+        target_type: str,
+        target_id: str,
+        payload: dict[str, Any],
+    ) -> AuditEntry:
+        now = datetime.now(UTC).isoformat()
+        previous = conn.execute(
+            "select sequence, entry_hash from audit_entries order by sequence desc limit 1"
+        ).fetchone()
+        sequence = 1 if previous is None else int(previous["sequence"]) + 1
+        previous_hash = GENESIS_AUDIT_HASH if previous is None else str(previous["entry_hash"])
+        payload_hash = self._hash_json(payload)
+        trace_id = get_trace_id()
+        hash_payload = self._audit_hash_payload(
+            sequence=sequence,
+            created_at=now,
+            actor=actor,
+            action=action,
+            target_type=target_type,
+            target_id=target_id,
+            trace_id=trace_id,
+            payload_hash=payload_hash,
+            previous_hash=previous_hash,
+        )
+        entry_hash = self._hash_json(hash_payload)
+        conn.execute(
+            """
+            insert into audit_entries(
+              sequence, created_at, actor, action, target_type, target_id,
+              trace_id, payload_hash, previous_hash, entry_hash
+            )
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                sequence,
+                now,
+                actor,
+                action,
+                target_type,
+                target_id,
+                trace_id,
+                payload_hash,
+                previous_hash,
+                entry_hash,
+            ),
+        )
+        return AuditEntry(
+            sequence=sequence,
+            created_at=datetime.fromisoformat(now),
+            actor=actor,
+            action=action,
+            target_type=target_type,
+            target_id=target_id,
+            trace_id=trace_id,
+            payload_hash=payload_hash,
+            previous_hash=previous_hash,
+            entry_hash=entry_hash,
+        )
+
+    def _audit_hash_payload(
+        self,
+        *,
+        sequence: int,
+        created_at: str,
+        actor: str,
+        action: str,
+        target_type: str,
+        target_id: str,
+        trace_id: str,
+        payload_hash: str,
+        previous_hash: str,
+    ) -> dict[str, str | int]:
+        return {
+            "sequence": sequence,
+            "created_at": created_at,
+            "actor": actor,
+            "action": action,
+            "target_type": target_type,
+            "target_id": target_id,
+            "trace_id": trace_id,
+            "payload_hash": payload_hash,
+            "previous_hash": previous_hash,
+        }
+
+    def _hash_json(self, payload: dict[str, Any]) -> str:
+        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    def _audit_from_row(self, row: sqlite3.Row) -> AuditEntry:
+        return AuditEntry(
+            sequence=int(row["sequence"]),
+            created_at=datetime.fromisoformat(str(row["created_at"])),
+            actor=str(row["actor"]),
+            action=str(row["action"]),
+            target_type=str(row["target_type"]),
+            target_id=str(row["target_id"]),
+            trace_id=str(row["trace_id"]),
+            payload_hash=str(row["payload_hash"]),
+            previous_hash=str(row["previous_hash"]),
+            entry_hash=str(row["entry_hash"]),
         )
 
     def _outbox_from_row(self, row: sqlite3.Row | None) -> OutboxMessage:

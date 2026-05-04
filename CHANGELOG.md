@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13.0 - 2026-05-05
+
+- Added a local tamper-evident audit log with hash-chained entries for event
+  ingestion, decisions, review cases, review decisions, and outbox status
+  changes.
+- Added admin-only audit listing and hash-chain verification endpoints.
+- Expanded full-profile smoke and tests to verify audit chain integrity.
+
 ## 0.12.0 - 2026-05-05
 
 - Added request trace IDs with `X-Trace-ID` response headers and structured

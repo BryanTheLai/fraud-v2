@@ -31,6 +31,12 @@ def test_api_generate_and_score(tmp_path) -> None:  # type: ignore[no-untyped-de
 
     cases = client.get("/v1/review/cases", headers=headers)
     assert cases.status_code == 200
+    audit = client.get("/v1/audit/entries", headers=headers)
+    assert audit.status_code == 200
+    assert any(entry["action"] == "decision.created" for entry in audit.json())
+    audit_verify = client.get("/v1/audit/verify", headers=headers)
+    assert audit_verify.status_code == 200
+    assert audit_verify.json()["valid"] is True
     whoami = client.get("/v1/auth/whoami", headers=headers)
     assert whoami.status_code == 200
     assert whoami.json()["roles"] == ["admin", "analyst", "system"]
@@ -94,5 +100,8 @@ def test_role_tokens_enforce_api_boundaries(tmp_path) -> None:  # type: ignore[n
 
     system_cases = client.get("/v1/review/cases", headers=system_headers)
     assert system_cases.status_code == 403
+
+    analyst_audit = client.get("/v1/audit/entries", headers=analyst_headers)
+    assert analyst_audit.status_code == 403
 
     app.dependency_overrides.clear()

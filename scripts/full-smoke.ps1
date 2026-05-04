@@ -151,6 +151,11 @@ try {
   $cases = @(Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/review/cases")
   Assert-FraudCondition ($cases.Count -gt 0) "Expected scoring to create at least one review case."
 
+  $audit = @(Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/audit/entries")
+  Assert-FraudCondition ($audit.Count -gt 0) "Expected audit entries after scoring."
+  $auditVerify = Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/audit/verify"
+  Assert-FraudCondition ($auditVerify.valid -eq $true) "Expected audit hash chain to verify."
+
   $dashboard = Invoke-WebRequest -Uri "$ApiBase/dashboard" -TimeoutSec 10 -UseBasicParsing
   Assert-FraudCondition ($dashboard.Content -like "*Recent decisions*") "Dashboard missing recent decisions."
   Assert-FraudCondition ($dashboard.Content -like "*Open review queue*") "Dashboard missing review queue."

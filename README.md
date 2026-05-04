@@ -58,6 +58,14 @@ Roles are intentionally small:
 - `analyst`: read decisions, graph, and review queue.
 - `admin`: all local actions.
 
+Admin-only audit endpoints:
+
+- `GET /v1/audit/entries`
+- `GET /v1/audit/verify`
+
+The audit log is hash-chained in SQLite. This is tamper-evident for local
+development, not a substitute for production WORM storage.
+
 ## Run Full Local Infra
 
 ```powershell
