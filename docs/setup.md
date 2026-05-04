@@ -191,6 +191,8 @@ uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud
 uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local
 uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite
+$env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
+uv run fraud-v2 evidence-export <decision-id> --db-path data\local\fraud_v2.sqlite --output-path data\local\evidence\decision-evidence.enc.json
 uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite --execute
@@ -480,6 +482,23 @@ a local laptop receipt, not a production capacity plan. Increase `--users` and
 `--score-users` when you want a heavier run; keep `--overwrite` explicit so the
 benchmark does not silently mix old and new data.
 
+## Encrypted Local Evidence Export
+
+After scoring a decision, export an encrypted human-review bundle:
+
+```powershell
+$env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
+uv run fraud-v2 evidence-export <decision-id> `
+  --db-path data\local\fraud_v2.sqlite `
+  --output-path data\local\evidence\decision-evidence.enc.json
+```
+
+The export uses AES-256-GCM with a Scrypt-derived key from
+`FRAUD_EVIDENCE_PASSPHRASE`. The plaintext bundle is limited to the decision,
+safe reasons, signals, feature values, policy/model versions, trace IDs, and
+explicit no-filing metadata. This is local encrypted evidence handling, not a
+regulatory filing or external KMS/HSM custody workflow.
+
 ## Test
 
 Quality gate:
@@ -624,6 +643,7 @@ tests/unit/domain/test_events.py
 | Inspect stream lag | `uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local` | Reports partition watermarks, committed offsets, and total consumer lag. |
 | Inspect stream dead letters | `uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite` | Shows invalid/conflicting stream records stored for admin inspection. |
 | Export compliance draft | `uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes a human-review-only local draft. |
+| Export encrypted evidence | `uv run fraud-v2 evidence-export <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes an AES-256-GCM encrypted local decision evidence bundle. |
 | Retention report | `uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite` | Counts expired records without deleting them. |
 | Retention prune | `uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite --execute` | Deletes expired local non-audit records. |
 | Register model | `uv run fraud-v2 model-register --status shadow` | Stores model/report hashes and metrics in `data\models\registry.json`. |

@@ -28,7 +28,8 @@ dashboard. Stream ingestion now has bounded consume, supervised consume,
 dead-letter, DLQ publishing, and lag-inspection CLIs for local reliability work.
 Threshold policies also have local signed approval commands for governance
 rehearsal before promotion. A local load benchmark CLI writes repeatable
-synthetic performance receipts for laptop validation.
+synthetic performance receipts for laptop validation. Decision evidence exports
+can be encrypted locally for human review without creating a regulatory filing.
 
 ## Run Lite Mode
 
@@ -154,6 +155,8 @@ uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud
 uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local
 uv run fraud-v2 stream-dead-letters --db-path data/local/fraud_v2.sqlite
 uv run fraud-v2 compliance-draft <decision-id> --db-path data/local/fraud_v2.sqlite
+$env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
+uv run fraud-v2 evidence-export <decision-id> --db-path data/local/fraud_v2.sqlite --output-path data/local/evidence/decision-evidence.enc.json
 uv run fraud-v2 retention-report --db-path data/local/fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data/local/fraud_v2.sqlite
 uv run fraud-v2 retention-prune --db-path data/local/fraud_v2.sqlite --execute

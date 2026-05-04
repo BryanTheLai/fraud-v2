@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -11,6 +12,10 @@ import jwt
 import typer
 
 from fraud_v2.compliance.drafts import write_compliance_draft
+from fraud_v2.compliance.evidence import (
+    EVIDENCE_PASSPHRASE_ENV,
+    write_encrypted_decision_evidence,
+)
 from fraud_v2.decision.engine import DecisionEngine
 from fraud_v2.domain.decisions import DecisionRequest
 from fraud_v2.domain.entities import EntityRef
@@ -532,6 +537,40 @@ def compliance_draft(
     decision = store.get_decision(decision_id)
     draft = write_compliance_draft(decision, output_path)
     _print_json({"draft": draft.model_dump(mode="json"), "output": str(output_path)})
+
+
+@app.command()
+def evidence_export(
+    decision_id: UUID,
+    output_path: Path = Path("data/local/evidence/decision-evidence.enc.json"),
+    passphrase_env: str = EVIDENCE_PASSPHRASE_ENV,
+    store_backend: str = typer.Option("sqlite", "--store-backend"),
+    db_path: Path = Path("data/local/fraud_v2.sqlite"),
+    postgres_dsn: str = "postgresql://fraud:fraud@localhost:5432/fraud_v2",
+) -> None:
+    passphrase = os.getenv(passphrase_env)
+    if passphrase is None:
+        raise typer.BadParameter(f"set {passphrase_env} before exporting encrypted evidence")
+    store = _store_from_cli(
+        store_backend=store_backend,
+        db_path=db_path,
+        postgres_dsn=postgres_dsn,
+    )
+    decision = store.get_decision(decision_id)
+    envelope = write_encrypted_decision_evidence(
+        decision=decision,
+        output_path=output_path,
+        passphrase=passphrase,
+    )
+    _print_json(
+        {
+            "decision_id": str(decision_id),
+            "output_path": str(output_path),
+            "schema_version": envelope["schema_version"],
+            "encryption": envelope["encryption"],
+            "kdf": envelope["kdf"],
+        }
+    )
 
 
 @app.command()

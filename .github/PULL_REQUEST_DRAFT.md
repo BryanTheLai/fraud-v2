@@ -20,6 +20,7 @@ Implemented:
 - Full-profile adapter boundaries for Postgres, Redis, Redpanda, and Neo4j.
 - Docker full-profile API uses Postgres as primary app storage.
 - Replay, monitoring, compliance draft, model registry, and shadow scoring CLIs.
+- Encrypted local decision evidence export CLI for human-review bundles.
 - Local synthetic load benchmark CLI that writes generation/load/scoring
   performance receipts.
 - Cost-weighted model threshold reporting.
@@ -75,7 +76,7 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: pass, 83 collected tests
+- Pytest: pass, 86 collected tests
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
@@ -94,6 +95,8 @@ Latest local result:
   lag dashboard yet.
 - Stream dead letters persist safe local diagnostics, not production PII-safe
   evidence storage.
+- Encrypted evidence exports are local passphrase-protected files, not external
+  KMS/HSM-backed evidence custody.
 - Policy packs, promotion registry, and signed approvals are local files only;
   no external KMS/HSM, legal approval workflow, or production policy registry
   yet.

@@ -35,6 +35,7 @@ It now runs locally in two modes:
 | Signed policy approvals | Local-safe done | Ed25519 approval records bind policy version/hash to distinct approvers; `policy-promote-approved` enforces the configured approval count. |
 | Review workflow | Done | Manual-review decisions create cases and confirmed analyst outcomes append replayable label events. |
 | Compliance drafts | Local-safe done | Draft export only; no filings, no legal claim. |
+| Encrypted evidence export | Local-safe done | `evidence-export` writes AES-256-GCM encrypted decision bundles with safe fields and no-filing metadata. |
 | Baseline ML | Done | sklearn random forest training report. |
 | Cost evaluation | Done | Profit threshold and recall under 1 percent FPR. |
 | Local load benchmark | Local-safe done | `load-benchmark` writes generation/load/scoring throughput receipts against deterministic synthetic data and SQLite. |
@@ -77,7 +78,7 @@ It now runs locally in two modes:
 | Real fraud domain and action authority | Rules/legal obligations change by product. | Choose first wedge: instant cash, ATO, card testing, ecommerce, crypto, or lending. |
 | Real labels | ML quality is fake without verified fraud/legit outcomes. | Load public datasets or real redacted labels after governance. |
 | Vendor/legal approval | KYC, liveness, sanctions, SAR, credit decisions need contracts and counsel. | Keep mock adapters until approved. |
-| Data security | Real PII cannot live in this local repo casually. | Add external OIDC, encryption, audit retention, secrets manager, DLP rules. |
+| Data security | Real PII cannot live in this local repo casually. Encrypted local evidence export exists for synthetic/local decision bundles only. | Add external OIDC, field-level encryption, audit retention, secrets manager, DLP rules. |
 | Production deployment target | Architecture differs for VM, Kubernetes, managed cloud, or on-prem. | Pick target environment and SLOs. |
 | Production capacity plan | Local benchmark receipts exist, but no real traffic or SLO model. | Run larger synthetic benchmarks and then replay real redacted event distributions. |
 | GitHub auth | Push/PR cannot happen from this machine yet. | Run `gh auth login`, then push branch and create PR. |

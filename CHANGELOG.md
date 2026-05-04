@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.32.0 - 2026-05-05
+
+- Added encrypted local decision-evidence exports using AES-256-GCM with a
+  Scrypt-derived passphrase key.
+- Added `fraud-v2 evidence-export` for writing local encrypted decision bundles
+  from SQLite or Postgres-backed stores.
+- Limited evidence payloads to safe decision fields, signals, feature values,
+  trace IDs, and explicit human-review/no-filing metadata.
+
 ## 0.31.0 - 2026-05-05
 
 - Added `fraud-v2 load-benchmark` to generate deterministic synthetic users,
