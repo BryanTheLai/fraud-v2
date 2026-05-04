@@ -102,6 +102,18 @@ Command:
 docker compose -f infra\docker-compose.yml up -d
 ```
 
+Full-profile smoke with cleanup:
+
+```powershell
+.\scripts\full-smoke.ps1
+```
+
+Keep services running for manual inspection:
+
+```powershell
+.\scripts\full-smoke.ps1 -KeepRunning
+```
+
 Expected services:
 
 ```powershell
@@ -302,6 +314,7 @@ tests/unit/domain/test_events.py
 | Task | Command | Notes |
 |---|---|---|
 | Start infra | `docker compose -f infra\docker-compose.yml up -d` | Runs local dependencies. |
+| Full-profile smoke | `.\scripts\full-smoke.ps1` | Builds and starts full profile, checks API/Prometheus/Neo4j, then stops it. |
 | Stop infra | `docker compose -f infra\docker-compose.yml down` | Does not delete volumes by default. |
 | Reset local data | `docker compose -f infra\docker-compose.yml down -v` | Destructive. Requires explicit approval in Code Factory runs. |
 | Seed synthetic data | `uv run python -m fraud_v2.seed.synthetic --events 10000` | No real PII. |

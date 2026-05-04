@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0 - 2026-05-05
+
+- Added `scripts/full-smoke.ps1` to build, start, verify, and optionally keep
+  the Docker full profile running locally.
+
 ## 0.7.0 - 2026-05-05
 
 - Added shadow scoring for registered active or shadow models against local

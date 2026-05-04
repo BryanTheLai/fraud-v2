@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-007 - Add Shadow Scoring](tasks/active/TC-20260505-007-add-shadow-scoring.md)
+- [TC-20260505-008 - Add Full Profile Smoke](tasks/active/TC-20260505-008-add-full-profile-smoke.md)
 
 ## Runs Waiting For Bryan
 
@@ -15,6 +15,7 @@ Updated: 2026-05-05
 - [RR-20260505-005](runs/RR-20260505-005.md)
 - [RR-20260505-006](runs/RR-20260505-006.md)
 - [RR-20260505-007](runs/RR-20260505-007.md)
+- [RR-20260505-008](runs/RR-20260505-008.md)
 
 ## Blocked Work
 
@@ -35,6 +36,7 @@ Updated: 2026-05-05
 - Hardened protected API routes to require bearer tokens by default.
 - Added local model registry controls for shadow and active model governance.
 - Added registered-model shadow scoring reports that do not alter decisions.
+- Added full-profile Docker smoke script.
 
 ## Lessons Added
 
@@ -46,5 +48,5 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M7 shadow scoring. Next implementation task should add
-Docker-backed integration tests and analyst UI polish.
+Review local MVP through M8 full-profile smoke. Next implementation task should
+add analyst UI polish and deeper Docker-backed integration tests.

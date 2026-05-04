@@ -52,6 +52,13 @@ docker compose -f infra\docker-compose.yml --profile full ps
 The full profile starts the API container plus Postgres, Redis, Redpanda, Neo4j,
 Prometheus, and Grafana.
 
+Full-profile smoke:
+
+```powershell
+.\scripts\full-smoke.ps1
+.\scripts\full-smoke.ps1 -KeepRunning
+```
+
 ## Reports
 
 ```powershell
