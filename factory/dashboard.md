@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-013 - Add Tamper Evident Audit](tasks/active/TC-20260505-013-add-tamper-evident-audit.md)
+- [TC-20260505-014 - Add Retention Reporting](tasks/active/TC-20260505-014-add-retention-reporting.md)
 
 ## Runs Waiting For Bryan
 
@@ -21,6 +21,7 @@ Updated: 2026-05-05
 - [RR-20260505-011](runs/RR-20260505-011.md)
 - [RR-20260505-012](runs/RR-20260505-012.md)
 - [RR-20260505-013](runs/RR-20260505-013.md)
+- [RR-20260505-014](runs/RR-20260505-014.md)
 
 ## Blocked Work
 
@@ -50,6 +51,7 @@ Updated: 2026-05-05
 - Added local request trace IDs, structured request logs, HTTP metrics, and
   Prometheus alert rules.
 - Added a local tamper-evident audit log with admin verification endpoints.
+- Added dry-run local retention reporting through API and CLI.
 
 ## Lessons Added
 
@@ -61,6 +63,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M13 tamper-evident local audit. Next implementation
-task should add retention policies or a real OIDC design if Bryan chooses to go
-deeper on production hardening.
+Review local MVP through M14 retention reporting. Next implementation task
+should add a real OIDC design or deeper Postgres-backed runtime path if Bryan
+chooses to go deeper on production hardening.

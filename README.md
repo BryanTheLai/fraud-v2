@@ -62,6 +62,7 @@ Admin-only audit endpoints:
 
 - `GET /v1/audit/entries`
 - `GET /v1/audit/verify`
+- `GET /v1/retention/report`
 
 The audit log is hash-chained in SQLite. This is tamper-evident for local
 development, not a substitute for production WORM storage.
@@ -107,6 +108,7 @@ uv run fraud-v2 llm-stub
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data/local/fraud_v2.sqlite --dry-run
 uv run fraud-v2 compliance-draft <decision-id> --db-path data/local/fraud_v2.sqlite
+uv run fraud-v2 retention-report --db-path data/local/fraud_v2.sqlite
 uv run fraud-v2 model-register --status shadow
 uv run fraud-v2 model-promote baseline-20260505-001
 uv run fraud-v2 shadow-score --status active

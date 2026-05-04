@@ -37,6 +37,9 @@ def test_api_generate_and_score(tmp_path) -> None:  # type: ignore[no-untyped-de
     audit_verify = client.get("/v1/audit/verify", headers=headers)
     assert audit_verify.status_code == 200
     assert audit_verify.json()["valid"] is True
+    retention = client.get("/v1/retention/report", headers=headers)
+    assert retention.status_code == 200
+    assert retention.json()["policy"]["event_days"] == 90
     whoami = client.get("/v1/auth/whoami", headers=headers)
     assert whoami.status_code == 200
     assert whoami.json()["roles"] == ["admin", "analyst", "system"]
@@ -103,5 +106,8 @@ def test_role_tokens_enforce_api_boundaries(tmp_path) -> None:  # type: ignore[n
 
     analyst_audit = client.get("/v1/audit/entries", headers=analyst_headers)
     assert analyst_audit.status_code == 403
+
+    analyst_retention = client.get("/v1/retention/report", headers=analyst_headers)
+    assert analyst_retention.status_code == 403
 
     app.dependency_overrides.clear()

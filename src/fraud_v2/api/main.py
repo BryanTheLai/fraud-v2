@@ -21,6 +21,7 @@ from fraud_v2.domain.entities import EntityRef
 from fraud_v2.domain.enums import EntityType
 from fraud_v2.domain.errors import DecisionNotFound, DuplicatePayloadConflict
 from fraud_v2.domain.events import EventEnvelope
+from fraud_v2.domain.retention import RetentionPolicy, RetentionReport
 from fraud_v2.domain.reviews import ReviewCase, ReviewDecision, ReviewDecisionRequest
 from fraud_v2.graph.service import GraphService
 from fraud_v2.observability.logging import (
@@ -261,6 +262,30 @@ def list_audit_entries(
 )
 def verify_audit_chain(db: SQLiteStore = Depends(store)) -> AuditVerificationReport:
     return db.verify_audit_chain()
+
+
+@app.get(
+    "/v1/retention/report",
+    response_model=RetentionReport,
+    dependencies=[Depends(require_roles(AuthRole.ADMIN))],
+)
+def retention_report(
+    event_days: int = Query(default=90, ge=1),
+    decision_days: int = Query(default=365, ge=1),
+    review_days: int = Query(default=365, ge=1),
+    outbox_days: int = Query(default=30, ge=1),
+    audit_days: int = Query(default=3650, ge=1),
+    db: SQLiteStore = Depends(store),
+) -> RetentionReport:
+    return db.retention_report(
+        policy=RetentionPolicy(
+            event_days=event_days,
+            decision_days=decision_days,
+            review_days=review_days,
+            outbox_days=outbox_days,
+            audit_days=audit_days,
+        )
+    )
 
 
 @app.post("/v1/events", dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.SYSTEM))])

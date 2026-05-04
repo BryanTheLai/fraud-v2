@@ -155,6 +155,8 @@ try {
   Assert-FraudCondition ($audit.Count -gt 0) "Expected audit entries after scoring."
   $auditVerify = Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/audit/verify"
   Assert-FraudCondition ($auditVerify.valid -eq $true) "Expected audit hash chain to verify."
+  $retention = Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/retention/report"
+  Assert-FraudCondition ($retention.total_expired -ge 0) "Expected retention report to load."
 
   $dashboard = Invoke-WebRequest -Uri "$ApiBase/dashboard" -TimeoutSec 10 -UseBasicParsing
   Assert-FraudCondition ($dashboard.Content -like "*Recent decisions*") "Dashboard missing recent decisions."

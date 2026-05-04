@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -12,6 +13,7 @@ from fraud_v2.decision.engine import DecisionEngine
 from fraud_v2.domain.decisions import DecisionRequest
 from fraud_v2.domain.entities import EntityRef
 from fraud_v2.domain.enums import EntityType
+from fraud_v2.domain.retention import RetentionPolicy
 from fraud_v2.evaluation.reports import write_monitoring_report
 from fraud_v2.infrastructure.redpanda_publisher import RedpandaEventPublisher
 from fraud_v2.llm_lab.provider import NoveltyLedger, provider_from_env
@@ -193,6 +195,30 @@ def compliance_draft(
 
 
 @app.command()
+def retention_report(
+    db_path: Path = Path("data/local/fraud_v2.sqlite"),
+    as_of: str | None = None,
+    event_days: int = typer.Option(90, min=1),
+    decision_days: int = typer.Option(365, min=1),
+    review_days: int = typer.Option(365, min=1),
+    outbox_days: int = typer.Option(30, min=1),
+    audit_days: int = typer.Option(3650, min=1),
+) -> None:
+    report_as_of = _parse_as_of(as_of)
+    report = SQLiteStore(db_path).retention_report(
+        as_of=report_as_of,
+        policy=RetentionPolicy(
+            event_days=event_days,
+            decision_days=decision_days,
+            review_days=review_days,
+            outbox_days=outbox_days,
+            audit_days=audit_days,
+        ),
+    )
+    _print_json(report.model_dump(mode="json"))
+
+
+@app.command()
 def model_register(
     model_path: Path = Path("data/models/baseline/baseline.joblib"),
     report_path: Path = Path("data/models/baseline/baseline-report.json"),
@@ -238,3 +264,12 @@ def shadow_score(
         status=status,
     )
     _print_json(report)
+
+
+def _parse_as_of(raw_value: str | None) -> datetime:
+    if raw_value is None:
+        return datetime.now(UTC)
+    parsed = datetime.fromisoformat(raw_value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed

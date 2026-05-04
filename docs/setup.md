@@ -222,6 +222,15 @@ Invoke-RestMethod `
 The local audit log is hash-chained in SQLite. It detects local tampering but is
 not production WORM storage.
 
+Dry-run retention report:
+
+```powershell
+uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite
+```
+
+The retention report counts expired local records by table. It does not delete
+data.
+
 ## Local Observability
 
 The API emits:

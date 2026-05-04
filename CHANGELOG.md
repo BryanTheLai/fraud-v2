@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.14.0 - 2026-05-05
+
+- Added dry-run local retention reports with per-table expiry counts and
+  configurable retention windows.
+- Added admin-only retention report API and CLI support.
+- Expanded tests and full-profile smoke to verify retention reporting.
+
 ## 0.13.0 - 2026-05-05
 
 - Added a local tamper-evident audit log with hash-chained entries for event

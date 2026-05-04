@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
@@ -13,6 +13,7 @@ from fraud_v2.domain.decisions import DecisionResponse
 from fraud_v2.domain.errors import DecisionNotFound, DuplicatePayloadConflict
 from fraud_v2.domain.events import EventEnvelope
 from fraud_v2.domain.outbox import OutboxMessage, OutboxStatus
+from fraud_v2.domain.retention import RetentionPolicy, RetentionReport, RetentionTableReport
 from fraud_v2.domain.reviews import ReviewCase, ReviewDecision
 from fraud_v2.observability.logging import get_trace_id
 
@@ -390,6 +391,78 @@ class SQLiteStore:
             previous_hash = entry.entry_hash
         return AuditVerificationReport(valid=True, entries_checked=len(rows))
 
+    def retention_report(
+        self,
+        as_of: datetime | None = None,
+        policy: RetentionPolicy | None = None,
+    ) -> RetentionReport:
+        report_as_of = as_of or datetime.now(UTC)
+        active_policy = policy or RetentionPolicy()
+        tables = [
+            self._retention_table_report(
+                table="events",
+                retention_days=active_policy.event_days,
+                as_of=report_as_of,
+                expired_count=self._count_events_before(
+                    report_as_of - timedelta(days=active_policy.event_days)
+                ),
+            ),
+            self._retention_table_report(
+                table="decisions",
+                retention_days=active_policy.decision_days,
+                as_of=report_as_of,
+                expired_count=self._count_decisions_before(
+                    report_as_of - timedelta(days=active_policy.decision_days)
+                ),
+            ),
+            self._retention_table_report(
+                table="review_cases",
+                retention_days=active_policy.review_days,
+                as_of=report_as_of,
+                expired_count=self._count_json_created_before(
+                    table="review_cases",
+                    json_column="case_json",
+                    cutoff_at=report_as_of - timedelta(days=active_policy.review_days),
+                ),
+            ),
+            self._retention_table_report(
+                table="review_decisions",
+                retention_days=active_policy.review_days,
+                as_of=report_as_of,
+                expired_count=self._count_json_created_before(
+                    table="review_decisions",
+                    json_column="decision_json",
+                    cutoff_at=report_as_of - timedelta(days=active_policy.review_days),
+                ),
+            ),
+            self._retention_table_report(
+                table="outbox_messages",
+                retention_days=active_policy.outbox_days,
+                as_of=report_as_of,
+                expired_count=self._count_iso_column_before(
+                    table="outbox_messages",
+                    column="created_at",
+                    cutoff_at=report_as_of - timedelta(days=active_policy.outbox_days),
+                ),
+            ),
+            self._retention_table_report(
+                table="audit_entries",
+                retention_days=active_policy.audit_days,
+                as_of=report_as_of,
+                expired_count=self._count_iso_column_before(
+                    table="audit_entries",
+                    column="created_at",
+                    cutoff_at=report_as_of - timedelta(days=active_policy.audit_days),
+                ),
+            ),
+        ]
+        return RetentionReport(
+            as_of=report_as_of,
+            policy=active_policy,
+            tables=tables,
+            total_expired=sum(table.expired_count for table in tables),
+        )
+
     def _enqueue_outbox(
         self, conn: sqlite3.Connection, event: EventEnvelope, event_json: str, topic: str
     ) -> None:
@@ -520,6 +593,66 @@ class SQLiteStore:
             previous_hash=str(row["previous_hash"]),
             entry_hash=str(row["entry_hash"]),
         )
+
+    def _retention_table_report(
+        self,
+        *,
+        table: str,
+        retention_days: int,
+        as_of: datetime,
+        expired_count: int,
+    ) -> RetentionTableReport:
+        return RetentionTableReport(
+            table=table,
+            retention_days=retention_days,
+            cutoff_at=as_of - timedelta(days=retention_days),
+            expired_count=expired_count,
+        )
+
+    def _count_events_before(self, cutoff_at: datetime) -> int:
+        with self._connect() as conn:
+            row = conn.execute(
+                "select count(*) as count from events where occurred_at < ?",
+                (cutoff_at.isoformat(),),
+            ).fetchone()
+        return int(row["count"])
+
+    def _count_decisions_before(self, cutoff_at: datetime) -> int:
+        with self._connect() as conn:
+            rows = conn.execute("select decision_json from decisions").fetchall()
+        count = 0
+        for row in rows:
+            decision = DecisionResponse.model_validate_json(str(row["decision_json"]))
+            if decision.created_at < cutoff_at:
+                count += 1
+        return count
+
+    def _count_json_created_before(self, table: str, json_column: str, cutoff_at: datetime) -> int:
+        if table not in {"review_cases", "review_decisions"}:
+            raise ValueError(f"unsupported retention table: {table}")
+        if json_column not in {"case_json", "decision_json"}:
+            raise ValueError(f"unsupported retention column: {json_column}")
+        with self._connect() as conn:
+            rows = conn.execute(f"select {json_column} from {table}").fetchall()
+        count = 0
+        for row in rows:
+            payload = json.loads(str(row[json_column]))
+            created_at = datetime.fromisoformat(str(payload["created_at"]))
+            if created_at < cutoff_at:
+                count += 1
+        return count
+
+    def _count_iso_column_before(self, table: str, column: str, cutoff_at: datetime) -> int:
+        if table not in {"outbox_messages", "audit_entries"}:
+            raise ValueError(f"unsupported retention table: {table}")
+        if column != "created_at":
+            raise ValueError(f"unsupported retention column: {column}")
+        with self._connect() as conn:
+            row = conn.execute(
+                f"select count(*) as count from {table} where {column} < ?",
+                (cutoff_at.isoformat(),),
+            ).fetchone()
+        return int(row["count"])
 
     def _outbox_from_row(self, row: sqlite3.Row | None) -> OutboxMessage:
         if row is None:
