@@ -167,6 +167,9 @@ try {
   Assert-FraudCondition ($grafanaDashboard.StatusCode -eq 200) "Grafana dashboard did not load."
 
   Wait-PrometheusQuery -Query 'up{job="fraud-v2-api", instance="api:8000"}' -TimeoutSeconds $TimeoutSeconds
+  $rules = Invoke-RestMethod -Uri "$PrometheusBase/api/v1/rules" -TimeoutSec 10
+  $rulesJson = $rules.data.groups | ConvertTo-Json -Depth 20
+  Assert-FraudCondition ($rulesJson -like "*FraudV2APIUnavailable*") "Prometheus alert rules did not load."
 
   Invoke-FraudCompose ps
 }

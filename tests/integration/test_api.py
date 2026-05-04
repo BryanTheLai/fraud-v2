@@ -54,6 +54,23 @@ def test_api_rejects_missing_token(tmp_path) -> None:  # type: ignore[no-untyped
     app.dependency_overrides.clear()
 
 
+def test_api_adds_trace_header_and_request_metrics(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    db = SQLiteStore(tmp_path / "api.sqlite")
+    app.dependency_overrides[store] = lambda: db
+    client = TestClient(app)
+
+    response = client.get("/health/live", headers={"X-Request-ID": "trace-test-001"})
+    assert response.status_code == 200
+    assert response.headers["X-Trace-ID"] == "trace-test-001"
+
+    metrics = client.get("/metrics")
+    assert metrics.status_code == 200
+    assert "fraud_http_requests_total" in metrics.text
+    assert 'route="/health/live"' in metrics.text
+
+    app.dependency_overrides.clear()
+
+
 def test_role_tokens_enforce_api_boundaries(tmp_path) -> None:  # type: ignore[no-untyped-def]
     db = SQLiteStore(tmp_path / "api.sqlite")
     app.dependency_overrides[store] = lambda: db

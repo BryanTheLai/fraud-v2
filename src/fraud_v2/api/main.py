@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Awaitable, Callable
 from html import escape
+from logging import getLogger
 from pathlib import Path
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, Query
+from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
 
 from fraud_v2 import __version__
@@ -19,10 +22,18 @@ from fraud_v2.domain.errors import DecisionNotFound, DuplicatePayloadConflict
 from fraud_v2.domain.events import EventEnvelope
 from fraud_v2.domain.reviews import ReviewCase, ReviewDecision, ReviewDecisionRequest
 from fraud_v2.graph.service import GraphService
+from fraud_v2.observability.logging import (
+    configure_logging,
+    new_trace_id,
+    reset_trace_id,
+    set_trace_id,
+)
 from fraud_v2.observability.metrics import (
     decision_counter,
     decision_latency,
     event_counter,
+    http_request_counter,
+    http_request_latency,
     metrics_response,
 )
 from fraud_v2.review.service import ReviewService
@@ -30,11 +41,60 @@ from fraud_v2.security.auth import AuthPrincipal, AuthRole, require_roles
 from fraud_v2.storage.sqlite_store import SQLiteStore
 from fraud_v2.synthetic.generator import SyntheticFraudGenerator
 
+configure_logging()
+logger = getLogger("fraud_v2.api")
 app = FastAPI(title="fraud-v2", version=__version__)
 
 
 def store(settings: Settings = Depends(get_settings)) -> SQLiteStore:
     return SQLiteStore(settings.sqlite_path)
+
+
+@app.middleware("http")
+async def add_trace_and_request_metrics(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
+    trace_id = request.headers.get("X-Request-ID") or new_trace_id()
+    token = set_trace_id(trace_id)
+    start = time.perf_counter()
+    route = request.url.path
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        route = _route_template(request)
+        response.headers["X-Trace-ID"] = trace_id
+        return response
+    finally:
+        duration = time.perf_counter() - start
+        route = _route_template(request, fallback=route)
+        status = str(status_code)
+        http_request_counter.labels(
+            method=request.method,
+            route=route,
+            status=status,
+        ).inc()
+        http_request_latency.labels(method=request.method, route=route).observe(duration)
+        logger.info(
+            "request_completed",
+            extra={
+                "trace_id": trace_id,
+                "method": request.method,
+                "path": route,
+                "status_code": status_code,
+                "duration_ms": round(duration * 1000, 3),
+            },
+        )
+        reset_trace_id(token)
+
+
+def _route_template(request: Request, fallback: str | None = None) -> str:
+    route = request.scope.get("route")
+    path = getattr(route, "path", None)
+    if isinstance(path, str):
+        return path
+    return fallback or request.url.path
 
 
 @app.get("/")

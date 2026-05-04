@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.0 - 2026-05-05
+
+- Added request trace IDs with `X-Trace-ID` response headers and structured
+  JSON request logs.
+- Added HTTP request counters and latency histograms.
+- Added local Prometheus alert rules for API availability, decision latency,
+  and HTTP 5xx responses.
+
 ## 0.11.0 - 2026-05-05
 
 - Added local role-aware API authorization with `admin`, `analyst`, and

@@ -41,3 +41,14 @@ def test_full_smoke_exercises_functional_api_and_observability() -> None:
     assert "/v1/review/cases" in smoke_script
     assert "fraud_decisions_total" in smoke_script
     assert 'up{job="fraud-v2-api", instance="api:8000"}' in smoke_script
+    assert "FraudV2APIUnavailable" in smoke_script
+
+
+def test_prometheus_alert_rules_are_loaded_by_config() -> None:
+    prometheus = (ROOT / "infra" / "prometheus.yml").read_text(encoding="utf-8")
+    alerts = (ROOT / "infra" / "prometheus-alerts.yml").read_text(encoding="utf-8")
+
+    assert "prometheus-alerts.yml" in prometheus
+    assert "FraudV2APIUnavailable" in alerts
+    assert "FraudV2DecisionLatencyP95High" in alerts
+    assert "FraudV2HTTPServerErrors" in alerts

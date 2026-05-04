@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-011 - Add Local RBAC](tasks/active/TC-20260505-011-add-local-rbac.md)
+- [TC-20260505-012 - Add Local Tracing And Alerts](tasks/active/TC-20260505-012-add-local-tracing-alerts.md)
 
 ## Runs Waiting For Bryan
 
@@ -19,6 +19,7 @@ Updated: 2026-05-05
 - [RR-20260505-009](runs/RR-20260505-009.md)
 - [RR-20260505-010](runs/RR-20260505-010.md)
 - [RR-20260505-011](runs/RR-20260505-011.md)
+- [RR-20260505-012](runs/RR-20260505-012.md)
 
 ## Blocked Work
 
@@ -45,6 +46,8 @@ Updated: 2026-05-05
   scoring, dashboard content, metrics, Grafana, and Prometheus scraping.
 - Added local role-aware API authorization for admin, analyst, and system
   tokens.
+- Added local request trace IDs, structured request logs, HTTP metrics, and
+  Prometheus alert rules.
 
 ## Lessons Added
 
@@ -56,6 +59,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M11 local RBAC. Next implementation task should add
-local logs/traces/SLO alerts or a real OIDC design if Bryan chooses to go
-deeper on production hardening.
+Review local MVP through M12 local tracing and alerts. Next implementation task
+should add retention/audit immutability or a real OIDC design if Bryan chooses
+to go deeper on production hardening.

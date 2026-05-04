@@ -185,6 +185,9 @@ Local URLs after implementation:
 - Redpanda Console: `http://localhost:8080`
 - Neo4j Browser: `http://localhost:7474`
 
+All API responses include `X-Trace-ID`. Send `X-Request-ID` to pin a local trace
+ID while debugging.
+
 Protected API calls require:
 
 ```text
@@ -207,6 +210,22 @@ Role boundaries:
 | `system` | Ingest events, generate synthetic data, score decisions. |
 | `analyst` | Read decisions, graph neighborhoods, and review queue; submit review outcomes. |
 | `admin` | All local actions. |
+
+## Local Observability
+
+The API emits:
+
+- structured JSON request logs
+- `X-Trace-ID` response headers
+- `fraud_http_requests_total`
+- `fraud_http_request_latency_seconds`
+- fraud decision and event counters
+
+Prometheus loads local alert rules from `infra/prometheus-alerts.yml`:
+
+- API unavailable
+- decision p95 latency above 500ms
+- HTTP 5xx responses
 
 Check the current token:
 

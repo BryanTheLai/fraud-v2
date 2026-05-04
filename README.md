@@ -40,6 +40,9 @@ Local URLs:
 - Analyst dashboard: `http://127.0.0.1:8000/dashboard`
 - Metrics: `http://127.0.0.1:8000/metrics`
 
+Every API response includes `X-Trace-ID`. Pass `X-Request-ID` to force a known
+trace ID during local debugging.
+
 Protected `/v1/*` endpoints require `Authorization: Bearer dev-token-change-me`
 by default. Override `FRAUD_API_TOKEN` locally instead of committing secrets.
 For local role testing, set `FRAUD_API_TOKENS` with comma-separated
@@ -67,6 +70,7 @@ Prometheus, and Grafana.
 
 Grafana opens at `http://127.0.0.1:3000/d/fraud-v2-overview/fraud-v2-overview`
 with anonymous local viewer access enabled by the Docker profile.
+Prometheus also loads local alert rules from `infra/prometheus-alerts.yml`.
 
 Full-profile smoke:
 

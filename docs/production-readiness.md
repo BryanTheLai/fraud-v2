@@ -39,6 +39,7 @@ It now runs locally in two modes:
 | LLM synthetic lab | Local-safe done | Offline default plus OpenAI/Azure provider boundary. |
 | Full Docker profile | Done | Full profile smoke passed locally. |
 | Grafana observability | Local-safe done | Provisioned dashboard for decisions, latency, ingested events, and API target health. |
+| Request tracing/logging | Local-safe done | `X-Trace-ID`, structured JSON request logs, HTTP metrics, and Prometheus alert rules. |
 | CI | Done | GitHub Actions for tests, Docker build, and API image smoke. |
 
 ## Still Fake Or Local-Only
@@ -53,7 +54,7 @@ It now runs locally in two modes:
 | Persistence | SQLite lite path is primary; Postgres adapter exists but is not the default app store. |
 | Streaming | Redpanda publisher exists; real stream worker topology is not complete. |
 | Graph DB | Neo4j projector exists; decision engine still uses NetworkX fallback. |
-| Observability | Prometheus metrics and a basic Grafana dashboard exist; no logs/traces/SLO alerting yet. |
+| Observability | Local metrics, dashboard, request logs, trace IDs, and Prometheus alerts exist; no distributed tracing backend yet. |
 | Deployment | Local Docker only. No cloud/IaC/production deploy. |
 
 ## Hard Blockers To Real Production
