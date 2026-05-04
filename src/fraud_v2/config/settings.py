@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     jwt_audience: str = "fraud-v2-api"
     jwt_leeway_seconds: int = 30
     jwt_roles_claim: str = "roles"
+    jwt_algorithms: str = "HS256"
+    jwt_jwks_path: str = ""
+    jwt_jwks_url: str = ""
+    jwt_oidc_discovery_url: str = ""
 
 
 def get_settings() -> Settings:

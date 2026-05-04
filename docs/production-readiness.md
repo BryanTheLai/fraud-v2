@@ -51,7 +51,7 @@ It now runs locally in two modes:
 | KYC/device/consortium | Mock connectors only. No real vendors. |
 | SAR/adverse action | Drafts only. No filing. No legal compliance claim. |
 | Data | Synthetic only unless public datasets are manually downloaded. |
-| Auth | Local role-token and JWT/OIDC-shaped auth modes exist. No external IdP, user lifecycle, or sessions. |
+| Auth | Local role-token, HS256 JWT, and JWKS/OIDC-shaped JWT verification exist. No real user lifecycle or sessions. |
 | Secrets | `.env` pattern only. No vault/KMS. |
 | Audit immutability | Hash-chained SQLite only. No WORM/object-lock storage. |
 | Retention enforcement | Explicit local prune exists for non-audit records. No schedules, legal holds, archive tiers, or WORM audit archival yet. |

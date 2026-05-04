@@ -58,6 +58,10 @@ Target local services:
 | `FRAUD_JWT_SECRET` | only for JWT | 32+ byte local secret | Required when `FRAUD_AUTH_MODE=jwt`. Do not commit it. |
 | `FRAUD_JWT_ISSUER` | no | `fraud-v2-local` | Expected JWT issuer. |
 | `FRAUD_JWT_AUDIENCE` | no | `fraud-v2-api` | Expected JWT audience. |
+| `FRAUD_JWT_ALGORITHMS` | no | `HS256` or `RS256` | Allowed JWT algorithms. JWKS mode must use asymmetric algorithms. |
+| `FRAUD_JWT_JWKS_PATH` | no | `C:\path\to\jwks.json` | Local JWKS file for offline asymmetric token verification. |
+| `FRAUD_JWT_JWKS_URL` | no | `https://issuer.example/.well-known/jwks.json` | Direct JWKS endpoint. |
+| `FRAUD_JWT_OIDC_DISCOVERY_URL` | no | `https://issuer.example/.well-known/openid-configuration` | OIDC discovery document with `jwks_uri`. |
 | `DATABASE_URL` | yes | `postgresql+psycopg://fraud:fraud@localhost:5432/fraud_v2` | App database. |
 | `REDIS_URL` | yes | `redis://localhost:6379/0` | Online feature store. |
 | `REDPANDA_BOOTSTRAP_SERVERS` | yes | `localhost:19092` | Event bus. |
@@ -235,6 +239,18 @@ Use the printed token as `Authorization: Bearer <token>`. JWT mode validates
 issuer, audience, expiry, subject, and role claims. It is an offline local
 boundary for production-shaped development, not a real external identity
 provider.
+
+JWKS/OIDC-shaped JWT verification:
+
+```powershell
+$env:FRAUD_AUTH_MODE="jwt"
+$env:FRAUD_JWT_ALGORITHMS="RS256"
+$env:FRAUD_JWT_JWKS_PATH="C:\path\to\jwks.json"
+```
+
+Use `FRAUD_JWT_JWKS_URL` for a direct JWKS endpoint or
+`FRAUD_JWT_OIDC_DISCOVERY_URL` for OIDC discovery. Do not allow HS algorithms in
+JWKS mode; the API fails closed if HS is configured with JWKS.
 
 Admin-only audit checks:
 

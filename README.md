@@ -73,6 +73,18 @@ Use the printed token as `Authorization: Bearer <token>`. JWT mode validates
 issuer, audience, expiry, subject, and role claims. It is still local auth, not
 a replacement for a production OIDC provider.
 
+JWKS/OIDC-shaped verification is also available for asymmetric JWTs:
+
+```powershell
+$env:FRAUD_AUTH_MODE="jwt"
+$env:FRAUD_JWT_ALGORITHMS="RS256"
+$env:FRAUD_JWT_JWKS_PATH="C:\path\to\jwks.json"
+```
+
+Use `FRAUD_JWT_JWKS_URL` for a direct JWKS endpoint or
+`FRAUD_JWT_OIDC_DISCOVERY_URL` for an OIDC discovery document. HS algorithms are
+rejected whenever JWKS verification is configured.
+
 Admin-only audit endpoints:
 
 - `GET /v1/audit/entries`

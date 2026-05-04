@@ -1,8 +1,12 @@
+import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import jwt
 import pytest
+from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import HTTPException
+from jwt.algorithms import RSAAlgorithm
 
 from fraud_v2.config.settings import Settings
 from fraud_v2.security.auth import AuthRole, authorize_bearer
@@ -114,16 +118,64 @@ def test_jwt_auth_role_claim_must_match_allowed_role() -> None:
     assert exc.value.status_code == 403
 
 
+def test_jwt_auth_accepts_rs256_token_from_local_jwks(tmp_path: Path) -> None:
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    jwks_path = tmp_path / "jwks.json"
+    jwk = json.loads(RSAAlgorithm.to_jwk(private_key.public_key()))
+    jwk.update({"kid": "local-rs256-key", "alg": "RS256", "use": "sig"})
+    jwks_path.write_text(json.dumps({"keys": [jwk]}), encoding="utf-8")
+    token = _jwt_token(
+        roles=["admin"],
+        secret=private_key,
+        algorithm="RS256",
+        headers={"kid": "local-rs256-key"},
+    )
+
+    principal = authorize_bearer(
+        authorization=f"Bearer {token}",
+        settings=Settings(
+            auth_mode="jwt",
+            jwt_algorithms="RS256",
+            jwt_jwks_path=str(jwks_path),
+        ),
+        allowed_roles={AuthRole.ADMIN},
+    )
+
+    assert principal.subject == "analyst-1"
+    assert principal.roles == frozenset({AuthRole.ADMIN})
+
+
+def test_jwt_jwks_auth_rejects_symmetric_algorithms(tmp_path: Path) -> None:
+    jwks_path = tmp_path / "jwks.json"
+    jwks_path.write_text(json.dumps({"keys": []}), encoding="utf-8")
+    token = _jwt_token(roles=["admin"], secret=JWT_SECRET)
+
+    with pytest.raises(HTTPException) as exc:
+        authorize_bearer(
+            authorization=f"Bearer {token}",
+            settings=Settings(
+                auth_mode="jwt",
+                jwt_algorithms="HS256",
+                jwt_jwks_path=str(jwks_path),
+            ),
+            allowed_roles={AuthRole.ADMIN},
+        )
+
+    assert exc.value.status_code == 500
+
+
 JWT_SECRET = "local-jwt-secret-for-fraud-v2-tests-32b"
 
 
 def _jwt_token(
     *,
     roles: list[str],
-    secret: str,
+    secret: object,
     subject: str = "analyst-1",
     issuer: str = "fraud-v2-local",
     audience: str = "fraud-v2-api",
+    algorithm: str = "HS256",
+    headers: dict[str, str] | None = None,
 ) -> str:
     now = datetime.now(UTC)
     return jwt.encode(
@@ -136,5 +188,6 @@ def _jwt_token(
             "exp": now + timedelta(minutes=5),
         },
         secret,
-        algorithm="HS256",
+        algorithm=algorithm,
+        headers=headers,
     )

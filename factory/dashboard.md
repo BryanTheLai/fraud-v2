@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-021 - Add Retention Pruning](tasks/active/TC-20260505-021-add-retention-pruning.md)
+- [TC-20260505-022 - Add JWKS Auth](tasks/active/TC-20260505-022-add-jwks-auth.md)
 
 ## Runs Waiting For Bryan
 
@@ -29,6 +29,7 @@ Updated: 2026-05-05
 - [RR-20260505-019](runs/RR-20260505-019.md)
 - [RR-20260505-020](runs/RR-20260505-020.md)
 - [RR-20260505-021](runs/RR-20260505-021.md)
+- [RR-20260505-022](runs/RR-20260505-022.md)
 
 ## Blocked Work
 
@@ -68,6 +69,7 @@ Updated: 2026-05-05
 - Added a local graph evidence dashboard for analyst review.
 - Switched Docker full mode to use Postgres as the primary app store.
 - Added explicit local retention pruning with dry-run defaults.
+- Added offline-testable JWKS/OIDC-shaped JWT verification.
 
 ## Lessons Added
 
@@ -79,6 +81,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M21 explicit retention pruning. Next implementation
-task should add external OIDC discovery/JWKS support or a stream consumer worker
-if Bryan chooses to go deeper on production hardening.
+Review local MVP through M22 JWKS/OIDC-shaped JWT verification. Next
+implementation task should add a stream consumer worker or policy/versioned
+rule packs if Bryan chooses to go deeper on production hardening.

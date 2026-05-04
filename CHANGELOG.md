@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.22.0 - 2026-05-05
+
+- Added JWKS/OIDC-shaped JWT verification for asymmetric tokens through local
+  JWKS files, direct JWKS URLs, or OIDC discovery URLs.
+- Kept local HS256 JWT auth available while refusing HS algorithms whenever
+  JWKS verification is configured.
+- Added crypto-backed JWT test coverage for RS256 token validation.
+
 ## 0.21.0 - 2026-05-05
 
 - Added explicit local retention pruning for expired events, decisions, review

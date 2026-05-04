@@ -27,6 +27,8 @@ Implemented:
 - Provisioned Grafana dashboard for full-profile observability.
 - Local role-aware API authorization for admin, analyst, and system tokens.
 - JWT/OIDC-shaped local auth mode with a token minting CLI for offline testing.
+- JWKS/OIDC-shaped JWT verification for asymmetric tokens using local JWKS
+  files, direct JWKS URLs, or discovery URLs.
 - Request trace IDs, structured JSON request logs, HTTP metrics, and local
   Prometheus alert rules.
 - Tamper-evident local audit log and admin audit verification endpoints.
@@ -55,7 +57,7 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: 54 passed
+- Pytest: 56 passed
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
