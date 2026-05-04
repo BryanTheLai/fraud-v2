@@ -5,13 +5,13 @@ from fraud_v2.domain.enums import DecisionAction, FeatureFreshnessStatus, RiskTi
 from fraud_v2.features.builder import FeatureBuilder
 from fraud_v2.graph.service import GraphService
 from fraud_v2.rules.engine import RuleEngine
-from fraud_v2.storage.sqlite_store import SQLiteStore
+from fraud_v2.storage.ports import FraudStore
 
 
 class DecisionEngine:
     policy_version = "local-policy-20260505-001"
 
-    def __init__(self, store: SQLiteStore) -> None:
+    def __init__(self, store: FraudStore) -> None:
         self.store = store
         self.rules = RuleEngine()
 

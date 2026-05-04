@@ -44,6 +44,7 @@ def test_confirmed_review_outcome_creates_review_and_label_events(tmp_path: Path
     assert len(label_events) == 1
     assert label_events[0].payload.label_value == LabelValue.FRAUD
     assert label_events[0].payload.source == "manual_review"
+    assert store.list_review_cases()[0].status == "closed"
 
 
 def test_non_final_review_outcome_does_not_create_training_label(tmp_path: Path) -> None:
@@ -66,6 +67,7 @@ def test_non_final_review_outcome_does_not_create_training_label(tmp_path: Path)
     events = store.list_events()
 
     assert [event.event_type for event in events] == [EventType.MANUAL_REVIEW_DECIDED]
+    assert store.list_review_cases()[0].status == "closed"
 
 
 def _manual_review_decision(user_id: str) -> DecisionResponse:

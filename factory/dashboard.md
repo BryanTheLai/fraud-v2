@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-019 - Add Graph Evidence Dashboard](tasks/active/TC-20260505-019-add-graph-evidence-dashboard.md)
+- [TC-20260505-020 - Use Postgres In Full Profile](tasks/active/TC-20260505-020-use-postgres-in-full-profile.md)
 
 ## Runs Waiting For Bryan
 
@@ -27,6 +27,7 @@ Updated: 2026-05-05
 - [RR-20260505-017](runs/RR-20260505-017.md)
 - [RR-20260505-018](runs/RR-20260505-018.md)
 - [RR-20260505-019](runs/RR-20260505-019.md)
+- [RR-20260505-020](runs/RR-20260505-020.md)
 
 ## Blocked Work
 
@@ -64,6 +65,7 @@ Updated: 2026-05-05
 - Added JWT/OIDC-shaped local auth with issuer, audience, expiry, and role
   validation.
 - Added a local graph evidence dashboard for analyst review.
+- Switched Docker full mode to use Postgres as the primary app store.
 
 ## Lessons Added
 
@@ -75,6 +77,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M19 graph evidence dashboard. Next implementation task
-should move more runtime storage paths to Postgres or add external OIDC
-discovery/JWKS support if Bryan chooses to go deeper on production hardening.
+Review local MVP through M20 Postgres-backed full profile. Next implementation
+task should add external OIDC discovery/JWKS support or retention enforcement
+if Bryan chooses to go deeper on production hardening.

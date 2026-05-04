@@ -22,8 +22,9 @@ Current state: local MVP plus full-profile adapter layer implemented. It runs in
 lite mode with synthetic data, SQLite storage, rules/graph scoring, baseline
 model training, FastAPI endpoints, dashboard, metrics, tests, CI workflow, and
 Docker Compose scaffolding. Analyst review outcomes feed canonical review and
-label events for replay/training. Full mode includes replaceable Postgres,
-Redis, Redpanda, Neo4j, Prometheus, and a provisioned Grafana dashboard.
+label events for replay/training. Full mode uses Postgres as the primary app
+store and includes Redis, Redpanda, Neo4j, Prometheus, and a provisioned Grafana
+dashboard.
 
 ## Run Lite Mode
 
@@ -89,7 +90,8 @@ docker compose -f infra\docker-compose.yml --profile full ps
 ```
 
 The full profile starts the API container plus Postgres, Redis, Redpanda, Neo4j,
-Prometheus, and Grafana.
+Prometheus, and Grafana. The API uses `FRAUD_STORE_BACKEND=postgres` in this
+profile. Lite mode still defaults to SQLite.
 
 Grafana opens at `http://127.0.0.1:3000/d/fraud-v2-overview/fraud-v2-overview`
 with anonymous local viewer access enabled by the Docker profile.
@@ -102,13 +104,13 @@ Full-profile smoke:
 .\scripts\full-smoke.ps1 -KeepRunning
 ```
 
-The smoke builds the API image with full-profile infra extras, starts the full
-profile, generates synthetic events through the protected API, scores
-`user_00000`, checks the review queue and dashboard, verifies Prometheus
-metrics, checks graph evidence rendering, loads Grafana, verifies the Postgres
-adapter inside the Docker network, verifies Redis, Neo4j, and Redpanda adapters
-inside the Docker network, then shuts the stack down unless `-KeepRunning` is
-set.
+The smoke resets only the isolated smoke Compose project, builds the API image
+with full-profile infra extras, starts the full profile, generates synthetic
+events through the protected API, scores `user_00000`, submits a synthetic
+review decision, checks the dashboard, verifies Prometheus metrics, checks graph
+evidence rendering, loads Grafana, verifies the Postgres adapter inside the
+Docker network, verifies Redis, Neo4j, and Redpanda adapters inside the Docker
+network, then shuts the stack down unless `-KeepRunning` is set.
 
 `full-smoke.ps1` uses high host ports by default, for example API `18000`,
 Grafana `13000`, Prometheus `19090`, and Neo4j HTTP `17474`, so it can run while

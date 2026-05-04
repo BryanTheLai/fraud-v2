@@ -13,11 +13,11 @@ from fraud_v2.domain.enums import (
 )
 from fraud_v2.domain.events import EventEnvelope, LabelCreated, ManualReviewDecided
 from fraud_v2.domain.reviews import ReviewCase, ReviewDecision, ReviewDecisionRequest
-from fraud_v2.storage.sqlite_store import SQLiteStore
+from fraud_v2.storage.ports import FraudStore
 
 
 class ReviewService:
-    def __init__(self, store: SQLiteStore) -> None:
+    def __init__(self, store: FraudStore) -> None:
         self.store = store
 
     def ensure_case_for_decision(self, decision_id: UUID) -> ReviewCase | None:

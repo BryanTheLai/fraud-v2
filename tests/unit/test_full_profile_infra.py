@@ -34,11 +34,13 @@ def test_full_smoke_exercises_functional_api_and_observability() -> None:
     assert "$env:FRAUD_API_PORT" in smoke_script
     assert '$ApiBase = "http://127.0.0.1:$ApiPort"' in smoke_script
     assert '$ComposeProject = "fraud-v2-smoke"' in smoke_script
-    assert "$cases = @(" in smoke_script
+    assert "down --volumes --remove-orphans" in smoke_script
     assert "-UseBasicParsing" in smoke_script
     assert "/v1/synthetic/generate?users=30" in smoke_script
     assert "/v1/decisions/score" in smoke_script
-    assert "/v1/review/cases" in smoke_script
+    assert "ReviewCase" in smoke_script
+    assert "/v1/review/cases/$reviewCaseId/decision" in smoke_script
+    assert "CONFIRMED_FRAUD" in smoke_script
     assert "/dashboard/graph?entity_id=user_00000" in smoke_script
     assert "fraud_decisions_total" in smoke_script
     assert 'up{job="fraud-v2-api", instance="api:8000"}' in smoke_script
@@ -76,3 +78,10 @@ def test_redpanda_has_internal_and_host_listeners() -> None:
     assert "internal://redpanda:9092" in compose
     assert "external://localhost:${FRAUD_REDPANDA_PORT:-19092}" in compose
     assert '"${FRAUD_REDPANDA_PORT:-19092}:19092"' in compose
+
+
+def test_full_profile_api_uses_postgres_store_backend() -> None:
+    compose = (ROOT / "infra" / "docker-compose.yml").read_text(encoding="utf-8")
+
+    assert "FRAUD_STORE_BACKEND: postgres" in compose
+    assert "FRAUD_POSTGRES_DSN: postgresql://fraud:fraud@postgres:5432/fraud_v2" in compose

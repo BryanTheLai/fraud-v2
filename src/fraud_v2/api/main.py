@@ -41,6 +41,8 @@ from fraud_v2.observability.metrics import (
 )
 from fraud_v2.review.service import ReviewService
 from fraud_v2.security.auth import AuthPrincipal, AuthRole, require_roles
+from fraud_v2.storage.ports import FraudStore
+from fraud_v2.storage.postgres_store import PostgresStore
 from fraud_v2.storage.sqlite_store import SQLiteStore
 from fraud_v2.synthetic.generator import SyntheticFraudGenerator
 
@@ -49,8 +51,13 @@ logger = getLogger("fraud_v2.api")
 app = FastAPI(title="fraud-v2", version=__version__)
 
 
-def store(settings: Settings = Depends(get_settings)) -> SQLiteStore:
-    return SQLiteStore(settings.sqlite_path)
+def store(settings: Settings = Depends(get_settings)) -> FraudStore:
+    backend = settings.store_backend.lower()
+    if backend == "sqlite":
+        return SQLiteStore(settings.sqlite_path)
+    if backend == "postgres":
+        return PostgresStore(settings.postgres_dsn)
+    raise HTTPException(status_code=500, detail=f"unsupported FRAUD_STORE_BACKEND: {backend}")
 
 
 @app.middleware("http")
@@ -111,7 +118,7 @@ def root() -> dict[str, str]:
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(db: SQLiteStore = Depends(store)) -> str:
+def dashboard(db: FraudStore = Depends(store)) -> str:
     events = db.list_events()
     decisions = db.list_decisions()
     cases = db.list_review_cases()
@@ -209,7 +216,7 @@ def graph_dashboard(
     entity_id: str = "user_00000",
     entity_type: EntityType = EntityType.USER,
     depth: int = Query(default=2, ge=1, le=4),
-    db: SQLiteStore = Depends(store),
+    db: FraudStore = Depends(store),
 ) -> str:
     target = EntityRef(entity_type=entity_type, entity_id=entity_id)
     graph = GraphService(db.list_events()).neighborhood(target, depth=depth)
@@ -366,7 +373,7 @@ def live() -> dict[str, str]:
 
 
 @app.get("/health/ready")
-def ready(db: SQLiteStore = Depends(store)) -> dict[str, str | int]:
+def ready(db: FraudStore = Depends(store)) -> dict[str, str | int]:
     return {"status": "ready", "events": len(db.list_events())}
 
 
@@ -394,7 +401,7 @@ def whoami(
 )
 def list_audit_entries(
     limit: int = Query(default=100, ge=1, le=1000),
-    db: SQLiteStore = Depends(store),
+    db: FraudStore = Depends(store),
 ) -> list[AuditEntry]:
     return db.list_audit_entries(limit=limit)
 
@@ -404,7 +411,7 @@ def list_audit_entries(
     response_model=AuditVerificationReport,
     dependencies=[Depends(require_roles(AuthRole.ADMIN))],
 )
-def verify_audit_chain(db: SQLiteStore = Depends(store)) -> AuditVerificationReport:
+def verify_audit_chain(db: FraudStore = Depends(store)) -> AuditVerificationReport:
     return db.verify_audit_chain()
 
 
@@ -419,7 +426,7 @@ def retention_report(
     review_days: int = Query(default=365, ge=1),
     outbox_days: int = Query(default=30, ge=1),
     audit_days: int = Query(default=3650, ge=1),
-    db: SQLiteStore = Depends(store),
+    db: FraudStore = Depends(store),
 ) -> RetentionReport:
     return db.retention_report(
         policy=RetentionPolicy(
@@ -433,7 +440,7 @@ def retention_report(
 
 
 @app.post("/v1/events", dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.SYSTEM))])
-def ingest_event(event: EventEnvelope, db: SQLiteStore = Depends(store)) -> EventEnvelope:
+def ingest_event(event: EventEnvelope, db: FraudStore = Depends(store)) -> EventEnvelope:
     try:
         stored = db.add_event(event)
     except DuplicatePayloadConflict as exc:
@@ -448,7 +455,7 @@ def ingest_event(event: EventEnvelope, db: SQLiteStore = Depends(store)) -> Even
 def generate_synthetic(
     users: int = Query(default=120, ge=10, le=10000),
     output: Path | None = None,
-    db: SQLiteStore = Depends(store),
+    db: FraudStore = Depends(store),
 ) -> dict[str, int | str]:
     dataset = SyntheticFraudGenerator().generate(users=users)
     db.add_events(dataset.events)
@@ -462,7 +469,7 @@ def generate_synthetic(
     response_model=DecisionResponse,
     dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.SYSTEM))],
 )
-def score_decision(request: DecisionRequest, db: SQLiteStore = Depends(store)) -> DecisionResponse:
+def score_decision(request: DecisionRequest, db: FraudStore = Depends(store)) -> DecisionResponse:
     start = time.perf_counter()
     decision = DecisionEngine(db).score(request)
     ReviewService(db).ensure_case_for_decision(decision.decision_id)
@@ -475,7 +482,7 @@ def score_decision(request: DecisionRequest, db: SQLiteStore = Depends(store)) -
     "/v1/decisions/{decision_id}",
     dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.ANALYST, AuthRole.SYSTEM))],
 )
-def get_decision(decision_id: UUID, db: SQLiteStore = Depends(store)) -> dict[str, object]:
+def get_decision(decision_id: UUID, db: FraudStore = Depends(store)) -> dict[str, object]:
     try:
         decision = db.get_decision(decision_id)
     except DecisionNotFound as exc:
@@ -491,7 +498,7 @@ def get_decision(decision_id: UUID, db: SQLiteStore = Depends(store)) -> dict[st
     response_model=list[DecisionResponse],
     dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.ANALYST, AuthRole.SYSTEM))],
 )
-def list_decisions(db: SQLiteStore = Depends(store)) -> list[DecisionResponse]:
+def list_decisions(db: FraudStore = Depends(store)) -> list[DecisionResponse]:
     return db.list_decisions()
 
 
@@ -503,7 +510,7 @@ def graph_neighborhood(
     entity_id: str,
     entity_type: EntityType = EntityType.USER,
     depth: int = Query(default=2, ge=1, le=4),
-    db: SQLiteStore = Depends(store),
+    db: FraudStore = Depends(store),
 ) -> dict[str, list[dict[str, str]]]:
     return GraphService(db.list_events()).neighborhood(
         EntityRef(entity_type=entity_type, entity_id=entity_id), depth=depth
@@ -515,7 +522,7 @@ def graph_neighborhood(
     response_model=list[ReviewCase],
     dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.ANALYST))],
 )
-def list_review_cases(db: SQLiteStore = Depends(store)) -> list[ReviewCase]:
+def list_review_cases(db: FraudStore = Depends(store)) -> list[ReviewCase]:
     return ReviewService(db).list_cases()
 
 
@@ -527,6 +534,6 @@ def list_review_cases(db: SQLiteStore = Depends(store)) -> list[ReviewCase]:
 def decide_review_case(
     case_id: UUID,
     request: ReviewDecisionRequest,
-    db: SQLiteStore = Depends(store),
+    db: FraudStore = Depends(store),
 ) -> ReviewDecision:
     return ReviewService(db).decide(case_id, request)

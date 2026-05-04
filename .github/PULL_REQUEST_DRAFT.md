@@ -12,10 +12,13 @@ Implemented:
 - Manual review case creation.
 - Analyst review decisions append canonical review and label events for replay
   and training.
+- Submitted review decisions close review cases consistently in SQLite and
+  Postgres list results.
 - Transactional outbox and dry-run outbox worker.
 - Mock KYC/device/consortium connector boundaries.
 - Raw application/payment converters.
 - Full-profile adapter boundaries for Postgres, Redis, Redpanda, and Neo4j.
+- Docker full-profile API uses Postgres as primary app storage.
 - Replay, monitoring, compliance draft, model registry, and shadow scoring CLIs.
 - Cost-weighted model threshold reporting.
 - Analyst dashboard with recent decisions and open review queue.
@@ -52,11 +55,11 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: 52 passed
+- Pytest: 53 passed
 - Docker build: pass
-- Full profile smoke: pass, including API scoring, dashboard, metrics,
-  Grafana, Prometheus scrape, Postgres insert/list, Redis feature cache,
-  Neo4j projection, and Redpanda publish
+- Full profile smoke: pass, including API scoring, review-decision submission,
+  dashboard, metrics, Grafana, Prometheus scrape, Postgres insert/list, Redis
+  feature cache, Neo4j projection, and Redpanda publish
 
 ## Known Limits
 
@@ -65,4 +68,5 @@ Latest local result:
 - Compliance drafts only; no filings.
 - Local bearer-token and HS256 JWT auth only; no external OIDC provider yet.
 - No real production deployment target yet.
-- GitHub push/PR creation is blocked locally until `gh auth login`.
+- GitHub push/PR creation is blocked locally until `gh auth login` succeeds
+  and a remote is configured.

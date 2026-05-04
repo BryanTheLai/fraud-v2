@@ -18,7 +18,7 @@ It now runs locally in two modes:
   baseline ML, replay, monitoring, compliance drafts, model registry, shadow
   scoring, and analyst dashboard.
 - Full mode: Docker Compose starts API, Postgres, Redis, Redpanda, Neo4j,
-  Prometheus, and Grafana with a provisioned local dashboard, verified by
+  Prometheus, and Grafana with Postgres as the primary app store, verified by
   `scripts/full-smoke.ps1`.
 
 ## Implemented
@@ -37,7 +37,7 @@ It now runs locally in two modes:
 | Model registry | Done | JSON-backed artifact/report hashing and status controls. |
 | Shadow scoring | Done | Registered model probabilities logged without changing decisions. |
 | LLM synthetic lab | Local-safe done | Offline default plus OpenAI/Azure provider boundary. |
-| Full Docker profile | Done | Full profile smoke passed locally and exercises Postgres, Redis, Neo4j, and Redpanda adapters. |
+| Full Docker profile | Done | Full profile smoke passed locally with API app state on Postgres, review-decision submission, and adapter checks for Redis, Neo4j, and Redpanda. |
 | Grafana observability | Local-safe done | Provisioned dashboard for decisions, latency, ingested events, and API target health. |
 | Request tracing/logging | Local-safe done | `X-Trace-ID`, structured JSON request logs, HTTP metrics, and Prometheus alert rules. |
 | Audit log | Local-safe done | SQLite hash chain for event, decision, review, and outbox actions. |
@@ -55,7 +55,7 @@ It now runs locally in two modes:
 | Secrets | `.env` pattern only. No vault/KMS. |
 | Audit immutability | Hash-chained SQLite only. No WORM/object-lock storage. |
 | Retention enforcement | Report-only. No deletion jobs, legal holds, or archive tiers. |
-| Persistence | SQLite lite path is primary; Postgres event-store adapter is smoke-tested but not the default app store. |
+| Persistence | SQLite remains the lite default; Docker full mode uses Postgres for app state. |
 | Streaming | Redpanda publisher is smoke-tested; real stream worker topology is not complete. |
 | Graph DB | Neo4j projector is smoke-tested; decision engine still uses NetworkX fallback. |
 | Observability | Local metrics, dashboard, request logs, trace IDs, and Prometheus alerts exist; no distributed tracing backend yet. |

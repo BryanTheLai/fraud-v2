@@ -12,8 +12,8 @@ version: 2
 
 Current state: local MVP plus full-profile adapter layer implemented. Lite mode
 runs with Python, SQLite, synthetic data, FastAPI, dashboard, metrics,
-rules/graph scoring, and baseline model training. Full local infrastructure is
-scaffolded with Docker Compose, replaceable adapters, Prometheus, and a
+rules/graph scoring, and baseline model training. Full local infrastructure
+runs the API against Postgres with Redis, Redpanda, Neo4j, Prometheus, and a
 provisioned Grafana dashboard.
 
 ## Prerequisites
@@ -51,6 +51,8 @@ Target local services:
 | Name | Required | Example | Notes |
 |---|---|---|---|
 | `FRAUD_ENV` | yes | `local` | Environment name. |
+| `FRAUD_STORE_BACKEND` | no | `sqlite` or `postgres` | Lite mode defaults to SQLite. Docker full mode sets Postgres. |
+| `FRAUD_POSTGRES_DSN` | only for Postgres | `postgresql://fraud:fraud@localhost:5432/fraud_v2` | App-state Postgres DSN. |
 | `FRAUD_API_TOKEN` | yes | `dev-token-change-me` | Local only. Do not commit real secrets. |
 | `FRAUD_AUTH_MODE` | no | `token` or `jwt` | `token` keeps the default local path. `jwt` validates local HS256 JWTs. |
 | `FRAUD_JWT_SECRET` | only for JWT | 32+ byte local secret | Required when `FRAUD_AUTH_MODE=jwt`. Do not commit it. |
@@ -97,14 +99,14 @@ Use profiles:
 
 | Profile | Purpose | Command |
 |---|---|---|
-| `lite` | Fast contract, rules, and synthetic-data work. | `uv run python -m fraud_v2.dev lite` |
+| `lite` | Fast contract, rules, and synthetic-data work. | `uv run uvicorn fraud_v2.api.main:app --host 127.0.0.1 --port 8000` |
 | `full` | Production-shaped local demo with event bus, graph, and observability. | `docker compose -f infra\docker-compose.yml --profile full up -d` |
 | `ml` | Offline training and evaluation. | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` |
 
 Command:
 
 ```powershell
-docker compose -f infra\docker-compose.yml up -d
+docker compose -f infra\docker-compose.yml --profile full up -d
 ```
 
 Full-profile smoke with cleanup:
@@ -116,7 +118,8 @@ Full-profile smoke with cleanup:
 The smoke uses a separate Docker Compose project, `fraud-v2-smoke`, and high
 host ports by default so it does not collide with a local dev API on `8000`: API
 `18000`, Grafana `13000`, Prometheus `19090`, and Neo4j HTTP `17474`. Override
-with parameters such as `-ApiPort 18001` if needed. It also verifies the
+with parameters such as `-ApiPort 18001` if needed. It resets only that isolated
+smoke project, then verifies Postgres-backed API state, review decisions,
 Postgres, Redis, Neo4j, and Redpanda adapters from inside the API container.
 
 Keep services running for manual inspection:
@@ -128,7 +131,7 @@ Keep services running for manual inspection:
 Expected services:
 
 ```powershell
-docker compose -f infra\docker-compose.yml ps
+docker compose -f infra\docker-compose.yml --profile full ps
 ```
 
 ## Initialize Local State
@@ -136,9 +139,9 @@ docker compose -f infra\docker-compose.yml ps
 Commands:
 
 ```powershell
-uv run alembic upgrade head
-uv run python -m fraud_v2.seed.synthetic --events 10000 --output data\synthetic
-uv run python -m fraud_v2.seed.load --input data\synthetic\events.parquet
+New-Item -ItemType Directory -Force data\synthetic\tiny, data\local
+uv run fraud-v2 generate --users 120 --output data\synthetic\tiny\events.jsonl
+uv run fraud-v2 load data\synthetic\tiny\events.jsonl --db-path data\local\fraud_v2.sqlite
 ```
 
 ## Run Locally
@@ -401,12 +404,12 @@ tests/unit/domain/test_events.py
 
 | Task | Command | Notes |
 |---|---|---|
-| Start infra | `docker compose -f infra\docker-compose.yml up -d` | Runs local dependencies. |
+| Start infra | `docker compose -f infra\docker-compose.yml --profile full up -d` | Runs local dependencies. |
 | Full-profile smoke | `.\scripts\full-smoke.ps1` | Builds and starts full profile, scores data through the API, checks dashboard/metrics/Grafana/Prometheus/Neo4j, then stops it. |
-| Stop infra | `docker compose -f infra\docker-compose.yml down` | Does not delete volumes by default. |
-| Reset local data | `docker compose -f infra\docker-compose.yml down -v` | Destructive. Requires explicit approval in Code Factory runs. |
-| Seed synthetic data | `uv run python -m fraud_v2.seed.synthetic --events 10000` | No real PII. |
-| Start API | `uv run fastapi dev src\fraud_v2\api\main.py --port 8000` | API docs at `/docs`. |
+| Stop infra | `docker compose -f infra\docker-compose.yml --profile full down` | Does not delete volumes by default. |
+| Reset local data | `docker compose -f infra\docker-compose.yml --profile full down -v` | Destructive. Requires explicit approval in Code Factory runs. |
+| Seed synthetic data | `uv run fraud-v2 generate --users 120 --output data\synthetic\tiny\events.jsonl` | No real PII. |
+| Start API | `uv run uvicorn fraud_v2.api.main:app --host 127.0.0.1 --port 8000` | API docs at `/docs`. |
 | Open dashboard | `uv run uvicorn fraud_v2.api.main:app --host 127.0.0.1 --port 8000` | Dashboard at `/dashboard`. |
 | Train baseline | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | CPU default. |
 | Evaluate model | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | Writes metrics, cost, and threshold report. |

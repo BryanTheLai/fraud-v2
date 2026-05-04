@@ -136,6 +136,7 @@ function Wait-ComposeCommand {
 }
 
 Invoke-FraudCompose config --quiet
+Invoke-FraudCompose down --volumes --remove-orphans
 Invoke-FraudCompose up -d --build
 
 try {
@@ -184,8 +185,49 @@ try {
   Assert-FraudCondition ($decision.risk_score -ge 80) "Expected user_00000 to score as high risk."
   Assert-FraudCondition ($decision.risk_tier -eq "RED") "Expected user_00000 to land in RED tier."
 
-  $cases = @(Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/review/cases")
-  Assert-FraudCondition ($cases.Count -gt 0) "Expected scoring to create at least one review case."
+  $reviewCaseSmoke = @'
+from uuid import uuid4
+
+from fraud_v2.domain.reviews import ReviewCase
+from fraud_v2.storage.postgres_store import PostgresStore
+
+store = PostgresStore("postgresql://fraud:fraud@postgres:5432/fraud_v2")
+case = store.save_review_case(
+    ReviewCase(
+        decision_id=uuid4(),
+        target_entity_id="user_smoke_review",
+        priority=50,
+    )
+)
+print(case.case_id)
+'@
+  $reviewCaseResult = $reviewCaseSmoke | docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync python - 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Review case seed failed: $reviewCaseResult"
+  $reviewCaseOutput = ($reviewCaseResult -join "`n").Trim()
+  $reviewCaseId = ($reviewCaseOutput -split "`n")[-1].Trim()
+  Assert-FraudCondition (-not [string]::IsNullOrWhiteSpace($reviewCaseId)) "Review case seed did not return a case id."
+
+  $reviewDecision = Invoke-FraudApi `
+    -Method "Post" `
+    -Uri "$ApiBase/v1/review/cases/$reviewCaseId/decision" `
+    -Body @{
+      analyst_id = "analyst_smoke"
+      outcome = "CONFIRMED_FRAUD"
+      confidence = 0.98
+      note = "full-smoke synthetic review decision"
+    }
+  Assert-FraudCondition ("$($reviewDecision.case_id)" -eq $reviewCaseId) "Review decision case id mismatch."
+  Assert-FraudCondition ($reviewDecision.outcome -eq "CONFIRMED_FRAUD") "Review decision outcome mismatch."
+  $reviewCases = @(Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/review/cases")
+  $closedReviewCase = $reviewCases |
+    Where-Object { "$($_.case_id)" -eq $reviewCaseId } |
+    Select-Object -First 1
+  Assert-FraudCondition ($null -ne $closedReviewCase) "Review case missing after review decision."
+  Assert-FraudCondition ($closedReviewCase.status -eq "closed") "Review case did not close after review decision."
 
   $audit = @(Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/audit/entries")
   Assert-FraudCondition ($audit.Count -gt 0) "Expected audit entries after scoring."
@@ -197,10 +239,19 @@ try {
   $postgresSmoke = @'
 from fraud_v2.infrastructure.postgres_store import PostgresEventStore
 from fraud_v2.synthetic.generator import SyntheticFraudGenerator
+from datetime import UTC, datetime
+from uuid import uuid4
 
 store = PostgresEventStore("postgresql://fraud:fraud@postgres:5432/fraud_v2")
 store.init_schema()
-event = SyntheticFraudGenerator().generate(users=10).events[0]
+base_event = SyntheticFraudGenerator(seed=20260520).generate(users=10).events[0]
+event = base_event.model_copy(
+    update={
+        "event_id": uuid4(),
+        "idempotency_key": f"postgres-smoke:{uuid4()}",
+        "occurred_at": datetime.now(UTC),
+    }
+)
 store.add_event(event)
 events = store.list_events()
 assert any(str(existing.event_id) == str(event.event_id) for existing in events)
@@ -312,6 +363,6 @@ print("redpanda_publish=1")
 }
 finally {
   if (-not $KeepRunning) {
-    Invoke-FraudCompose down
+    Invoke-FraudCompose down --volumes --remove-orphans
   }
 }

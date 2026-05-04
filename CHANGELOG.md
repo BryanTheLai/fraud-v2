@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.20.0 - 2026-05-05
+
+- Added a full Postgres app-store backend for events, decisions, review cases,
+  review decisions, outbox messages, audit entries, and retention reports.
+- Switched the Docker full profile API to use Postgres as primary app storage
+  while keeping SQLite as the default lite-mode storage.
+- Hardened the full-profile smoke so repeated runs start from an isolated clean
+  smoke volume and exercise review-decision submission.
+- Fixed review-case persistence so submitted review decisions close the case in
+  both SQLite and Postgres list results.
+
 ## 0.19.0 - 2026-05-05
 
 - Added a local dashboard graph evidence page that renders an entity

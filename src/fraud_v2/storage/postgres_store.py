@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-import sqlite3
+from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -15,75 +15,92 @@ from fraud_v2.domain.events import EventEnvelope
 from fraud_v2.domain.outbox import OutboxMessage, OutboxStatus
 from fraud_v2.domain.retention import RetentionPolicy, RetentionReport, RetentionTableReport
 from fraud_v2.domain.reviews import ReviewCase, ReviewDecision
+from fraud_v2.infrastructure.optional_imports import optional_module
 from fraud_v2.observability.logging import get_trace_id
+from fraud_v2.storage.sqlite_store import GENESIS_AUDIT_HASH
 
-GENESIS_AUDIT_HASH = "0" * 64
 
+@dataclass(frozen=True)
+class PostgresStore:
+    dsn: str
 
-class SQLiteStore:
-    def __init__(self, path: Path | str = Path("data/local/fraud_v2.sqlite")) -> None:
-        self.path = Path(path)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._init_schema()
+    def __post_init__(self) -> None:
+        self.init_schema()
 
-    def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.path)
-        conn.row_factory = sqlite3.Row
-        return conn
-
-    def _init_schema(self) -> None:
+    def init_schema(self) -> None:
         with self._connect() as conn:
-            conn.executescript(
+            conn.execute(
                 """
                 create table if not exists events (
                   event_id text primary key,
                   event_type text not null,
-                  occurred_at text not null,
+                  occurred_at timestamptz not null,
                   idempotency_key text not null unique,
                   payload_hash text not null,
-                  event_json text not null
-                );
-                create index if not exists ix_events_type_time on events(event_type, occurred_at);
-
+                  event_json jsonb not null
+                )
+                """
+            )
+            conn.execute(
+                "create index if not exists ix_events_type_time on events(event_type, occurred_at)"
+            )
+            conn.execute(
+                """
                 create table if not exists decisions (
                   decision_id text primary key,
                   target_entity_id text not null,
                   risk_score integer not null,
                   risk_tier text not null,
                   action text not null,
-                  decision_json text not null
-                );
-
+                  decision_json jsonb not null
+                )
+                """
+            )
+            conn.execute(
+                """
                 create table if not exists review_cases (
                   case_id text primary key,
                   decision_id text not null,
                   status text not null,
-                  case_json text not null
-                );
-
+                  case_json jsonb not null
+                )
+                """
+            )
+            conn.execute(
+                """
                 create table if not exists review_decisions (
                   review_decision_id text primary key,
                   case_id text not null,
-                  decision_json text not null
-                );
-
+                  decision_json jsonb not null
+                )
+                """
+            )
+            conn.execute(
+                """
                 create table if not exists outbox_messages (
                   message_id text primary key,
                   event_id text not null unique,
                   topic text not null,
                   status text not null,
                   attempts integer not null,
-                  payload_json text not null,
+                  payload_json jsonb not null,
                   last_error text,
-                  created_at text not null,
-                  updated_at text not null
-                );
+                  created_at timestamptz not null,
+                  updated_at timestamptz not null
+                )
+                """
+            )
+            conn.execute(
+                """
                 create index if not exists ix_outbox_status_created
-                  on outbox_messages(status, created_at);
-
+                on outbox_messages(status, created_at)
+                """
+            )
+            conn.execute(
+                """
                 create table if not exists audit_entries (
                   sequence integer primary key,
-                  created_at text not null,
+                  created_at timestamptz not null,
                   actor text not null,
                   action text not null,
                   target_type text not null,
@@ -92,9 +109,13 @@ class SQLiteStore:
                   payload_hash text not null,
                   previous_hash text not null,
                   entry_hash text not null unique
-                );
+                )
+                """
+            )
+            conn.execute(
+                """
                 create index if not exists ix_audit_action_created
-                  on audit_entries(action, created_at);
+                on audit_entries(action, created_at)
                 """
             )
 
@@ -103,11 +124,15 @@ class SQLiteStore:
         payload_hash = hashlib.sha256(event_json.encode("utf-8")).hexdigest()
         with self._connect() as conn:
             existing = conn.execute(
-                "select event_json, payload_hash from events where idempotency_key = ?",
+                """
+                select event_json::text as event_json, payload_hash
+                from events
+                where idempotency_key = %s
+                """,
                 (event.idempotency_key,),
             ).fetchone()
             if existing:
-                if existing["payload_hash"] != payload_hash:
+                if str(existing["payload_hash"]) != payload_hash:
                     raise DuplicatePayloadConflict(
                         f"idempotency key conflict: {event.idempotency_key}"
                     )
@@ -117,12 +142,12 @@ class SQLiteStore:
                 insert into events(
                   event_id, event_type, occurred_at, idempotency_key, payload_hash, event_json
                 )
-                values (?, ?, ?, ?, ?, ?)
+                values (%s, %s, %s, %s, %s, %s::jsonb)
                 """,
                 (
                     str(event.event_id),
                     event.event_type.value,
-                    event.occurred_at.isoformat(),
+                    event.occurred_at,
                     event.idempotency_key,
                     payload_hash,
                     event_json,
@@ -151,7 +176,9 @@ class SQLiteStore:
 
     def list_events(self) -> list[EventEnvelope]:
         with self._connect() as conn:
-            rows = conn.execute("select event_json from events order by occurred_at asc").fetchall()
+            rows = conn.execute(
+                "select event_json::text as event_json from events order by occurred_at asc"
+            ).fetchall()
         return [EventEnvelope.model_validate_json(str(row["event_json"])) for row in rows]
 
     def list_outbox_messages(
@@ -159,16 +186,19 @@ class SQLiteStore:
         statuses: tuple[OutboxStatus, ...] = (OutboxStatus.PENDING, OutboxStatus.FAILED),
         limit: int = 100,
     ) -> list[OutboxMessage]:
-        placeholders = ", ".join("?" for _ in statuses)
-        params = [status.value for status in statuses]
-        params.append(str(limit))
+        placeholders = ", ".join("%s" for _ in statuses)
+        params: list[object] = [status.value for status in statuses]
+        params.append(limit)
         with self._connect() as conn:
             rows = conn.execute(
                 f"""
-                select * from outbox_messages
+                select message_id, event_id, topic, status, attempts,
+                       payload_json::text as payload_json, last_error,
+                       created_at, updated_at
+                from outbox_messages
                 where status in ({placeholders})
                 order by created_at asc
-                limit ?
+                limit %s
                 """,
                 params,
             ).fetchall()
@@ -182,13 +212,13 @@ class SQLiteStore:
         return {str(row["status"]): int(row["count"]) for row in rows}
 
     def mark_outbox_published(self, message_id: UUID) -> OutboxMessage:
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(UTC)
         with self._connect() as conn:
             conn.execute(
                 """
                 update outbox_messages
-                set status = ?, last_error = null, updated_at = ?
-                where message_id = ?
+                set status = %s, last_error = null, updated_at = %s
+                where message_id = %s
                 """,
                 (OutboxStatus.PUBLISHED.value, now, str(message_id)),
             )
@@ -201,7 +231,12 @@ class SQLiteStore:
                 payload={"status": OutboxStatus.PUBLISHED.value},
             )
             row = conn.execute(
-                "select * from outbox_messages where message_id = ?",
+                """
+                select message_id, event_id, topic, status, attempts,
+                       payload_json::text as payload_json, last_error,
+                       created_at, updated_at
+                from outbox_messages where message_id = %s
+                """,
                 (str(message_id),),
             ).fetchone()
         return self._outbox_from_row(row)
@@ -209,10 +244,10 @@ class SQLiteStore:
     def mark_outbox_failed(
         self, message_id: UUID, safe_error: str, max_attempts: int = 3
     ) -> OutboxMessage:
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(UTC)
         with self._connect() as conn:
             current = conn.execute(
-                "select attempts from outbox_messages where message_id = ?",
+                "select attempts from outbox_messages where message_id = %s",
                 (str(message_id),),
             ).fetchone()
             attempts = int(current["attempts"]) + 1
@@ -220,8 +255,8 @@ class SQLiteStore:
             conn.execute(
                 """
                 update outbox_messages
-                set status = ?, attempts = ?, last_error = ?, updated_at = ?
-                where message_id = ?
+                set status = %s, attempts = %s, last_error = %s, updated_at = %s
+                where message_id = %s
                 """,
                 (status.value, attempts, safe_error[:500], now, str(message_id)),
             )
@@ -234,7 +269,12 @@ class SQLiteStore:
                 payload={"status": status.value, "attempts": attempts},
             )
             row = conn.execute(
-                "select * from outbox_messages where message_id = ?",
+                """
+                select message_id, event_id, topic, status, attempts,
+                       payload_json::text as payload_json, last_error,
+                       created_at, updated_at
+                from outbox_messages where message_id = %s
+                """,
                 (str(message_id),),
             ).fetchone()
         return self._outbox_from_row(row)
@@ -243,9 +283,16 @@ class SQLiteStore:
         with self._connect() as conn:
             conn.execute(
                 """
-                insert or replace into decisions(
+                insert into decisions(
                   decision_id, target_entity_id, risk_score, risk_tier, action, decision_json
-                ) values (?, ?, ?, ?, ?, ?)
+                )
+                values (%s, %s, %s, %s, %s, %s::jsonb)
+                on conflict (decision_id) do update set
+                  target_entity_id = excluded.target_entity_id,
+                  risk_score = excluded.risk_score,
+                  risk_tier = excluded.risk_tier,
+                  action = excluded.action,
+                  decision_json = excluded.decision_json
                 """,
                 (
                     str(decision.decision_id),
@@ -276,7 +323,7 @@ class SQLiteStore:
     def get_decision(self, decision_id: UUID) -> DecisionResponse:
         with self._connect() as conn:
             row = conn.execute(
-                "select decision_json from decisions where decision_id = ?",
+                "select decision_json::text as decision_json from decisions where decision_id = %s",
                 (str(decision_id),),
             ).fetchone()
         if not row:
@@ -285,15 +332,21 @@ class SQLiteStore:
 
     def list_decisions(self) -> list[DecisionResponse]:
         with self._connect() as conn:
-            rows = conn.execute("select decision_json from decisions").fetchall()
+            rows = conn.execute(
+                "select decision_json::text as decision_json from decisions"
+            ).fetchall()
         return [DecisionResponse.model_validate_json(str(row["decision_json"])) for row in rows]
 
     def save_review_case(self, case: ReviewCase) -> ReviewCase:
         with self._connect() as conn:
             conn.execute(
                 """
-                insert or replace into review_cases(case_id, decision_id, status, case_json)
-                values (?, ?, ?, ?)
+                insert into review_cases(case_id, decision_id, status, case_json)
+                values (%s, %s, %s, %s::jsonb)
+                on conflict (case_id) do update set
+                  decision_id = excluded.decision_id,
+                  status = excluded.status,
+                  case_json = excluded.case_json
                 """,
                 (str(case.case_id), str(case.decision_id), case.status, case.model_dump_json()),
             )
@@ -314,13 +367,15 @@ class SQLiteStore:
 
     def list_review_cases(self) -> list[ReviewCase]:
         with self._connect() as conn:
-            rows = conn.execute("select case_json from review_cases order by case_id").fetchall()
+            rows = conn.execute(
+                "select case_json::text as case_json from review_cases order by case_id"
+            ).fetchall()
         return [ReviewCase.model_validate_json(str(row["case_json"])) for row in rows]
 
     def save_review_decision(self, decision: ReviewDecision) -> ReviewDecision:
         with self._connect() as conn:
             case_row = conn.execute(
-                "select case_json from review_cases where case_id = ?",
+                "select case_json::text as case_json from review_cases where case_id = %s",
                 (str(decision.case_id),),
             ).fetchone()
             closed_case_json = None
@@ -331,8 +386,11 @@ class SQLiteStore:
                 closed_case_json = closed_case.model_dump_json()
             conn.execute(
                 """
-                insert or replace into review_decisions(review_decision_id, case_id, decision_json)
-                values (?, ?, ?)
+                insert into review_decisions(review_decision_id, case_id, decision_json)
+                values (%s, %s, %s::jsonb)
+                on conflict (review_decision_id) do update set
+                  case_id = excluded.case_id,
+                  decision_json = excluded.decision_json
                 """,
                 (
                     str(decision.review_decision_id),
@@ -342,7 +400,7 @@ class SQLiteStore:
             )
             if closed_case_json is not None:
                 conn.execute(
-                    "update review_cases set status = ?, case_json = ? where case_id = ?",
+                    "update review_cases set status = %s, case_json = %s::jsonb where case_id = %s",
                     ("closed", closed_case_json, str(decision.case_id)),
                 )
             self._append_audit(
@@ -362,7 +420,7 @@ class SQLiteStore:
     def list_audit_entries(self, limit: int = 100) -> list[AuditEntry]:
         with self._connect() as conn:
             rows = conn.execute(
-                "select * from audit_entries order by sequence desc limit ?",
+                "select * from audit_entries order by sequence desc limit %s",
                 (limit,),
             ).fetchall()
         return [self._audit_from_row(row) for row in reversed(rows)]
@@ -474,17 +532,20 @@ class SQLiteStore:
             total_expired=sum(table.expired_count for table in tables),
         )
 
-    def _enqueue_outbox(
-        self, conn: sqlite3.Connection, event: EventEnvelope, event_json: str, topic: str
-    ) -> None:
-        now = datetime.now(UTC).isoformat()
+    def _connect(self) -> Any:
+        psycopg = optional_module("psycopg", "infra")
+        return psycopg.connect(self.dsn, row_factory=psycopg.rows.dict_row)
+
+    def _enqueue_outbox(self, conn: Any, event: EventEnvelope, event_json: str, topic: str) -> None:
+        now = datetime.now(UTC)
         conn.execute(
             """
-            insert or ignore into outbox_messages(
+            insert into outbox_messages(
               message_id, event_id, topic, status, attempts, payload_json,
               last_error, created_at, updated_at
             )
-            values (?, ?, ?, ?, ?, ?, null, ?, ?)
+            values (%s, %s, %s, %s, %s, %s::jsonb, null, %s, %s)
+            on conflict (event_id) do nothing
             """,
             (
                 str(uuid4()),
@@ -500,7 +561,7 @@ class SQLiteStore:
 
     def _append_audit(
         self,
-        conn: sqlite3.Connection,
+        conn: Any,
         *,
         actor: str,
         action: str,
@@ -508,7 +569,7 @@ class SQLiteStore:
         target_id: str,
         payload: dict[str, Any],
     ) -> AuditEntry:
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(UTC)
         previous = conn.execute(
             "select sequence, entry_hash from audit_entries order by sequence desc limit 1"
         ).fetchone()
@@ -518,7 +579,7 @@ class SQLiteStore:
         trace_id = get_trace_id()
         hash_payload = self._audit_hash_payload(
             sequence=sequence,
-            created_at=now,
+            created_at=now.isoformat(),
             actor=actor,
             action=action,
             target_type=target_type,
@@ -534,7 +595,7 @@ class SQLiteStore:
               sequence, created_at, actor, action, target_type, target_id,
               trace_id, payload_hash, previous_hash, entry_hash
             )
-            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 sequence,
@@ -551,7 +612,7 @@ class SQLiteStore:
         )
         return AuditEntry(
             sequence=sequence,
-            created_at=datetime.fromisoformat(now),
+            created_at=now,
             actor=actor,
             action=action,
             target_type=target_type,
@@ -591,10 +652,10 @@ class SQLiteStore:
         canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
-    def _audit_from_row(self, row: sqlite3.Row) -> AuditEntry:
+    def _audit_from_row(self, row: Mapping[str, object]) -> AuditEntry:
         return AuditEntry(
-            sequence=int(row["sequence"]),
-            created_at=datetime.fromisoformat(str(row["created_at"])),
+            sequence=int(str(row["sequence"])),
+            created_at=_parse_datetime(row["created_at"]),
             actor=str(row["actor"]),
             action=str(row["action"]),
             target_type=str(row["target_type"]),
@@ -623,14 +684,16 @@ class SQLiteStore:
     def _count_events_before(self, cutoff_at: datetime) -> int:
         with self._connect() as conn:
             row = conn.execute(
-                "select count(*) as count from events where occurred_at < ?",
-                (cutoff_at.isoformat(),),
+                "select count(*) as count from events where occurred_at < %s",
+                (cutoff_at,),
             ).fetchone()
         return int(row["count"])
 
     def _count_decisions_before(self, cutoff_at: datetime) -> int:
         with self._connect() as conn:
-            rows = conn.execute("select decision_json from decisions").fetchall()
+            rows = conn.execute(
+                "select decision_json::text as decision_json from decisions"
+            ).fetchall()
         count = 0
         for row in rows:
             decision = DecisionResponse.model_validate_json(str(row["decision_json"]))
@@ -644,10 +707,10 @@ class SQLiteStore:
         if json_column not in {"case_json", "decision_json"}:
             raise ValueError(f"unsupported retention column: {json_column}")
         with self._connect() as conn:
-            rows = conn.execute(f"select {json_column} from {table}").fetchall()
+            rows = conn.execute(f"select {json_column}::text as payload from {table}").fetchall()
         count = 0
         for row in rows:
-            payload = json.loads(str(row[json_column]))
+            payload = json.loads(str(row["payload"]))
             created_at = datetime.fromisoformat(str(payload["created_at"]))
             if created_at < cutoff_at:
                 count += 1
@@ -660,12 +723,12 @@ class SQLiteStore:
             raise ValueError(f"unsupported retention column: {column}")
         with self._connect() as conn:
             row = conn.execute(
-                f"select count(*) as count from {table} where {column} < ?",
-                (cutoff_at.isoformat(),),
+                f"select count(*) as count from {table} where {column} < %s",
+                (cutoff_at,),
             ).fetchone()
         return int(row["count"])
 
-    def _outbox_from_row(self, row: sqlite3.Row | None) -> OutboxMessage:
+    def _outbox_from_row(self, row: Mapping[str, object] | None) -> OutboxMessage:
         if row is None:
             raise KeyError("outbox message not found")
         return OutboxMessage(
@@ -673,9 +736,19 @@ class SQLiteStore:
             event_id=UUID(str(row["event_id"])),
             topic=str(row["topic"]),
             status=OutboxStatus(str(row["status"])),
-            attempts=int(row["attempts"]),
+            attempts=int(str(row["attempts"])),
             payload_json=str(row["payload_json"]),
             last_error=None if row["last_error"] is None else str(row["last_error"]),
-            created_at=datetime.fromisoformat(str(row["created_at"])),
-            updated_at=datetime.fromisoformat(str(row["updated_at"])),
+            created_at=_parse_datetime(row["created_at"]),
+            updated_at=_parse_datetime(row["updated_at"]),
         )
+
+
+class PostgresEventStore(PostgresStore):
+    pass
+
+
+def _parse_datetime(value: object) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    return datetime.fromisoformat(str(value))
