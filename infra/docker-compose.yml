@@ -1,4 +1,16 @@
 services:
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      FRAUD_ENV: local
+      FRAUD_SQLITE_PATH: /app/data/local/fraud_v2.sqlite
+      FRAUD_API_TOKEN: dev-token-change-me
+    ports:
+      - "8000:8000"
+    profiles: ["full"]
+
   postgres:
     image: postgres:16
     environment:

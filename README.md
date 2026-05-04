@@ -17,9 +17,11 @@ Start here:
 - [Local Production Profile](docs/local-production-profile.md)
 - [Code Factory Dashboard](factory/dashboard.md)
 
-Current state: local MVP implemented. It runs in lite mode with synthetic data,
-SQLite storage, rules/graph scoring, baseline model training, FastAPI endpoints,
-dashboard, metrics, tests, CI workflow, and Docker Compose scaffolding.
+Current state: local MVP plus full-profile adapter layer implemented. It runs in
+lite mode with synthetic data, SQLite storage, rules/graph scoring, baseline
+model training, FastAPI endpoints, dashboard, metrics, tests, CI workflow, and
+Docker Compose scaffolding. Full mode includes replaceable Postgres, Redis,
+Redpanda, and Neo4j adapter boundaries.
 
 ## Run Lite Mode
 
@@ -44,13 +46,27 @@ docker compose -f infra\docker-compose.yml --profile full up -d
 docker compose -f infra\docker-compose.yml --profile full ps
 ```
 
-The app still runs as a local Python process in this MVP. The full profile
-starts local infrastructure for the production-shaped path.
+The full profile starts the API container plus Postgres, Redis, Redpanda, Neo4j,
+Prometheus, and Grafana.
+
+## Reports
+
+```powershell
+uv run fraud-v2 replay --events-path data/synthetic/tiny/events.jsonl
+uv run fraud-v2 monitor --events-path data/synthetic/tiny/events.jsonl
+uv run fraud-v2 llm-stub
+uv run fraud-v2 llm-generate --provider offline
+uv run fraud-v2 public-dataset paysim
+```
+
+OpenAI/Azure-backed synthetic scenario generation is available through
+`llm-generate --provider openai` or `--provider azure`, but the repo defaults to
+`offline` so local tests never require credentials or network calls.
 
 ## Quality Gate
 
 ```powershell
-uv run ruff format .
+uv run ruff format --check .
 uv run ruff check .
 uv run mypy src
 uv run pytest -q

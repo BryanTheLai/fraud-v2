@@ -15,7 +15,7 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12
       - name: Install dependencies
-        run: uv sync --extra dev
+        run: uv sync --extra dev --extra infra --extra llm
       - name: Format check
         run: uv run ruff format --check .
       - name: Lint
@@ -25,3 +25,11 @@ jobs:
       - name: Test
         run: uv run pytest -q
 
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate full compose profile
+        run: docker compose -f infra/docker-compose.yml --profile full config --quiet
+      - name: Build API image
+        run: docker build -t fraud-v2:ci .

@@ -2,7 +2,7 @@
 project: fraud-v2
 owner: Bryan
 created_at: 2026-05-04
-updated_at: 2026-05-04
+updated_at: 2026-05-05
 status: draft
 source_task: TC-20260504-001
 version: 2
@@ -10,9 +10,10 @@ version: 2
 
 # Setup: Fraud V2
 
-Current state: local MVP implemented. Lite mode runs with Python, SQLite,
-synthetic data, FastAPI, dashboard, metrics, rules/graph scoring, and baseline
-model training. Full local infrastructure is scaffolded with Docker Compose.
+Current state: local MVP plus full-profile adapter layer implemented. Lite mode
+runs with Python, SQLite, synthetic data, FastAPI, dashboard, metrics,
+rules/graph scoring, and baseline model training. Full local infrastructure is
+scaffolded with Docker Compose and replaceable adapters.
 
 ## Prerequisites
 
@@ -58,6 +59,12 @@ Target local services:
 | `NEO4J_PASSWORD` | yes | `fraud-local-password` | Local secret. |
 | `MODEL_REGISTRY_PATH` | yes | `./data/models` | Local artifacts. |
 | `OFFLINE_STORE_PATH` | yes | `./data/offline` | DuckDB/Parquet path. |
+| `LLM_PROVIDER` | no | `offline` | Structured scenario generation provider. |
+| `OPENAI_MODEL` | no | `gpt-5.5` | Model or Azure deployment name. |
+| `OPENAI_API_KEY` | no | empty | Required only for `LLM_PROVIDER=openai`. |
+| `OPENAI_BASE_URL` | no | empty | Optional OpenAI-compatible endpoint override. |
+| `AZURE_OPENAI_API_KEY` | no | empty | Required only for `LLM_PROVIDER=azure`. |
+| `AZURE_OPENAI_ENDPOINT` | no | empty | Azure OpenAI resource endpoint. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no | `http://localhost:4317` | Observability. |
 | `LOG_LEVEL` | no | `INFO` | Structured logs. |
 
@@ -136,6 +143,14 @@ Train baseline:
 
 ```powershell
 uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline
+```
+
+Reports and LLM scenario generation:
+
+```powershell
+uv run fraud-v2 replay --events-path data\synthetic\tiny\events.jsonl
+uv run fraud-v2 monitor --events-path data\synthetic\tiny\events.jsonl
+uv run fraud-v2 llm-generate --provider offline
 ```
 
 Local URLs after implementation:
