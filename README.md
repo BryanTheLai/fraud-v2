@@ -21,8 +21,9 @@ Start here:
 Current state: local MVP plus full-profile adapter layer implemented. It runs in
 lite mode with synthetic data, SQLite storage, rules/graph scoring, baseline
 model training, FastAPI endpoints, dashboard, metrics, tests, CI workflow, and
-Docker Compose scaffolding. Full mode includes replaceable Postgres, Redis,
-Redpanda, Neo4j, Prometheus, and a provisioned Grafana dashboard.
+Docker Compose scaffolding. Analyst review outcomes feed canonical review and
+label events for replay/training. Full mode includes replaceable Postgres,
+Redis, Redpanda, Neo4j, Prometheus, and a provisioned Grafana dashboard.
 
 ## Run Lite Mode
 

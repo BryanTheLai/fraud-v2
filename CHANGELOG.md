@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.0 - 2026-05-05
+
+- Added analyst feedback-loop events so confirmed manual review outcomes append
+  canonical review and label events for replay and training.
+
 ## 0.16.0 - 2026-05-05
 
 - Expanded the full-profile smoke to verify Redis, Neo4j, and Redpanda adapter

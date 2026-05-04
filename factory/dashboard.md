@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-016 - Prove Remaining Infra Adapters](tasks/active/TC-20260505-016-prove-remaining-infra-adapters.md)
+- [TC-20260505-017 - Add Review Feedback Events](tasks/active/TC-20260505-017-add-review-feedback-events.md)
 
 ## Runs Waiting For Bryan
 
@@ -24,6 +24,7 @@ Updated: 2026-05-05
 - [RR-20260505-014](runs/RR-20260505-014.md)
 - [RR-20260505-015](runs/RR-20260505-015.md)
 - [RR-20260505-016](runs/RR-20260505-016.md)
+- [RR-20260505-017](runs/RR-20260505-017.md)
 
 ## Blocked Work
 
@@ -57,6 +58,7 @@ Updated: 2026-05-05
 - Installed infra extras in the Docker API image and added a Postgres adapter
   smoke inside the full profile.
 - Added full-profile smoke coverage for Redis, Neo4j, and Redpanda adapters.
+- Added analyst review feedback events for replayable review and label signals.
 
 ## Lessons Added
 
@@ -68,6 +70,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M16 full-profile adapter proof. Next implementation
-task should add a real OIDC design or move more runtime storage paths to
-Postgres if Bryan chooses to go deeper on production hardening.
+Review local MVP through M17 analyst feedback events. Next implementation task
+should add a real OIDC design or move more runtime storage paths to Postgres if
+Bryan chooses to go deeper on production hardening.

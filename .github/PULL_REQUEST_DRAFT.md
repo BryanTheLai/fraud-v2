@@ -10,6 +10,8 @@ Implemented:
 - Deterministic synthetic data generation and SQLite lite storage.
 - Rules + graph decision engine with safe reasons and trace IDs.
 - Manual review case creation.
+- Analyst review decisions append canonical review and label events for replay
+  and training.
 - Transactional outbox and dry-run outbox worker.
 - Mock KYC/device/consortium connector boundaries.
 - Raw application/payment converters.
@@ -48,7 +50,7 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: 46 passed
+- Pytest: 48 passed
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, dashboard, metrics,
   Grafana, Prometheus scrape, Postgres insert/list, Redis feature cache,

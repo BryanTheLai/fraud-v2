@@ -30,7 +30,7 @@ It now runs locally in two modes:
 | Lite storage | Done | SQLite event store, decisions, review cases, and outbox. |
 | API | Done | FastAPI routes, role-protected `/v1/*`, health, metrics, docs. |
 | Rules/graph decisions | Done | Rules + NetworkX graph service, safe reasons, trace IDs. |
-| Review workflow | Done | Yellow/red decisions create review cases. |
+| Review workflow | Done | Manual-review decisions create cases and confirmed analyst outcomes append replayable label events. |
 | Compliance drafts | Local-safe done | Draft export only; no filings, no legal claim. |
 | Baseline ML | Done | sklearn random forest training report. |
 | Cost evaluation | Done | Profit threshold and recall under 1 percent FPR. |

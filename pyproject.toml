@@ -1,6 +1,6 @@
 [project]
 name = "fraud-v2"
-version = "0.16.0"
+version = "0.17.0"
 description = "Local-first fraud decision platform MVP."
 readme = "README.md"
 requires-python = ">=3.12"
