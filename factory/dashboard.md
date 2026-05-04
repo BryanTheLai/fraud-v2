@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-030 - Add Signed Policy Approvals](tasks/active/TC-20260505-030-add-signed-policy-approvals.md)
+- [TC-20260505-031 - Add Local Load Benchmark](tasks/active/TC-20260505-031-add-local-load-benchmark.md)
 
 ## Runs Waiting For Bryan
 
@@ -38,6 +38,7 @@ Updated: 2026-05-05
 - [RR-20260505-028](runs/RR-20260505-028.md)
 - [RR-20260505-029](runs/RR-20260505-029.md)
 - [RR-20260505-030](runs/RR-20260505-030.md)
+- [RR-20260505-031](runs/RR-20260505-031.md)
 
 ## Blocked Work
 
@@ -89,6 +90,7 @@ Updated: 2026-05-05
 - Added Redpanda consumer-group lag inspection through CLI and smoke proof.
 - Added local Redpanda stream supervision with backoff and smoke proof.
 - Added local signed threshold-policy approvals and approved promotion.
+- Added a local synthetic load benchmark receipt CLI.
 
 ## Lessons Added
 
@@ -100,6 +102,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M30 signed policy approvals. Next implementation task
-should add synthetic load/performance receipts or encrypted local evidence
-exports if Bryan chooses to go deeper.
+Review local MVP through M31 load benchmark receipts. Next implementation task
+should add encrypted local evidence exports if Bryan chooses to go deeper on
+data security.

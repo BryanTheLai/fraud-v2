@@ -37,6 +37,7 @@ It now runs locally in two modes:
 | Compliance drafts | Local-safe done | Draft export only; no filings, no legal claim. |
 | Baseline ML | Done | sklearn random forest training report. |
 | Cost evaluation | Done | Profit threshold and recall under 1 percent FPR. |
+| Local load benchmark | Local-safe done | `load-benchmark` writes generation/load/scoring throughput receipts against deterministic synthetic data and SQLite. |
 | Model registry | Done | JSON-backed artifact/report hashing and status controls. |
 | Shadow scoring | Done | Registered model probabilities logged without changing decisions. |
 | LLM synthetic lab | Local-safe done | Offline default plus OpenAI/Azure provider boundary. |
@@ -78,6 +79,7 @@ It now runs locally in two modes:
 | Vendor/legal approval | KYC, liveness, sanctions, SAR, credit decisions need contracts and counsel. | Keep mock adapters until approved. |
 | Data security | Real PII cannot live in this local repo casually. | Add external OIDC, encryption, audit retention, secrets manager, DLP rules. |
 | Production deployment target | Architecture differs for VM, Kubernetes, managed cloud, or on-prem. | Pick target environment and SLOs. |
+| Production capacity plan | Local benchmark receipts exist, but no real traffic or SLO model. | Run larger synthetic benchmarks and then replay real redacted event distributions. |
 | GitHub auth | Push/PR cannot happen from this machine yet. | Run `gh auth login`, then push branch and create PR. |
 
 ## Commands That Passed

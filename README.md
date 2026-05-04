@@ -27,7 +27,8 @@ store and includes Redis, Redpanda, Neo4j, Prometheus, and a provisioned Grafana
 dashboard. Stream ingestion now has bounded consume, supervised consume,
 dead-letter, DLQ publishing, and lag-inspection CLIs for local reliability work.
 Threshold policies also have local signed approval commands for governance
-rehearsal before promotion.
+rehearsal before promotion. A local load benchmark CLI writes repeatable
+synthetic performance receipts for laptop validation.
 
 ## Run Lite Mode
 
@@ -143,6 +144,7 @@ full stack.
 ```powershell
 uv run fraud-v2 replay --events-path data/synthetic/tiny/events.jsonl
 uv run fraud-v2 monitor --events-path data/synthetic/tiny/events.jsonl
+uv run fraud-v2 load-benchmark --users 1000 --score-users 50 --overwrite
 uv run fraud-v2 llm-stub
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data/local/fraud_v2.sqlite --dry-run

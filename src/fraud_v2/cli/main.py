@@ -16,6 +16,7 @@ from fraud_v2.domain.decisions import DecisionRequest
 from fraud_v2.domain.entities import EntityRef
 from fraud_v2.domain.enums import EntityType
 from fraud_v2.domain.retention import RetentionPolicy
+from fraud_v2.evaluation.load_benchmark import run_load_benchmark
 from fraud_v2.evaluation.reports import write_monitoring_report
 from fraud_v2.infrastructure.redpanda_dead_letter_publisher import RedpandaDeadLetterPublisher
 from fraud_v2.infrastructure.redpanda_lag import RedpandaLagProbe
@@ -179,6 +180,26 @@ def monitor(
     output_path: Path = Path("data/local/monitoring-report.json"),
 ) -> None:
     report = write_monitoring_report(events_path, db_path, output_path)
+    _print_json(report)
+
+
+@app.command()
+def load_benchmark(
+    users: int = typer.Option(1000, min=10, max=100000),
+    score_users: int = typer.Option(50, min=1, max=10000),
+    db_path: Path = Path("data/local/load-benchmark.sqlite"),
+    output_path: Path = Path("data/local/load-benchmark-report.json"),
+    seed: int = 20260531,
+    overwrite: bool = typer.Option(False, "--overwrite"),
+) -> None:
+    report = run_load_benchmark(
+        users=users,
+        score_users=score_users,
+        db_path=db_path,
+        output_path=output_path,
+        seed=seed,
+        overwrite=overwrite,
+    )
     _print_json(report)
 
 

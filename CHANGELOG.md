@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.31.0 - 2026-05-05
+
+- Added `fraud-v2 load-benchmark` to generate deterministic synthetic users,
+  load them into SQLite, score a sample, and write a local performance receipt.
+- Added benchmark metrics for generation time, load throughput, scoring
+  throughput, risk-tier counts, runtime platform, and output paths.
+- Made benchmark overwrite Windows-safe by clearing benchmark tables instead of
+  deleting an in-use SQLite file.
+
 ## 0.30.0 - 2026-05-05
 
 - Added local Ed25519-signed threshold-policy approval records bound to policy

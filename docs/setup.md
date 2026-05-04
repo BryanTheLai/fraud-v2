@@ -182,6 +182,7 @@ Reports and LLM scenario generation:
 ```powershell
 uv run fraud-v2 replay --events-path data\synthetic\tiny\events.jsonl
 uv run fraud-v2 monitor --events-path data\synthetic\tiny\events.jsonl
+uv run fraud-v2 load-benchmark --users 1000 --score-users 50 --overwrite
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run
 uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10
@@ -460,6 +461,25 @@ Invoke-RestMethod `
   -Uri http://127.0.0.1:8000/v1/auth/whoami
 ```
 
+## Local Load Benchmark
+
+Run a deterministic synthetic throughput receipt:
+
+```powershell
+uv run fraud-v2 load-benchmark `
+  --users 1000 `
+  --score-users 50 `
+  --db-path data\local\load-benchmark.sqlite `
+  --output-path data\local\load-benchmark-report.json `
+  --overwrite
+```
+
+The report records synthetic generation time, SQLite load throughput, decision
+scoring throughput, risk-tier counts, and basic runtime platform details. It is
+a local laptop receipt, not a production capacity plan. Increase `--users` and
+`--score-users` when you want a heavier run; keep `--overwrite` explicit so the
+benchmark does not silently mix old and new data.
+
 ## Test
 
 Quality gate:
@@ -596,6 +616,7 @@ tests/unit/domain/test_events.py
 | Open dashboard | `uv run uvicorn fraud_v2.api.main:app --host 127.0.0.1 --port 8000` | Dashboard at `/dashboard`. |
 | Train baseline | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | CPU default. |
 | Evaluate model | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | Writes metrics, cost, and threshold report. |
+| Local load benchmark | `uv run fraud-v2 load-benchmark --users 1000 --score-users 50 --overwrite` | Writes a synthetic generation/load/scoring throughput receipt. |
 | Drain local outbox | `uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run` | Publishes through a dry-run publisher by default. |
 | Consume Redpanda stream | `uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10` | Bounded local consumer for canonical event envelopes. |
 | Supervise Redpanda stream | `uv run fraud-v2 stream-supervise --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --max-batches 3 --batch-size 100` | Repeated bounded consumes with backoff, idle accounting, and failure accounting. |

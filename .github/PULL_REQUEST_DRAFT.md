@@ -20,6 +20,8 @@ Implemented:
 - Full-profile adapter boundaries for Postgres, Redis, Redpanda, and Neo4j.
 - Docker full-profile API uses Postgres as primary app storage.
 - Replay, monitoring, compliance draft, model registry, and shadow scoring CLIs.
+- Local synthetic load benchmark CLI that writes generation/load/scoring
+  performance receipts.
 - Cost-weighted model threshold reporting.
 - Analyst dashboard with recent decisions and open review queue.
 - Graph evidence dashboard for local analyst review.
@@ -73,7 +75,7 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: pass, 80 collected tests
+- Pytest: pass, 83 collected tests
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
