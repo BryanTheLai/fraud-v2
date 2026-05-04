@@ -374,6 +374,53 @@ print(f"redpanda_publish={event.idempotency_key}")
   Write-Host ($redpandaLagResult -join "`n")
   Assert-FraudCondition (($redpandaLagResult -join "`n") -like '*"total_lag": 0*') "Redpanda stream lag should be zero after consuming the smoke event."
 
+  $redpandaSupervisedTopic = "fraud.events.supervised.$([guid]::NewGuid())"
+  $redpandaSupervisedSmoke = @"
+from datetime import UTC, datetime
+from uuid import uuid4
+
+from fraud_v2.infrastructure.redpanda_publisher import RedpandaEventPublisher
+from fraud_v2.synthetic.generator import SyntheticFraudGenerator
+
+event = SyntheticFraudGenerator(seed=20260529).generate(users=10).events[0].model_copy(
+    update={
+        "event_id": uuid4(),
+        "idempotency_key": f"redpanda-supervised-smoke:{uuid4()}",
+        "occurred_at": datetime.now(UTC),
+    }
+)
+RedpandaEventPublisher("redpanda:9092").publish("$redpandaSupervisedTopic", event)
+print(f"redpanda_supervised_publish={event.idempotency_key}")
+"@
+  $redpandaSupervisedPublishResult = $redpandaSupervisedSmoke | docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync python - 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Redpanda supervised publish smoke failed: $redpandaSupervisedPublishResult"
+  Write-Host ($redpandaSupervisedPublishResult -join "`n")
+  Assert-FraudCondition (($redpandaSupervisedPublishResult -join "`n") -like "*redpanda_supervised_publish=*") "Redpanda supervised publish did not print proof."
+
+  $redpandaSupervisorGroup = "fraud-v2-supervisor-smoke-$([guid]::NewGuid())"
+  $redpandaSupervisorResult = docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync fraud-v2 stream-supervise `
+      --bootstrap-servers redpanda:9092 `
+      --topic $redpandaSupervisedTopic `
+      --group-id $redpandaSupervisorGroup `
+      --store-backend postgres `
+      --postgres-dsn postgresql://fraud:fraud@postgres:5432/fraud_v2 `
+      --batch-size 1 `
+      --max-batches 1 `
+      --max-empty-polls 20 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Redpanda stream supervisor smoke failed: $redpandaSupervisorResult"
+  Write-Host ($redpandaSupervisorResult -join "`n")
+  Assert-FraudCondition (($redpandaSupervisorResult -join "`n") -like '*"status": "completed"*') "Redpanda stream supervisor did not complete."
+  Assert-FraudCondition (($redpandaSupervisorResult -join "`n") -like '*"completed_batches": 1*') "Redpanda stream supervisor did not complete one batch."
+  Assert-FraudCondition (($redpandaSupervisorResult -join "`n") -like '*"ingested": 1*') "Redpanda stream supervisor did not ingest the supervised smoke event."
+
   $redpandaProof = @"
 from fraud_v2.storage.postgres_store import PostgresStore
 

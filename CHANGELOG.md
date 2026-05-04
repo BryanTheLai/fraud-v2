@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.0 - 2026-05-05
+
+- Added a local `fraud-v2 stream-supervise` worker loop for repeated bounded
+  Redpanda consume batches.
+- Added supervisor reporting for completed batches, failed batches, idle
+  batches, aggregate ingest counts, dead-letter counts, and last transient
+  error.
+- Expanded the full-profile smoke to publish a supervised stream event and
+  prove the supervisor ingests it into Postgres.
+
 ## 0.28.0 - 2026-05-05
 
 - Added a Redpanda consumer-group lag probe and `fraud-v2 stream-lag` CLI.

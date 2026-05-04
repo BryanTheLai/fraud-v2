@@ -24,7 +24,8 @@ model training, FastAPI endpoints, dashboard, metrics, tests, CI workflow, and
 Docker Compose scaffolding. Analyst review outcomes feed canonical review and
 label events for replay/training. Full mode uses Postgres as the primary app
 store and includes Redis, Redpanda, Neo4j, Prometheus, and a provisioned Grafana
-dashboard.
+dashboard. Stream ingestion now has bounded consume, supervised consume,
+dead-letter, DLQ publishing, and lag-inspection CLIs for local reliability work.
 
 ## Run Lite Mode
 
@@ -125,8 +126,9 @@ review decision, verifies retention prune dry-run and execute paths, checks the
 dashboard, verifies Prometheus metrics, checks graph evidence rendering, loads
 Grafana, verifies the Postgres adapter inside the Docker network, verifies
 Redis and Neo4j adapters, publishes a Redpanda event, consumes it back into
-Postgres through the stream worker, then shuts the stack down unless
-`-KeepRunning` is set.
+Postgres through the stream worker, proves zero consumer lag, runs the
+supervised stream worker path, verifies invalid-record DLQ publishing, then
+shuts the stack down unless `-KeepRunning` is set.
 
 `full-smoke.ps1` uses high host ports by default, for example API `18000`,
 Grafana `13000`, Prometheus `19090`, and Neo4j HTTP `17474`, so it can run while
@@ -143,6 +145,7 @@ uv run fraud-v2 llm-stub
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data/local/fraud_v2.sqlite --dry-run
 uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10
+uv run fraud-v2 stream-supervise --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --max-batches 3 --batch-size 100
 uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10 --publish-dead-letters --dead-letter-topic fraud.dead_letters --allow-errors
 uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local
 uv run fraud-v2 stream-dead-letters --db-path data/local/fraud_v2.sqlite

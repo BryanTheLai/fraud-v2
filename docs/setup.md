@@ -185,6 +185,7 @@ uv run fraud-v2 monitor --events-path data\synthetic\tiny\events.jsonl
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run
 uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10
+uv run fraud-v2 stream-supervise --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --max-batches 3 --batch-size 100
 uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10 --publish-dead-letters --dead-letter-topic fraud.dead_letters --allow-errors
 uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local
 uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite
@@ -308,6 +309,26 @@ The stream consumer uses at-least-once semantics with idempotency keys. Exact
 duplicates are committed as safe no-ops. Invalid messages, empty payloads,
 stream message errors, and idempotency-key payload conflicts are written to a
 local dead-letter table before the worker commits the offset.
+
+Supervised local stream consume:
+
+```powershell
+uv run fraud-v2 stream-supervise `
+  --bootstrap-servers localhost:19092 `
+  --topic fraud.events `
+  --group-id fraud-v2-local `
+  --store-backend sqlite `
+  --db-path data\local\fraud_v2.sqlite `
+  --max-batches 3 `
+  --batch-size 100 `
+  --max-empty-polls 3 `
+  --restart-backoff-seconds 5
+```
+
+The supervisor repeatedly runs bounded consume batches, reports aggregate
+ingest/dead-letter counts, counts idle batches, and backs off after transient
+consumer creation/runtime failures. It is still a local CLI, not a Windows
+service, Kubernetes deployment, or managed stream platform.
 
 Inspect stream dead letters:
 
@@ -544,6 +565,7 @@ tests/unit/domain/test_events.py
 | Evaluate model | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | Writes metrics, cost, and threshold report. |
 | Drain local outbox | `uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run` | Publishes through a dry-run publisher by default. |
 | Consume Redpanda stream | `uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10` | Bounded local consumer for canonical event envelopes. |
+| Supervise Redpanda stream | `uv run fraud-v2 stream-supervise --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --max-batches 3 --batch-size 100` | Repeated bounded consumes with backoff, idle accounting, and failure accounting. |
 | Consume with Redpanda DLQ | `uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --publish-dead-letters --dead-letter-topic fraud.dead_letters --allow-errors` | Writes bad records to app-store dead letters and a Redpanda DLQ topic. |
 | Inspect stream lag | `uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local` | Reports partition watermarks, committed offsets, and total consumer lag. |
 | Inspect stream dead letters | `uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite` | Shows invalid/conflicting stream records stored for admin inspection. |

@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-028 - Add Stream Lag CLI](tasks/active/TC-20260505-028-add-stream-lag-cli.md)
+- [TC-20260505-029 - Add Stream Supervisor CLI](tasks/active/TC-20260505-029-add-stream-supervisor-cli.md)
 
 ## Runs Waiting For Bryan
 
@@ -36,6 +36,7 @@ Updated: 2026-05-05
 - [RR-20260505-026](runs/RR-20260505-026.md)
 - [RR-20260505-027](runs/RR-20260505-027.md)
 - [RR-20260505-028](runs/RR-20260505-028.md)
+- [RR-20260505-029](runs/RR-20260505-029.md)
 
 ## Blocked Work
 
@@ -85,6 +86,7 @@ Updated: 2026-05-05
 - Added a local threshold policy promotion registry with active-policy export.
 - Added optional Redpanda DLQ topic publishing for stream dead letters.
 - Added Redpanda consumer-group lag inspection through CLI and smoke proof.
+- Added local Redpanda stream supervision with backoff and smoke proof.
 
 ## Lessons Added
 
@@ -96,6 +98,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M28 stream lag CLI. Next implementation task should add
-worker supervision or signed policy approvals if Bryan chooses to go deeper on
-production hardening.
+Review local MVP through M29 stream supervision. Next implementation task should
+add signed policy approvals if Bryan chooses to go deeper on production
+governance.

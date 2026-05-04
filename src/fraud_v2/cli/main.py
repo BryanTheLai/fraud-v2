@@ -39,6 +39,7 @@ from fraud_v2.storage.sqlite_store import SQLiteStore
 from fraud_v2.synthetic.generator import SyntheticFraudGenerator, load_events_jsonl
 from fraud_v2.workers.outbox import DryRunEventPublisher, OutboxWorker
 from fraud_v2.workers.stream_consumer import RedpandaConsumerFactory, StreamIngestionWorker
+from fraud_v2.workers.stream_supervisor import StreamSupervisor
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -319,6 +320,58 @@ def stream_consume(
     ).run(max_messages=max_messages)
     _print_json(report.__dict__)
     if report.failed > 0 and fail_on_error:
+        raise typer.Exit(code=2)
+
+
+@app.command()
+def stream_supervise(
+    bootstrap_servers: str = "localhost:19092",
+    topic: str = "fraud.events",
+    group_id: str = "fraud-v2-local",
+    max_batches: int = typer.Option(1, min=1, max=100000),
+    batch_size: int = typer.Option(100, min=1, max=100000),
+    max_empty_polls: int = typer.Option(3, min=1, max=100),
+    poll_timeout_seconds: float = typer.Option(1.0, min=0.1, max=30.0),
+    restart_backoff_seconds: float = typer.Option(5.0, min=0.0, max=300.0),
+    idle_sleep_seconds: float = typer.Option(1.0, min=0.0, max=300.0),
+    max_consecutive_failures: int = typer.Option(3, min=1, max=100),
+    store_backend: str = typer.Option("sqlite", "--store-backend"),
+    db_path: Path = Path("data/local/fraud_v2.sqlite"),
+    postgres_dsn: str = "postgresql://fraud:fraud@localhost:5432/fraud_v2",
+    publish_dead_letters: bool = typer.Option(
+        False, "--publish-dead-letters/--db-dead-letters-only"
+    ),
+    dead_letter_topic: str = "fraud.dead_letters",
+    fail_on_unhealthy: bool = typer.Option(True, "--fail-on-unhealthy/--allow-unhealthy"),
+) -> None:
+    store = _store_from_cli(
+        store_backend=store_backend,
+        db_path=db_path,
+        postgres_dsn=postgres_dsn,
+    )
+    report = StreamSupervisor(
+        store=store,
+        consumer_factory=RedpandaConsumerFactory(
+            bootstrap_servers=bootstrap_servers,
+            group_id=group_id,
+        ),
+        topic=topic,
+        group_id=group_id,
+        batch_size=batch_size,
+        max_empty_polls=max_empty_polls,
+        poll_timeout_seconds=poll_timeout_seconds,
+        restart_backoff_seconds=restart_backoff_seconds,
+        idle_sleep_seconds=idle_sleep_seconds,
+        max_consecutive_failures=max_consecutive_failures,
+        dead_letter_publisher=(
+            RedpandaDeadLetterPublisher(bootstrap_servers=bootstrap_servers)
+            if publish_dead_letters
+            else None
+        ),
+        dead_letter_topic=dead_letter_topic,
+    ).run(max_batches=max_batches)
+    _print_json(report.__dict__)
+    if report.status == "failed" and fail_on_unhealthy:
         raise typer.Exit(code=2)
 
 
