@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from html import escape
 from pathlib import Path
 from uuid import UUID
 
@@ -68,29 +69,43 @@ def dashboard(db: SQLiteStore = Depends(store)) -> str:
     green_card = _metric_card("Green", green)
     yellow_card = _metric_card("Yellow", yellow)
     red_card = _metric_card("Red", red)
+    recent_decisions = _decision_table(decisions[-12:])
+    review_queue = _review_table([case for case in cases if case.status == "open"][:12])
     return f"""
     <!doctype html>
     <html lang="en">
       <head>
         <title>fraud-v2 dashboard</title>
         <style>
-          body {{ font-family: Segoe UI, Arial, sans-serif; margin: 32px; color: #17202a; }}
+          body {{ font-family: Segoe UI, Arial, sans-serif; margin: 28px; color: #17202a; }}
+          h1 {{ font-size: 24px; margin: 0 0 18px; }}
+          h2 {{ font-size: 16px; margin: 28px 0 10px; }}
           .grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }}
-          .metric {{ border: 1px solid #d7dde5; border-radius: 8px; padding: 16px; }}
+          .metric {{ border: 1px solid #d7dde5; border-radius: 6px; padding: 14px; }}
           .label {{ color: #5d6d7e; font-size: 12px; text-transform: uppercase; }}
-          .value {{ font-size: 32px; font-weight: 700; margin-top: 8px; }}
+          .value {{ font-size: 28px; font-weight: 700; margin-top: 6px; }}
+          table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
+          th, td {{ border-bottom: 1px solid #e4e8ee; padding: 8px; text-align: left; }}
+          th {{ color: #566573; font-weight: 600; background: #f8fafc; }}
+          .tier-RED {{ color: #a61b1b; font-weight: 700; }}
+          .tier-YELLOW {{ color: #8a5a00; font-weight: 700; }}
+          .tier-GREEN {{ color: #17633a; font-weight: 700; }}
           a {{ color: #0b5cad; }}
+          @media (max-width: 760px) {{ .grid {{ grid-template-columns: repeat(2, 1fr); }} }}
         </style>
       </head>
       <body>
-        <h1>fraud-v2 local dashboard</h1>
+        <h1>fraud-v2 analyst dashboard</h1>
         <div class="grid">
           {event_card}
           {green_card}
           {yellow_card}
           {red_card}
         </div>
-        <p>Open review cases: {sum(1 for case in cases if case.status == "open")}</p>
+        <h2>Recent decisions</h2>
+        {recent_decisions}
+        <h2>Open review queue</h2>
+        {review_queue}
         <p><a href="/docs">API docs</a> | <a href="/metrics">Metrics</a></p>
       </body>
     </html>
@@ -103,6 +118,49 @@ def _metric_card(label: str, value: int) -> str:
         f'<div class="label">{label}</div>'
         f'<div class="value">{value}</div>'
         "</div>"
+    )
+
+
+def _decision_table(decisions: list[DecisionResponse]) -> str:
+    if not decisions:
+        return "<p>No decisions yet.</p>"
+    rows = []
+    for decision in reversed(decisions):
+        rows.append(
+            "<tr>"
+            f"<td>{escape(str(decision.decision_id))}</td>"
+            f"<td>{escape(decision.target_entity.entity_id)}</td>"
+            f'<td class="tier-{decision.risk_tier.value}">{decision.risk_tier.value}</td>'
+            f"<td>{decision.risk_score}</td>"
+            f"<td>{decision.action.value}</td>"
+            f"<td>{escape(', '.join(decision.safe_reasons[:2]))}</td>"
+            "</tr>"
+        )
+    return (
+        "<table><thead><tr><th>Decision</th><th>User</th><th>Tier</th>"
+        "<th>Score</th><th>Action</th><th>Reasons</th></tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table>"
+    )
+
+
+def _review_table(cases: list[ReviewCase]) -> str:
+    if not cases:
+        return "<p>No open review cases.</p>"
+    rows = []
+    for case in cases:
+        rows.append(
+            "<tr>"
+            f"<td>{escape(str(case.case_id))}</td>"
+            f"<td>{escape(str(case.decision_id))}</td>"
+            f"<td>{escape(case.target_entity_id)}</td>"
+            f"<td>{case.priority}</td>"
+            f"<td>{escape(case.status)}</td>"
+            "</tr>"
+        )
+    return (
+        "<table><thead><tr><th>Case</th><th>Decision</th><th>User</th><th>Priority</th>"
+        "<th>Status</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
     )
 
 

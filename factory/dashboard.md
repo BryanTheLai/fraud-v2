@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-008 - Add Full Profile Smoke](tasks/active/TC-20260505-008-add-full-profile-smoke.md)
+- [TC-20260505-009 - Polish Analyst Dashboard](tasks/active/TC-20260505-009-polish-analyst-dashboard.md)
 
 ## Runs Waiting For Bryan
 
@@ -16,6 +16,7 @@ Updated: 2026-05-05
 - [RR-20260505-006](runs/RR-20260505-006.md)
 - [RR-20260505-007](runs/RR-20260505-007.md)
 - [RR-20260505-008](runs/RR-20260505-008.md)
+- [RR-20260505-009](runs/RR-20260505-009.md)
 
 ## Blocked Work
 
@@ -37,6 +38,7 @@ Updated: 2026-05-05
 - Added local model registry controls for shadow and active model governance.
 - Added registered-model shadow scoring reports that do not alter decisions.
 - Added full-profile Docker smoke script.
+- Upgraded the analyst dashboard with recent decisions and open review queue.
 
 ## Lessons Added
 
@@ -48,5 +50,5 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M8 full-profile smoke. Next implementation task should
-add analyst UI polish and deeper Docker-backed integration tests.
+Review local MVP through M9 dashboard polish. Next implementation task should
+add deeper Docker-backed integration tests and production-readiness review.

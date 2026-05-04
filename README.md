@@ -36,7 +36,7 @@ uv run uvicorn fraud_v2.api.main:app --host 127.0.0.1 --port 8000
 Local URLs:
 
 - API docs: `http://127.0.0.1:8000/docs`
-- Dashboard: `http://127.0.0.1:8000/dashboard`
+- Analyst dashboard: `http://127.0.0.1:8000/dashboard`
 - Metrics: `http://127.0.0.1:8000/metrics`
 
 Protected `/v1/*` endpoints require `Authorization: Bearer dev-token-change-me`

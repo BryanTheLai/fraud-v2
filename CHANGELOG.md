@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0 - 2026-05-05
+
+- Upgraded the local dashboard into a denser analyst cockpit with recent
+  decisions and open review queue tables.
+
 ## 0.8.0 - 2026-05-05
 
 - Added `scripts/full-smoke.ps1` to build, start, verify, and optionally keep

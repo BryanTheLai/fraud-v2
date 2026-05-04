@@ -30,6 +30,11 @@ def test_api_generate_and_score(tmp_path) -> None:  # type: ignore[no-untyped-de
 
     cases = client.get("/v1/review/cases", headers=headers)
     assert cases.status_code == 200
+    dashboard = client.get("/dashboard")
+    assert dashboard.status_code == 200
+    assert "Recent decisions" in dashboard.text
+    assert "Open review queue" in dashboard.text
+    assert "user_00000" in dashboard.text
 
     app.dependency_overrides.clear()
 

@@ -173,7 +173,7 @@ uv run fraud-v2 shadow-score --status active
 Local URLs after implementation:
 
 - API docs: `http://localhost:8000/docs`
-- Dashboard: `http://localhost:8000/dashboard`
+- Analyst dashboard: `http://localhost:8000/dashboard`
 - Grafana: `http://localhost:3000`
 - Redpanda Console: `http://localhost:8080`
 - Neo4j Browser: `http://localhost:7474`
