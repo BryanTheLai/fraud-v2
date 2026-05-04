@@ -1,3 +1,6 @@
+from datetime import UTC, datetime, timedelta
+
+import jwt
 import pytest
 from fastapi import HTTPException
 
@@ -55,3 +58,83 @@ def test_invalid_role_binding_fails_closed() -> None:
         )
 
     assert exc.value.status_code == 500
+
+
+def test_jwt_auth_validates_claims_and_roles() -> None:
+    token = _jwt_token(roles=["analyst"], secret=JWT_SECRET)
+    settings = Settings(auth_mode="jwt", jwt_secret=JWT_SECRET)
+
+    principal = authorize_bearer(
+        authorization=f"Bearer {token}",
+        settings=settings,
+        allowed_roles={AuthRole.ANALYST},
+    )
+
+    assert principal.subject == "analyst-1"
+    assert principal.roles == frozenset({AuthRole.ANALYST})
+
+
+def test_jwt_auth_rejects_wrong_audience() -> None:
+    token = _jwt_token(roles=["admin"], secret=JWT_SECRET, audience="wrong-api")
+    settings = Settings(auth_mode="jwt", jwt_secret=JWT_SECRET)
+
+    with pytest.raises(HTTPException) as exc:
+        authorize_bearer(
+            authorization=f"Bearer {token}",
+            settings=settings,
+            allowed_roles={AuthRole.ADMIN},
+        )
+
+    assert exc.value.status_code == 401
+
+
+def test_jwt_auth_fails_closed_without_secret() -> None:
+    token = _jwt_token(roles=["admin"], secret=JWT_SECRET)
+
+    with pytest.raises(HTTPException) as exc:
+        authorize_bearer(
+            authorization=f"Bearer {token}",
+            settings=Settings(auth_mode="jwt", jwt_secret=""),
+            allowed_roles={AuthRole.ADMIN},
+        )
+
+    assert exc.value.status_code == 500
+
+
+def test_jwt_auth_role_claim_must_match_allowed_role() -> None:
+    token = _jwt_token(roles=["analyst"], secret=JWT_SECRET)
+
+    with pytest.raises(HTTPException) as exc:
+        authorize_bearer(
+            authorization=f"Bearer {token}",
+            settings=Settings(auth_mode="jwt", jwt_secret=JWT_SECRET),
+            allowed_roles={AuthRole.SYSTEM},
+        )
+
+    assert exc.value.status_code == 403
+
+
+JWT_SECRET = "local-jwt-secret-for-fraud-v2-tests-32b"
+
+
+def _jwt_token(
+    *,
+    roles: list[str],
+    secret: str,
+    subject: str = "analyst-1",
+    issuer: str = "fraud-v2-local",
+    audience: str = "fraud-v2-api",
+) -> str:
+    now = datetime.now(UTC)
+    return jwt.encode(
+        {
+            "sub": subject,
+            "roles": roles,
+            "iss": issuer,
+            "aud": audience,
+            "iat": now,
+            "exp": now + timedelta(minutes=5),
+        },
+        secret,
+        algorithm="HS256",
+    )

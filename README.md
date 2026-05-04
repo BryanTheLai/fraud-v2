@@ -59,6 +59,18 @@ Roles are intentionally small:
 - `analyst`: read decisions, graph, and review queue.
 - `admin`: all local actions.
 
+JWT/OIDC-shaped local auth is available without an external provider:
+
+```powershell
+$env:FRAUD_AUTH_MODE="jwt"
+$env:FRAUD_JWT_SECRET="replace-with-local-only-secret-32b-min"
+uv run fraud-v2 auth-token --secret $env:FRAUD_JWT_SECRET --subject local-admin
+```
+
+Use the printed token as `Authorization: Bearer <token>`. JWT mode validates
+issuer, audience, expiry, subject, and role claims. It is still local auth, not
+a replacement for a production OIDC provider.
+
 Admin-only audit endpoints:
 
 - `GET /v1/audit/entries`

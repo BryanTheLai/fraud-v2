@@ -6,7 +6,7 @@ This PR turns the Fraud V2 plan into a runnable local fraud decision platform.
 
 Implemented:
 
-- Python/FastAPI local fraud API with token-protected `/v1/*` routes.
+- Python/FastAPI local fraud API with token/JWT-protected `/v1/*` routes.
 - Deterministic synthetic data generation and SQLite lite storage.
 - Rules + graph decision engine with safe reasons and trace IDs.
 - Manual review case creation.
@@ -22,6 +22,7 @@ Implemented:
 - Docker Compose full profile and `scripts/full-smoke.ps1`.
 - Provisioned Grafana dashboard for full-profile observability.
 - Local role-aware API authorization for admin, analyst, and system tokens.
+- JWT/OIDC-shaped local auth mode with a token minting CLI for offline testing.
 - Request trace IDs, structured JSON request logs, HTTP metrics, and local
   Prometheus alert rules.
 - Tamper-evident local audit log and admin audit verification endpoints.
@@ -50,7 +51,7 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: 48 passed
+- Pytest: 52 passed
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, dashboard, metrics,
   Grafana, Prometheus scrape, Postgres insert/list, Redis feature cache,
@@ -61,6 +62,6 @@ Latest local result:
 - Synthetic data only.
 - Mock vendors only.
 - Compliance drafts only; no filings.
-- Local bearer-token auth only.
+- Local bearer-token and HS256 JWT auth only; no external OIDC provider yet.
 - No real production deployment target yet.
 - GitHub push/PR creation is blocked locally until `gh auth login`.

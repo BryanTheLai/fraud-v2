@@ -51,7 +51,7 @@ It now runs locally in two modes:
 | KYC/device/consortium | Mock connectors only. No real vendors. |
 | SAR/adverse action | Drafts only. No filing. No legal compliance claim. |
 | Data | Synthetic only unless public datasets are manually downloaded. |
-| Auth | Local role-token RBAC only. No OIDC/users/sessions. |
+| Auth | Local role-token and JWT/OIDC-shaped auth modes exist. No external IdP, user lifecycle, or sessions. |
 | Secrets | `.env` pattern only. No vault/KMS. |
 | Audit immutability | Hash-chained SQLite only. No WORM/object-lock storage. |
 | Retention enforcement | Report-only. No deletion jobs, legal holds, or archive tiers. |
@@ -68,7 +68,7 @@ It now runs locally in two modes:
 | Real fraud domain and action authority | Rules/legal obligations change by product. | Choose first wedge: instant cash, ATO, card testing, ecommerce, crypto, or lending. |
 | Real labels | ML quality is fake without verified fraud/legit outcomes. | Load public datasets or real redacted labels after governance. |
 | Vendor/legal approval | KYC, liveness, sanctions, SAR, credit decisions need contracts and counsel. | Keep mock adapters until approved. |
-| Data security | Real PII cannot live in this local repo casually. | Add OIDC, encryption, audit retention, secrets manager, DLP rules. |
+| Data security | Real PII cannot live in this local repo casually. | Add external OIDC, encryption, audit retention, secrets manager, DLP rules. |
 | Production deployment target | Architecture differs for VM, Kubernetes, managed cloud, or on-prem. | Pick target environment and SLOs. |
 | GitHub auth | Push/PR cannot happen from this machine yet. | Run `gh auth login`, then push branch and create PR. |
 

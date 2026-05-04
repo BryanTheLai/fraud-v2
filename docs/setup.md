@@ -52,6 +52,10 @@ Target local services:
 |---|---|---|---|
 | `FRAUD_ENV` | yes | `local` | Environment name. |
 | `FRAUD_API_TOKEN` | yes | `dev-token-change-me` | Local only. Do not commit real secrets. |
+| `FRAUD_AUTH_MODE` | no | `token` or `jwt` | `token` keeps the default local path. `jwt` validates local HS256 JWTs. |
+| `FRAUD_JWT_SECRET` | only for JWT | 32+ byte local secret | Required when `FRAUD_AUTH_MODE=jwt`. Do not commit it. |
+| `FRAUD_JWT_ISSUER` | no | `fraud-v2-local` | Expected JWT issuer. |
+| `FRAUD_JWT_AUDIENCE` | no | `fraud-v2-api` | Expected JWT audience. |
 | `DATABASE_URL` | yes | `postgresql+psycopg://fraud:fraud@localhost:5432/fraud_v2` | App database. |
 | `REDIS_URL` | yes | `redis://localhost:6379/0` | Online feature store. |
 | `REDPANDA_BOOTSTRAP_SERVERS` | yes | `localhost:19092` | Event bus. |
@@ -211,6 +215,19 @@ Role boundaries:
 | `system` | Ingest events, generate synthetic data, score decisions. |
 | `analyst` | Read decisions, graph neighborhoods, and review queue; submit review outcomes. |
 | `admin` | All local actions. |
+
+JWT/OIDC-shaped local auth:
+
+```powershell
+$env:FRAUD_AUTH_MODE="jwt"
+$env:FRAUD_JWT_SECRET="replace-with-local-only-secret-32b-min"
+uv run fraud-v2 auth-token --secret $env:FRAUD_JWT_SECRET --subject local-admin
+```
+
+Use the printed token as `Authorization: Bearer <token>`. JWT mode validates
+issuer, audience, expiry, subject, and role claims. It is an offline local
+boundary for production-shaped development, not a real external identity
+provider.
 
 Admin-only audit checks:
 

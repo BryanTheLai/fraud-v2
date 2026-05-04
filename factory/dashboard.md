@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-017 - Add Review Feedback Events](tasks/active/TC-20260505-017-add-review-feedback-events.md)
+- [TC-20260505-018 - Add Local JWT Auth Boundary](tasks/active/TC-20260505-018-add-local-jwt-auth-boundary.md)
 
 ## Runs Waiting For Bryan
 
@@ -25,6 +25,7 @@ Updated: 2026-05-05
 - [RR-20260505-015](runs/RR-20260505-015.md)
 - [RR-20260505-016](runs/RR-20260505-016.md)
 - [RR-20260505-017](runs/RR-20260505-017.md)
+- [RR-20260505-018](runs/RR-20260505-018.md)
 
 ## Blocked Work
 
@@ -59,6 +60,8 @@ Updated: 2026-05-05
   smoke inside the full profile.
 - Added full-profile smoke coverage for Redis, Neo4j, and Redpanda adapters.
 - Added analyst review feedback events for replayable review and label signals.
+- Added JWT/OIDC-shaped local auth with issuer, audience, expiry, and role
+  validation.
 
 ## Lessons Added
 
@@ -70,6 +73,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M17 analyst feedback events. Next implementation task
-should add a real OIDC design or move more runtime storage paths to Postgres if
-Bryan chooses to go deeper on production hardening.
+Review local MVP through M18 local JWT auth boundary. Next implementation task
+should move more runtime storage paths to Postgres or add external OIDC
+discovery/JWKS support if Bryan chooses to go deeper on production hardening.

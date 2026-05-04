@@ -10,6 +10,12 @@ class Settings(BaseSettings):
     sqlite_path: Path = Path("data/local/fraud_v2.sqlite")
     api_token: str = "dev-token-change-me"
     api_tokens: str = ""
+    auth_mode: str = "token"
+    jwt_secret: str = ""
+    jwt_issuer: str = "fraud-v2-local"
+    jwt_audience: str = "fraud-v2-api"
+    jwt_leeway_seconds: int = 30
+    jwt_roles_claim: str = "roles"
 
 
 def get_settings() -> Settings:

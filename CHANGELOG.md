@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.0 - 2026-05-05
+
+- Added JWT/OIDC-shaped local auth mode with issuer, audience, expiry, subject,
+  role-claim validation, and a 32+ byte local secret requirement.
+- Added a local `fraud-v2 auth-token` helper for minting offline HS256 test
+  tokens without requiring an external identity provider.
+
 ## 0.17.0 - 2026-05-05
 
 - Added analyst feedback-loop events so confirmed manual review outcomes append
