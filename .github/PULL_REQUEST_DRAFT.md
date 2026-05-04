@@ -1,0 +1,51 @@
+# Implement local fraud-v2 platform
+
+## Summary
+
+This PR turns the Fraud V2 plan into a runnable local fraud decision platform.
+
+Implemented:
+
+- Python/FastAPI local fraud API with token-protected `/v1/*` routes.
+- Deterministic synthetic data generation and SQLite lite storage.
+- Rules + graph decision engine with safe reasons and trace IDs.
+- Manual review case creation.
+- Transactional outbox and dry-run outbox worker.
+- Mock KYC/device/consortium connector boundaries.
+- Raw application/payment converters.
+- Full-profile adapter boundaries for Postgres, Redis, Redpanda, and Neo4j.
+- Replay, monitoring, compliance draft, model registry, and shadow scoring CLIs.
+- Cost-weighted model threshold reporting.
+- Analyst dashboard with recent decisions and open review queue.
+- Docker Compose full profile and `scripts/full-smoke.ps1`.
+- GitHub Actions test and Docker build workflow.
+
+## Test Plan
+
+```powershell
+uv sync --extra dev --extra infra --extra llm
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy src
+uv run pytest -q
+docker compose -f infra\docker-compose.yml --profile full config --quiet
+docker build -t fraud-v2:local .
+.\scripts\full-smoke.ps1 -TimeoutSeconds 240
+```
+
+Latest local result:
+
+- Ruff format/check: pass
+- Mypy: pass
+- Pytest: 31 passed
+- Docker build: pass
+- Full profile smoke: pass
+
+## Known Limits
+
+- Synthetic data only.
+- Mock vendors only.
+- Compliance drafts only; no filings.
+- Local bearer-token auth only.
+- No real production deployment target yet.
+- GitHub push/PR creation is blocked locally until `gh auth login`.

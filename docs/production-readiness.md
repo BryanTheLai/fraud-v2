@@ -1,0 +1,89 @@
+---
+project: fraud-v2
+owner: Bryan
+created_at: 2026-05-05
+status: current
+---
+
+# Production Readiness: Fraud V2
+
+## Current Verdict
+
+This repo is a production-shaped local fraud lab. It is not a regulated
+production fraud system yet.
+
+It now runs locally in two modes:
+
+- Lite mode: Python, FastAPI, SQLite, synthetic data, rules, graph features,
+  baseline ML, replay, monitoring, compliance drafts, model registry, shadow
+  scoring, and analyst dashboard.
+- Full mode: Docker Compose starts API, Postgres, Redis, Redpanda, Neo4j,
+  Prometheus, and Grafana, verified by `scripts/full-smoke.ps1`.
+
+## Implemented
+
+| Area | Status | Proof |
+|---|---|---|
+| Domain contracts | Done | Pydantic events, decisions, reviews, outbox, compliance drafts. |
+| Synthetic data | Done | Deterministic local generator and JSONL loader. |
+| Lite storage | Done | SQLite event store, decisions, review cases, and outbox. |
+| API | Done | FastAPI routes, token-protected `/v1/*`, health, metrics, docs. |
+| Rules/graph decisions | Done | Rules + NetworkX graph service, safe reasons, trace IDs. |
+| Review workflow | Done | Yellow/red decisions create review cases. |
+| Compliance drafts | Local-safe done | Draft export only; no filings, no legal claim. |
+| Baseline ML | Done | sklearn random forest training report. |
+| Cost evaluation | Done | Profit threshold and recall under 1 percent FPR. |
+| Model registry | Done | JSON-backed artifact/report hashing and status controls. |
+| Shadow scoring | Done | Registered model probabilities logged without changing decisions. |
+| LLM synthetic lab | Local-safe done | Offline default plus OpenAI/Azure provider boundary. |
+| Full Docker profile | Done | Full profile smoke passed locally. |
+| CI | Done | GitHub Actions for tests and Docker build. |
+
+## Still Fake Or Local-Only
+
+| Area | Reality |
+|---|---|
+| KYC/device/consortium | Mock connectors only. No real vendors. |
+| SAR/adverse action | Drafts only. No filing. No legal compliance claim. |
+| Data | Synthetic only unless public datasets are manually downloaded. |
+| Auth | Local bearer token only. No RBAC/users/sessions. |
+| Secrets | `.env` pattern only. No vault/KMS. |
+| Persistence | SQLite lite path is primary; Postgres adapter exists but is not the default app store. |
+| Streaming | Redpanda publisher exists; real stream worker topology is not complete. |
+| Graph DB | Neo4j projector exists; decision engine still uses NetworkX fallback. |
+| Observability | Prometheus metrics exist; Grafana dashboards are not curated yet. |
+| Deployment | Local Docker only. No cloud/IaC/production deploy. |
+
+## Hard Blockers To Real Production
+
+| Blocker | Why It Matters | Next Practical Step |
+|---|---|---|
+| Real fraud domain and action authority | Rules/legal obligations change by product. | Choose first wedge: instant cash, ATO, card testing, ecommerce, crypto, or lending. |
+| Real labels | ML quality is fake without verified fraud/legit outcomes. | Load public datasets or real redacted labels after governance. |
+| Vendor/legal approval | KYC, liveness, sanctions, SAR, credit decisions need contracts and counsel. | Keep mock adapters until approved. |
+| Data security | Real PII cannot live in this local repo casually. | Add RBAC, encryption, audit retention, secrets manager, DLP rules. |
+| Production deployment target | Architecture differs for VM, Kubernetes, managed cloud, or on-prem. | Pick target environment and SLOs. |
+| GitHub auth | Push/PR cannot happen from this machine yet. | Run `gh auth login`, then push branch and create PR. |
+
+## Commands That Passed
+
+```powershell
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy src
+uv run pytest -q
+docker compose -f infra\docker-compose.yml --profile full config --quiet
+docker build -t fraud-v2:local .
+.\scripts\full-smoke.ps1 -TimeoutSeconds 240
+```
+
+## Current Branch
+
+```text
+feature/full-profile-adapters
+```
+
+## GitHub Blocker
+
+`gh auth status` reports no logged-in GitHub host. No remote is configured.
+Local commits are complete; push and PR creation require GitHub authentication.

@@ -15,6 +15,7 @@ Start here:
 - [Data Strategy](docs/data-strategy.md)
 - [LLM Synthetic Data Lab](docs/llm-synthetic-data-lab.md)
 - [Local Production Profile](docs/local-production-profile.md)
+- [Production Readiness](docs/production-readiness.md)
 - [Code Factory Dashboard](factory/dashboard.md)
 
 Current state: local MVP plus full-profile adapter layer implemented. It runs in
