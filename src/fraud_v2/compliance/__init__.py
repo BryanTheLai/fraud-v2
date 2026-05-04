@@ -1,0 +1,1 @@
+"""Compliance-safe summaries."""
