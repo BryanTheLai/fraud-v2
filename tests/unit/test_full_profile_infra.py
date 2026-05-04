@@ -39,6 +39,7 @@ def test_full_smoke_exercises_functional_api_and_observability() -> None:
     assert "/v1/synthetic/generate?users=30" in smoke_script
     assert "/v1/decisions/score" in smoke_script
     assert "/v1/review/cases" in smoke_script
+    assert "/dashboard/graph?entity_id=user_00000" in smoke_script
     assert "fraud_decisions_total" in smoke_script
     assert 'up{job="fraud-v2-api", instance="api:8000"}' in smoke_script
     assert "FraudV2APIUnavailable" in smoke_script

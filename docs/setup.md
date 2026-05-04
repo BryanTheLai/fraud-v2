@@ -185,6 +185,7 @@ Local URLs after implementation:
 
 - API docs: `http://localhost:8000/docs`
 - Analyst dashboard: `http://localhost:8000/dashboard`
+- Graph evidence: `http://localhost:8000/dashboard/graph?entity_id=user_00000`
 - Grafana: `http://localhost:3000`
 - Grafana Fraud V2 overview: `http://localhost:3000/d/fraud-v2-overview/fraud-v2-overview`
 - Redpanda Console: `http://localhost:8080`

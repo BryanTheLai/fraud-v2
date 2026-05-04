@@ -284,6 +284,14 @@ print("redpanda_publish=1")
   Assert-FraudCondition ($dashboard.Content -like "*Recent decisions*") "Dashboard missing recent decisions."
   Assert-FraudCondition ($dashboard.Content -like "*Open review queue*") "Dashboard missing review queue."
   Assert-FraudCondition ($dashboard.Content -like "*user_00000*") "Dashboard missing scored user."
+  Assert-FraudCondition ($dashboard.Content -like "*Graph evidence*") "Dashboard missing graph evidence link."
+
+  $graphDashboard = Invoke-WebRequest `
+    -Uri "$ApiBase/dashboard/graph?entity_id=user_00000" `
+    -TimeoutSec 10 `
+    -UseBasicParsing
+  Assert-FraudCondition ($graphDashboard.Content -like "*<svg*") "Graph evidence dashboard missing SVG."
+  Assert-FraudCondition ($graphDashboard.Content -like "*USED_DEVICE*") "Graph evidence dashboard missing relationship details."
 
   $metrics = Invoke-WebRequest -Uri "$ApiBase/metrics" -TimeoutSec 10 -UseBasicParsing
   Assert-FraudCondition ($metrics.Content -like "*fraud_decisions_total*") "Metrics missing decisions counter."

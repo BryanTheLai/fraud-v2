@@ -48,6 +48,12 @@ def test_api_generate_and_score(tmp_path) -> None:  # type: ignore[no-untyped-de
     assert "Recent decisions" in dashboard.text
     assert "Open review queue" in dashboard.text
     assert "user_00000" in dashboard.text
+    assert "Graph evidence" in dashboard.text
+    graph = client.get("/dashboard/graph?entity_id=user_00000")
+    assert graph.status_code == 200
+    assert "<svg" in graph.text
+    assert "Graph evidence" in graph.text
+    assert "USED_DEVICE" in graph.text
 
     app.dependency_overrides.clear()
 

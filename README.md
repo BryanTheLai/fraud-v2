@@ -39,6 +39,7 @@ Local URLs:
 
 - API docs: `http://127.0.0.1:8000/docs`
 - Analyst dashboard: `http://127.0.0.1:8000/dashboard`
+- Graph evidence: `http://127.0.0.1:8000/dashboard/graph?entity_id=user_00000`
 - Metrics: `http://127.0.0.1:8000/metrics`
 
 Every API response includes `X-Trace-ID`. Pass `X-Request-ID` to force a known
@@ -104,9 +105,10 @@ Full-profile smoke:
 The smoke builds the API image with full-profile infra extras, starts the full
 profile, generates synthetic events through the protected API, scores
 `user_00000`, checks the review queue and dashboard, verifies Prometheus
-metrics, loads Grafana, verifies the Postgres adapter inside the Docker network,
-verifies Redis, Neo4j, and Redpanda adapters inside the Docker network, then
-shuts the stack down unless `-KeepRunning` is set.
+metrics, checks graph evidence rendering, loads Grafana, verifies the Postgres
+adapter inside the Docker network, verifies Redis, Neo4j, and Redpanda adapters
+inside the Docker network, then shuts the stack down unless `-KeepRunning` is
+set.
 
 `full-smoke.ps1` uses high host ports by default, for example API `18000`,
 Grafana `13000`, Prometheus `19090`, and Neo4j HTTP `17474`, so it can run while

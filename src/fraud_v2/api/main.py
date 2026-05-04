@@ -4,6 +4,7 @@ import time
 from collections.abc import Awaitable, Callable
 from html import escape
 from logging import getLogger
+from math import cos, pi, sin
 from pathlib import Path
 from uuid import UUID
 
@@ -158,7 +159,11 @@ def dashboard(db: SQLiteStore = Depends(store)) -> str:
         {recent_decisions}
         <h2>Open review queue</h2>
         {review_queue}
-        <p><a href="/docs">API docs</a> | <a href="/metrics">Metrics</a></p>
+        <p>
+          <a href="/dashboard/graph?entity_id=user_00000">Graph evidence</a>
+          | <a href="/docs">API docs</a>
+          | <a href="/metrics">Metrics</a>
+        </p>
       </body>
     </html>
     """
@@ -181,7 +186,10 @@ def _decision_table(decisions: list[DecisionResponse]) -> str:
         rows.append(
             "<tr>"
             f"<td>{escape(str(decision.decision_id))}</td>"
-            f"<td>{escape(decision.target_entity.entity_id)}</td>"
+            "<td>"
+            f'<a href="/dashboard/graph?entity_id={escape(decision.target_entity.entity_id)}">'
+            f"{escape(decision.target_entity.entity_id)}</a>"
+            "</td>"
             f'<td class="tier-{decision.risk_tier.value}">{decision.risk_tier.value}</td>'
             f"<td>{decision.risk_score}</td>"
             f"<td>{decision.action.value}</td>"
@@ -194,6 +202,142 @@ def _decision_table(decisions: list[DecisionResponse]) -> str:
         + "".join(rows)
         + "</tbody></table>"
     )
+
+
+@app.get("/dashboard/graph", response_class=HTMLResponse)
+def graph_dashboard(
+    entity_id: str = "user_00000",
+    entity_type: EntityType = EntityType.USER,
+    depth: int = Query(default=2, ge=1, le=4),
+    db: SQLiteStore = Depends(store),
+) -> str:
+    target = EntityRef(entity_type=entity_type, entity_id=entity_id)
+    graph = GraphService(db.list_events()).neighborhood(target, depth=depth)
+    svg = _graph_svg(graph, target.graph_key)
+    relationships = _graph_relationship_table(graph["edges"])
+    return f"""
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <title>fraud-v2 graph evidence</title>
+        <style>
+          body {{ font-family: Segoe UI, Arial, sans-serif; margin: 28px; color: #17202a; }}
+          h1 {{ font-size: 24px; margin: 0 0 8px; }}
+          .meta {{ color: #5d6d7e; margin: 0 0 18px; }}
+          .graph {{ border: 1px solid #d7dde5; border-radius: 6px; overflow: hidden; }}
+          table {{ width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 18px; }}
+          th, td {{ border-bottom: 1px solid #e4e8ee; padding: 8px; text-align: left; }}
+          th {{ color: #566573; font-weight: 600; background: #f8fafc; }}
+          a {{ color: #0b5cad; }}
+        </style>
+      </head>
+      <body>
+        <p><a href="/dashboard">Dashboard</a></p>
+        <h1>Graph evidence</h1>
+        <p class="meta">Entity: {escape(target.graph_key)} | Depth: {depth}</p>
+        <div class="graph">{svg}</div>
+        <h2>Relationships</h2>
+        {relationships}
+      </body>
+    </html>
+    """
+
+
+def _graph_svg(graph: dict[str, list[dict[str, str]]], target_key: str) -> str:
+    nodes = graph["nodes"][:18]
+    if not nodes:
+        return (
+            '<svg viewBox="0 0 900 520" width="100%" height="520">'
+            '<text x="32" y="48">No graph evidence found.</text></svg>'
+        )
+
+    width = 900
+    height = 520
+    center_x = width / 2
+    center_y = height / 2
+    radius = 185
+    ordered_nodes = sorted(nodes, key=lambda node: (node["id"] != target_key, node["id"]))
+    positions: dict[str, tuple[float, float]] = {}
+    positions[ordered_nodes[0]["id"]] = (center_x, center_y)
+    outer_nodes = ordered_nodes[1:]
+    for index, node in enumerate(outer_nodes):
+        angle = (2 * pi * index / max(len(outer_nodes), 1)) - (pi / 2)
+        positions[node["id"]] = (center_x + radius * cos(angle), center_y + radius * sin(angle))
+
+    visible = set(positions)
+    edge_lines = []
+    for edge in graph["edges"]:
+        source = edge["source"]
+        target = edge["target"]
+        if source not in visible or target not in visible:
+            continue
+        x1, y1 = positions[source]
+        x2, y2 = positions[target]
+        edge_lines.append(
+            f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
+            'stroke="#9aa7b2" stroke-width="1.4" />'
+        )
+
+    node_shapes = []
+    for node in ordered_nodes:
+        node_id = node["id"]
+        x, y = positions[node_id]
+        color = _graph_node_color(node["label"])
+        stroke = "#111827" if node_id == target_key else "#ffffff"
+        stroke_width = 3 if node_id == target_key else 2
+        label = _short_node_label(node_id)
+        node_shapes.append(
+            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="26" fill="{color}" '
+            f'stroke="{stroke}" stroke-width="{stroke_width}" />'
+            f'<text x="{x:.1f}" y="{y + 43:.1f}" text-anchor="middle" '
+            'font-size="11" fill="#17202a">'
+            f"{escape(label)}</text>"
+        )
+
+    return (
+        f'<svg viewBox="0 0 {width} {height}" width="100%" height="520" role="img" '
+        f'aria-label="Graph evidence for {escape(target_key)}">'
+        '<rect width="900" height="520" fill="#ffffff" />'
+        + "".join(edge_lines)
+        + "".join(node_shapes)
+        + "</svg>"
+    )
+
+
+def _graph_relationship_table(edges: list[dict[str, str]]) -> str:
+    if not edges:
+        return "<p>No relationships found.</p>"
+    rows = []
+    for edge in edges[:40]:
+        rows.append(
+            "<tr>"
+            f"<td>{escape(edge['source'])}</td>"
+            f"<td>{escape(edge['relationship'])}</td>"
+            f"<td>{escape(edge['target'])}</td>"
+            "</tr>"
+        )
+    return (
+        "<table><thead><tr><th>Source</th><th>Relationship</th><th>Target</th>"
+        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
+    )
+
+
+def _graph_node_color(label: str) -> str:
+    return {
+        "USER": "#2563eb",
+        "DEVICE": "#f59e0b",
+        "IP_ADDRESS": "#10b981",
+        "TRANSACTION": "#ef4444",
+        "BANK_ACCOUNT": "#7c3aed",
+        "APPLICATION": "#64748b",
+    }.get(label, "#475569")
+
+
+def _short_node_label(node_id: str) -> str:
+    if ":" not in node_id:
+        return node_id[:24]
+    entity_type, entity_id = node_id.split(":", 1)
+    return f"{entity_type}:{entity_id[-12:]}"
 
 
 def _review_table(cases: list[ReviewCase]) -> str:

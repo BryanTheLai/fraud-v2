@@ -19,6 +19,7 @@ Implemented:
 - Replay, monitoring, compliance draft, model registry, and shadow scoring CLIs.
 - Cost-weighted model threshold reporting.
 - Analyst dashboard with recent decisions and open review queue.
+- Graph evidence dashboard for local analyst review.
 - Docker Compose full profile and `scripts/full-smoke.ps1`.
 - Provisioned Grafana dashboard for full-profile observability.
 - Local role-aware API authorization for admin, analyst, and system tokens.

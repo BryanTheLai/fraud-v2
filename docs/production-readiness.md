@@ -29,7 +29,7 @@ It now runs locally in two modes:
 | Synthetic data | Done | Deterministic local generator and JSONL loader. |
 | Lite storage | Done | SQLite event store, decisions, review cases, and outbox. |
 | API | Done | FastAPI routes, role-protected `/v1/*`, health, metrics, docs. |
-| Rules/graph decisions | Done | Rules + NetworkX graph service, safe reasons, trace IDs. |
+| Rules/graph decisions | Done | Rules + NetworkX graph service, graph evidence dashboard, safe reasons, trace IDs. |
 | Review workflow | Done | Manual-review decisions create cases and confirmed analyst outcomes append replayable label events. |
 | Compliance drafts | Local-safe done | Draft export only; no filings, no legal claim. |
 | Baseline ML | Done | sklearn random forest training report. |

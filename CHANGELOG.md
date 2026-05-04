@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.19.0 - 2026-05-05
+
+- Added a local dashboard graph evidence page that renders an entity
+  neighborhood and relationship table for analyst review.
+- Expanded the full-profile smoke to verify the graph evidence UI.
+
 ## 0.18.0 - 2026-05-05
 
 - Added JWT/OIDC-shaped local auth mode with issuer, audience, expiry, subject,
