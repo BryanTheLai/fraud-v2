@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from html import escape
 from logging import getLogger
 from math import cos, pi, sin
@@ -421,6 +422,7 @@ def verify_audit_chain(db: FraudStore = Depends(store)) -> AuditVerificationRepo
     dependencies=[Depends(require_roles(AuthRole.ADMIN))],
 )
 def retention_report(
+    as_of: str | None = Query(default=None),
     event_days: int = Query(default=90, ge=1),
     decision_days: int = Query(default=365, ge=1),
     review_days: int = Query(default=365, ge=1),
@@ -429,14 +431,75 @@ def retention_report(
     db: FraudStore = Depends(store),
 ) -> RetentionReport:
     return db.retention_report(
-        policy=RetentionPolicy(
+        as_of=_parse_as_of(as_of),
+        policy=_retention_policy(
             event_days=event_days,
             decision_days=decision_days,
             review_days=review_days,
             outbox_days=outbox_days,
             audit_days=audit_days,
-        )
+        ),
     )
+
+
+@app.post(
+    "/v1/retention/prune",
+    response_model=RetentionReport,
+    dependencies=[Depends(require_roles(AuthRole.ADMIN))],
+)
+def prune_retention(
+    execute: bool = Query(default=False),
+    as_of: str | None = Query(default=None),
+    event_days: int = Query(default=90, ge=1),
+    decision_days: int = Query(default=365, ge=1),
+    review_days: int = Query(default=365, ge=1),
+    outbox_days: int = Query(default=30, ge=1),
+    audit_days: int = Query(default=3650, ge=1),
+    db: FraudStore = Depends(store),
+) -> RetentionReport:
+    policy = _retention_policy(
+        event_days=event_days,
+        decision_days=decision_days,
+        review_days=review_days,
+        outbox_days=outbox_days,
+        audit_days=audit_days,
+    )
+    if not execute:
+        report = db.retention_report(as_of=_parse_as_of(as_of), policy=policy)
+        return report.model_copy(
+            update={
+                "tables": [
+                    table.model_copy(update={"action": "dry_run"}) for table in report.tables
+                ]
+            }
+        )
+    return db.prune_retention(as_of=_parse_as_of(as_of), policy=policy)
+
+
+def _retention_policy(
+    *,
+    event_days: int,
+    decision_days: int,
+    review_days: int,
+    outbox_days: int,
+    audit_days: int,
+) -> RetentionPolicy:
+    return RetentionPolicy(
+        event_days=event_days,
+        decision_days=decision_days,
+        review_days=review_days,
+        outbox_days=outbox_days,
+        audit_days=audit_days,
+    )
+
+
+def _parse_as_of(raw_value: str | None) -> datetime | None:
+    if raw_value is None:
+        return None
+    parsed = datetime.fromisoformat(raw_value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed
 
 
 @app.post("/v1/events", dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.SYSTEM))])

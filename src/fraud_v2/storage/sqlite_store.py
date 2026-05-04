@@ -474,6 +474,115 @@ class SQLiteStore:
             total_expired=sum(table.expired_count for table in tables),
         )
 
+    def prune_retention(
+        self,
+        as_of: datetime | None = None,
+        policy: RetentionPolicy | None = None,
+    ) -> RetentionReport:
+        report_as_of = as_of or datetime.now(UTC)
+        active_policy = policy or RetentionPolicy()
+        audit_expired = self._count_iso_column_before(
+            table="audit_entries",
+            column="created_at",
+            cutoff_at=report_as_of - timedelta(days=active_policy.audit_days),
+        )
+        with self._connect() as conn:
+            deleted_outbox = self._delete_iso_column_before(
+                conn,
+                table="outbox_messages",
+                column="created_at",
+                cutoff_at=report_as_of - timedelta(days=active_policy.outbox_days),
+            )
+            deleted_events = self._delete_events_before(
+                conn, report_as_of - timedelta(days=active_policy.event_days)
+            )
+            deleted_decisions = self._delete_decisions_before(
+                conn, report_as_of - timedelta(days=active_policy.decision_days)
+            )
+            deleted_review_cases = self._delete_json_created_before(
+                conn,
+                table="review_cases",
+                id_column="case_id",
+                json_column="case_json",
+                cutoff_at=report_as_of - timedelta(days=active_policy.review_days),
+            )
+            deleted_review_decisions = self._delete_json_created_before(
+                conn,
+                table="review_decisions",
+                id_column="review_decision_id",
+                json_column="decision_json",
+                cutoff_at=report_as_of - timedelta(days=active_policy.review_days),
+            )
+            deleted_counts = {
+                "events": deleted_events,
+                "decisions": deleted_decisions,
+                "review_cases": deleted_review_cases,
+                "review_decisions": deleted_review_decisions,
+                "outbox_messages": deleted_outbox,
+                "audit_entries": 0,
+            }
+            self._append_audit(
+                conn,
+                actor="local-system",
+                action="retention.pruned",
+                target_type="retention",
+                target_id=report_as_of.isoformat(),
+                payload={
+                    "deleted_counts": deleted_counts,
+                    "audit_expired_skipped": audit_expired,
+                },
+            )
+        tables = [
+            self._retention_table_report(
+                table="events",
+                retention_days=active_policy.event_days,
+                as_of=report_as_of,
+                expired_count=deleted_events,
+                action="delete_expired",
+            ),
+            self._retention_table_report(
+                table="decisions",
+                retention_days=active_policy.decision_days,
+                as_of=report_as_of,
+                expired_count=deleted_decisions,
+                action="delete_expired",
+            ),
+            self._retention_table_report(
+                table="review_cases",
+                retention_days=active_policy.review_days,
+                as_of=report_as_of,
+                expired_count=deleted_review_cases,
+                action="delete_expired",
+            ),
+            self._retention_table_report(
+                table="review_decisions",
+                retention_days=active_policy.review_days,
+                as_of=report_as_of,
+                expired_count=deleted_review_decisions,
+                action="delete_expired",
+            ),
+            self._retention_table_report(
+                table="outbox_messages",
+                retention_days=active_policy.outbox_days,
+                as_of=report_as_of,
+                expired_count=deleted_outbox,
+                action="delete_expired",
+            ),
+            self._retention_table_report(
+                table="audit_entries",
+                retention_days=active_policy.audit_days,
+                as_of=report_as_of,
+                expired_count=audit_expired,
+                action="skipped_hash_chain",
+            ),
+        ]
+        return RetentionReport(
+            as_of=report_as_of,
+            policy=active_policy,
+            tables=tables,
+            total_expired=sum(table.expired_count for table in tables),
+        )
+
     def _enqueue_outbox(
         self, conn: sqlite3.Connection, event: EventEnvelope, event_json: str, topic: str
     ) -> None:
@@ -612,12 +721,14 @@ class SQLiteStore:
         retention_days: int,
         as_of: datetime,
         expired_count: int,
+        action: str = "report_only",
     ) -> RetentionTableReport:
         return RetentionTableReport(
             table=table,
             retention_days=retention_days,
             cutoff_at=as_of - timedelta(days=retention_days),
             expired_count=expired_count,
+            action=action,
         )
 
     def _count_events_before(self, cutoff_at: datetime) -> int:
@@ -664,6 +775,77 @@ class SQLiteStore:
                 (cutoff_at.isoformat(),),
             ).fetchone()
         return int(row["count"])
+
+    def _delete_events_before(self, conn: sqlite3.Connection, cutoff_at: datetime) -> int:
+        cursor = conn.execute(
+            "delete from events where occurred_at < ?",
+            (cutoff_at.isoformat(),),
+        )
+        return int(cursor.rowcount)
+
+    def _delete_decisions_before(self, conn: sqlite3.Connection, cutoff_at: datetime) -> int:
+        rows = conn.execute("select decision_id, decision_json from decisions").fetchall()
+        expired_ids = [
+            str(row["decision_id"])
+            for row in rows
+            if DecisionResponse.model_validate_json(str(row["decision_json"])).created_at
+            < cutoff_at
+        ]
+        if not expired_ids:
+            return 0
+        conn.executemany(
+            "delete from decisions where decision_id = ?",
+            [(decision_id,) for decision_id in expired_ids],
+        )
+        return len(expired_ids)
+
+    def _delete_json_created_before(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        table: str,
+        id_column: str,
+        json_column: str,
+        cutoff_at: datetime,
+    ) -> int:
+        if table not in {"review_cases", "review_decisions"}:
+            raise ValueError(f"unsupported retention table: {table}")
+        if id_column not in {"case_id", "review_decision_id"}:
+            raise ValueError(f"unsupported retention id column: {id_column}")
+        if json_column not in {"case_json", "decision_json"}:
+            raise ValueError(f"unsupported retention column: {json_column}")
+        rows = conn.execute(f"select {id_column}, {json_column} from {table}").fetchall()
+        expired_ids = []
+        for row in rows:
+            payload = json.loads(str(row[json_column]))
+            created_at = datetime.fromisoformat(str(payload["created_at"]))
+            if created_at < cutoff_at:
+                expired_ids.append(str(row[id_column]))
+        if not expired_ids:
+            return 0
+        conn.executemany(
+            f"delete from {table} where {id_column} = ?",
+            [(expired_id,) for expired_id in expired_ids],
+        )
+        return len(expired_ids)
+
+    def _delete_iso_column_before(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        table: str,
+        column: str,
+        cutoff_at: datetime,
+    ) -> int:
+        if table != "outbox_messages":
+            raise ValueError(f"unsupported retention delete table: {table}")
+        if column != "created_at":
+            raise ValueError(f"unsupported retention column: {column}")
+        cursor = conn.execute(
+            f"delete from {table} where {column} < ?",
+            (cutoff_at.isoformat(),),
+        )
+        return int(cursor.rowcount)
 
     def _outbox_from_row(self, row: sqlite3.Row | None) -> OutboxMessage:
         if row is None:

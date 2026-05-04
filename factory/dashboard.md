@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-020 - Use Postgres In Full Profile](tasks/active/TC-20260505-020-use-postgres-in-full-profile.md)
+- [TC-20260505-021 - Add Retention Pruning](tasks/active/TC-20260505-021-add-retention-pruning.md)
 
 ## Runs Waiting For Bryan
 
@@ -28,6 +28,7 @@ Updated: 2026-05-05
 - [RR-20260505-018](runs/RR-20260505-018.md)
 - [RR-20260505-019](runs/RR-20260505-019.md)
 - [RR-20260505-020](runs/RR-20260505-020.md)
+- [RR-20260505-021](runs/RR-20260505-021.md)
 
 ## Blocked Work
 
@@ -66,6 +67,7 @@ Updated: 2026-05-05
   validation.
 - Added a local graph evidence dashboard for analyst review.
 - Switched Docker full mode to use Postgres as the primary app store.
+- Added explicit local retention pruning with dry-run defaults.
 
 ## Lessons Added
 
@@ -77,6 +79,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M20 Postgres-backed full profile. Next implementation
-task should add external OIDC discovery/JWKS support or retention enforcement
+Review local MVP through M21 explicit retention pruning. Next implementation
+task should add external OIDC discovery/JWKS support or a stream consumer worker
 if Bryan chooses to go deeper on production hardening.

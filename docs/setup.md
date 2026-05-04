@@ -179,6 +179,9 @@ uv run fraud-v2 monitor --events-path data\synthetic\tiny\events.jsonl
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run
 uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite
+uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite
+uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite
+uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite --execute
 uv run fraud-v2 model-register --status shadow
 uv run fraud-v2 model-promote baseline-20260505-001
 uv run fraud-v2 shadow-score --status active
@@ -252,6 +255,17 @@ uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite
 
 The retention report counts expired local records by table. It does not delete
 data.
+
+Explicit local retention prune:
+
+```powershell
+uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite
+uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite --execute
+```
+
+The prune command defaults to dry-run. `--execute` deletes expired events,
+decisions, review records, and outbox messages. It preserves audit entries so
+hash-chain verification remains valid.
 
 ## Local Observability
 
@@ -415,6 +429,8 @@ tests/unit/domain/test_events.py
 | Evaluate model | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | Writes metrics, cost, and threshold report. |
 | Drain local outbox | `uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run` | Publishes through a dry-run publisher by default. |
 | Export compliance draft | `uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes a human-review-only local draft. |
+| Retention report | `uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite` | Counts expired records without deleting them. |
+| Retention prune | `uv run fraud-v2 retention-prune --db-path data\local\fraud_v2.sqlite --execute` | Deletes expired local non-audit records. |
 | Register model | `uv run fraud-v2 model-register --status shadow` | Stores model/report hashes and metrics in `data\models\registry.json`. |
 | Promote model | `uv run fraud-v2 model-promote baseline-20260505-001` | Marks one model active and demotes the previous active model to shadow. |
 | Shadow score | `uv run fraud-v2 shadow-score --status active` | Scores registered model output without changing decisions. |

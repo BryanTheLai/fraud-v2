@@ -30,8 +30,8 @@ Implemented:
 - Request trace IDs, structured JSON request logs, HTTP metrics, and local
   Prometheus alert rules.
 - Tamper-evident local audit log and admin audit verification endpoints.
-- Dry-run local retention reporting for events, decisions, reviews, outbox, and
-  audit records.
+- Dry-run local retention reporting plus explicit local retention pruning for
+  expired events, decisions, reviews, and outbox records.
 - Full-profile Docker image installs infra extras and smoke-tests the Postgres
   event-store adapter.
 - Full-profile smoke verifies Redis feature cache, Neo4j graph projector, and
@@ -55,11 +55,12 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: 53 passed
+- Pytest: 54 passed
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, review-decision submission,
-  dashboard, metrics, Grafana, Prometheus scrape, Postgres insert/list, Redis
-  feature cache, Neo4j projection, and Redpanda publish
+  retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
+  scrape, Postgres insert/list, Redis feature cache, Neo4j projection, and
+  Redpanda publish
 
 ## Known Limits
 

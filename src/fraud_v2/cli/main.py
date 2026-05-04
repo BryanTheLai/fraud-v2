@@ -258,6 +258,40 @@ def retention_report(
 
 
 @app.command()
+def retention_prune(
+    db_path: Path = Path("data/local/fraud_v2.sqlite"),
+    as_of: str | None = None,
+    execute: bool = typer.Option(False, "--execute"),
+    event_days: int = typer.Option(90, min=1),
+    decision_days: int = typer.Option(365, min=1),
+    review_days: int = typer.Option(365, min=1),
+    outbox_days: int = typer.Option(30, min=1),
+    audit_days: int = typer.Option(3650, min=1),
+) -> None:
+    report_as_of = _parse_as_of(as_of)
+    policy = RetentionPolicy(
+        event_days=event_days,
+        decision_days=decision_days,
+        review_days=review_days,
+        outbox_days=outbox_days,
+        audit_days=audit_days,
+    )
+    store = SQLiteStore(db_path)
+    if execute:
+        report = store.prune_retention(as_of=report_as_of, policy=policy)
+    else:
+        dry_run = store.retention_report(as_of=report_as_of, policy=policy)
+        report = dry_run.model_copy(
+            update={
+                "tables": [
+                    table.model_copy(update={"action": "dry_run"}) for table in dry_run.tables
+                ]
+            }
+        )
+    _print_json(report.model_dump(mode="json"))
+
+
+@app.command()
 def model_register(
     model_path: Path = Path("data/models/baseline/baseline.joblib"),
     report_path: Path = Path("data/models/baseline/baseline-report.json"),

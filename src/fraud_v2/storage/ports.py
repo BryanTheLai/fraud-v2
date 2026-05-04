@@ -56,3 +56,9 @@ class FraudStore(Protocol):
         as_of: datetime | None = None,
         policy: RetentionPolicy | None = None,
     ) -> RetentionReport: ...
+
+    def prune_retention(
+        self,
+        as_of: datetime | None = None,
+        policy: RetentionPolicy | None = None,
+    ) -> RetentionReport: ...

@@ -359,6 +359,22 @@ print("redpanda_publish=1")
   $rulesJson = $rules.data.groups | ConvertTo-Json -Depth 20
   Assert-FraudCondition ($rulesJson -like "*FraudV2APIUnavailable*") "Prometheus alert rules did not load."
 
+  $retentionDryRun = Invoke-FraudApi `
+    -Method "Post" `
+    -Uri "$ApiBase/v1/retention/prune?execute=false&as_of=2026-12-01T00:00:00Z"
+  $dryRunActions = @($retentionDryRun.tables | ForEach-Object { $_.action })
+  Assert-FraudCondition ($dryRunActions -contains "dry_run") "Retention prune dry run did not mark dry_run actions."
+
+  $retentionPrune = Invoke-FraudApi `
+    -Method "Post" `
+    -Uri "$ApiBase/v1/retention/prune?execute=true&as_of=2026-12-01T00:00:00Z"
+  $retentionActions = @($retentionPrune.tables | ForEach-Object { $_.action })
+  Assert-FraudCondition ($retentionActions -contains "delete_expired") "Retention prune did not delete expired rows."
+  Assert-FraudCondition ($retentionActions -contains "skipped_hash_chain") "Retention prune should preserve audit hash chain."
+  Assert-FraudCondition ($retentionPrune.total_expired -gt 0) "Retention prune did not report expired rows."
+  $auditVerifyAfterPrune = Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/audit/verify"
+  Assert-FraudCondition ($auditVerifyAfterPrune.valid -eq $true) "Expected audit hash chain to verify after retention prune."
+
   Invoke-FraudCompose ps
 }
 finally {

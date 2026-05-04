@@ -41,7 +41,7 @@ It now runs locally in two modes:
 | Grafana observability | Local-safe done | Provisioned dashboard for decisions, latency, ingested events, and API target health. |
 | Request tracing/logging | Local-safe done | `X-Trace-ID`, structured JSON request logs, HTTP metrics, and Prometheus alert rules. |
 | Audit log | Local-safe done | SQLite hash chain for event, decision, review, and outbox actions. |
-| Retention reporting | Local-safe done | Dry-run per-table retention report. No destructive pruning by default. |
+| Retention reporting/pruning | Local-safe done | Dry-run per-table retention report plus explicit prune for expired non-audit records. No pruning by default. |
 | CI | Done | GitHub Actions for tests, Docker build, and API image smoke. |
 
 ## Still Fake Or Local-Only
@@ -54,7 +54,7 @@ It now runs locally in two modes:
 | Auth | Local role-token and JWT/OIDC-shaped auth modes exist. No external IdP, user lifecycle, or sessions. |
 | Secrets | `.env` pattern only. No vault/KMS. |
 | Audit immutability | Hash-chained SQLite only. No WORM/object-lock storage. |
-| Retention enforcement | Report-only. No deletion jobs, legal holds, or archive tiers. |
+| Retention enforcement | Explicit local prune exists for non-audit records. No schedules, legal holds, archive tiers, or WORM audit archival yet. |
 | Persistence | SQLite remains the lite default; Docker full mode uses Postgres for app state. |
 | Streaming | Redpanda publisher is smoke-tested; real stream worker topology is not complete. |
 | Graph DB | Neo4j projector is smoke-tested; decision engine still uses NetworkX fallback. |

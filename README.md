@@ -78,6 +78,7 @@ Admin-only audit endpoints:
 - `GET /v1/audit/entries`
 - `GET /v1/audit/verify`
 - `GET /v1/retention/report`
+- `POST /v1/retention/prune?execute=false`
 
 The audit log is hash-chained in SQLite. This is tamper-evident for local
 development, not a substitute for production WORM storage.
@@ -107,10 +108,11 @@ Full-profile smoke:
 The smoke resets only the isolated smoke Compose project, builds the API image
 with full-profile infra extras, starts the full profile, generates synthetic
 events through the protected API, scores `user_00000`, submits a synthetic
-review decision, checks the dashboard, verifies Prometheus metrics, checks graph
-evidence rendering, loads Grafana, verifies the Postgres adapter inside the
-Docker network, verifies Redis, Neo4j, and Redpanda adapters inside the Docker
-network, then shuts the stack down unless `-KeepRunning` is set.
+review decision, verifies retention prune dry-run and execute paths, checks the
+dashboard, verifies Prometheus metrics, checks graph evidence rendering, loads
+Grafana, verifies the Postgres adapter inside the Docker network, verifies
+Redis, Neo4j, and Redpanda adapters inside the Docker network, then shuts the
+stack down unless `-KeepRunning` is set.
 
 `full-smoke.ps1` uses high host ports by default, for example API `18000`,
 Grafana `13000`, Prometheus `19090`, and Neo4j HTTP `17474`, so it can run while
@@ -128,6 +130,8 @@ uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data/local/fraud_v2.sqlite --dry-run
 uv run fraud-v2 compliance-draft <decision-id> --db-path data/local/fraud_v2.sqlite
 uv run fraud-v2 retention-report --db-path data/local/fraud_v2.sqlite
+uv run fraud-v2 retention-prune --db-path data/local/fraud_v2.sqlite
+uv run fraud-v2 retention-prune --db-path data/local/fraud_v2.sqlite --execute
 uv run fraud-v2 model-register --status shadow
 uv run fraud-v2 model-promote baseline-20260505-001
 uv run fraud-v2 shadow-score --status active

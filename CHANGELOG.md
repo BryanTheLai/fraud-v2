@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.21.0 - 2026-05-05
+
+- Added explicit local retention pruning for expired events, decisions, review
+  records, and outbox messages.
+- Added admin API and CLI prune paths that default to dry-run and require
+  `execute=true` or `--execute` before deleting local records.
+- Preserved audit entries during pruning so local audit hash-chain verification
+  remains valid.
+
 ## 0.20.0 - 2026-05-05
 
 - Added a full Postgres app-store backend for events, decisions, review cases,
