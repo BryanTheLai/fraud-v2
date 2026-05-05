@@ -2,13 +2,30 @@
 project: fraud-v2
 owner: Bryan
 created_at: 2026-05-04
-updated_at: 2026-05-04
-status: draft
+updated_at: 2026-05-05
+status: historical-target-spec
 source_task: TC-20260504-001
-version: 2
+version: 3
 ---
 
 # Spec Plan: Fraud V2
+
+## Current Note
+
+This is the original broad target specification. It is preserved for product
+and architecture context.
+
+For the current runnable implementation, use:
+
+- [README](../README.md)
+- [Setup](setup.md)
+- [Production Readiness](production-readiness.md)
+- [Dependency Map](dependency-map.md)
+
+Some original target choices in this file, such as NiceGUI, Loki, and an OTel
+Collector, were superseded by the current local implementation: FastAPI HTML
+dashboards, structured logs, trace IDs, optional JSONL trace reports,
+Prometheus, and Grafana.
 
 ## One-Line Goal
 

@@ -3,20 +3,20 @@ project: fraud-v2
 owner: Bryan
 created_at: 2026-05-04
 updated_at: 2026-05-04
-status: draft
+status: current
 source_task: TC-20260504-002
-version: 1
+version: 2
 ---
 
 # Plan Index
 
 ## Purpose
 
-This folder is the durable plan for building the BryansLab Fraud V2 article as
-local runnable software.
+This folder is the durable plan and current runbook set for building the
+BryansLab Fraud V2 article as local runnable software.
 
-The product goal is not a classifier notebook. The goal is a production-shaped
-fraud operating system:
+The product goal is not a classifier notebook. The current repo is a
+production-shaped local fraud lab:
 
 - event ingestion
 - canonical contracts
@@ -35,14 +35,30 @@ fraud operating system:
 
 | Document | Purpose | Read When |
 |---|---|---|
-| `spec-plan.md` | Main product and architecture spec. | You need the full target system. |
-| `setup.md` | Local run and environment plan. | You need to run or install the project. |
+| `../README.md` | Fast entry point, system map, quickstart, and codebase map. | You are new to the repo. |
+| `setup.md` | Current install, run, verify, cleanup, and troubleshooting runbook. | You need to run or install the project. |
+| `production-readiness.md` | Current implemented capabilities and hard production blockers. | You need the truth about readiness. |
+| `dependency-map.md` | Current module/service dependency map. | You need architecture boundaries. |
+| `local-production-profile.md` | Current laptop-safe run profiles and resource guardrails. | You need to keep it runnable locally. |
+| `solution-tradeoffs.md` | Current architecture tradeoffs and recommendations. | You need to challenge stack choices. |
+| `spec-plan.md` | Original full target system spec. Some target items were superseded by the current implementation. | You need the larger product vision. |
 | `vagueness-register.md` | What is still vague, why it matters, and the local V1 default. | You need to remove ambiguity before coding. |
-| `solution-tradeoffs.md` | Options considered and tradeoffs for each major architectural decision. | You need to challenge stack choices. |
-| `dependency-map.md` | How services, packages, workers, and data stores depend on each other. | You need implementation sequencing or local resource planning. |
 | `data-strategy.md` | How to get data, what public datasets cover, what they miss, and how to synthesize the rest. | You need inputs for training and demos. |
 | `llm-synthetic-data-lab.md` | How to use GPT-5.5/Azure/OpenAI tokens to generate edge cases and synthetic data safely. | You need high-volume synthetic generation. |
-| `local-production-profile.md` | Laptop-safe production profile, resource budgets, run modes, and hard limits. | You need to keep this runnable on Bryan's machine. |
+| `blockers-and-vague-decisions.md` | Blunt blockers, options, tradeoffs, and recommendations. | You need the open decisions in ELI10 form. |
+
+## Current Implementation Snapshot
+
+| Area | Current State |
+|---|---|
+| Runtime | Python 3.12, FastAPI, Typer CLI. |
+| Lite mode | SQLite, NetworkX, synthetic data, local dashboards, metrics. |
+| Full mode | Docker API, Postgres, Redis, Redpanda, Neo4j, Prometheus, Grafana. |
+| UI | FastAPI HTML analyst dashboard and graph evidence pages. NiceGUI was an original plan option, not the current implementation. |
+| Observability | Structured logs, `X-Trace-ID`, optional JSONL trace reports, Prometheus, Grafana. Loki/OTel were original plan options, not current services. |
+| ML | sklearn baseline, model registry, shadow scoring, eval dashboard. |
+| Governance | Threshold policy packs, registry, local signed approvals, readiness reports. |
+| Receipts | Code Factory task/run receipts are archived losslessly under `factory/archive`. |
 
 ## Decisions Made Now
 
@@ -58,7 +74,13 @@ fraud operating system:
 | Stream V1 | Redpanda plus Python stream workers | Kafka-compatible without running a heavy JVM stack. |
 | Feature store V1 | Explicit Redis online store plus DuckDB/Parquet offline store | Easier to understand and test locally than installing a full feature platform first. |
 | Feature-store upgrade path | Feast-compatible abstractions | Leaves a path to Feast/Tecton without committing early. |
-| UI V1 | NiceGUI | Python-first and fast to build. React can come later if UI complexity demands it. |
+| UI V1 | FastAPI HTML dashboards | Already implemented and sufficient for the local analyst/review workflow. React can come later if UI complexity demands it. |
+
+## Build Sequence Status
+
+The local build sequence below is now implemented through the local production
+profile. Treat it as historical execution context plus a guide to the system's
+shape, not as an open task list.
 
 ## Build Sequence
 
@@ -102,7 +124,7 @@ Goal:
 - velocity features
 - device features
 - payment features
-- graph feature placeholders
+- graph signals
 - rule registry
 - decision policy V1
 
@@ -198,15 +220,8 @@ Exit proof:
 - GNN-first scoring
 - LLM-as-primary-fraud-classifier
 
-## Next Implementation Task
+## Next Practical Work
 
-Build M1:
-
-- `src/fraud_v2/domain/enums.py`
-- `src/fraud_v2/domain/events.py`
-- `src/fraud_v2/domain/entities.py`
-- `src/fraud_v2/domain/decisions.py`
-- `src/fraud_v2/synthetic/generator.py`
-- `tests/unit/domain/`
-- `tests/unit/synthetic/`
-
+Do not start with more local scaffolding. Start with the hard blockers in
+`production-readiness.md`: product wedge, labels, legal/vendor approval, PII
+security, deployment target, SLOs, and incident process.
