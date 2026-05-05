@@ -196,6 +196,7 @@ uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 stream-health --db-path data\local\fraud_v2.sqlite --lag-report-path data\local\stream-lag.json --supervision-report-path data\local\stream-supervisor.json --allow-critical
 powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -DryRun
 powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical
+powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1
 uv run fraud-v2 trace-report --trace-path data\local\traces.jsonl --output-path data\local\trace-report.json --dashboard-path data\local\trace-report.html
 uv run fraud-v2 secrets-scan --root .
 uv run fraud-v2 audit-archive --db-path data\local\fraud_v2.sqlite --output-dir data\local\audit-archive
@@ -339,6 +340,26 @@ and restored event counts, writes a manifest, and drops the scratch database by
 default. Use `-KeepRestoreDatabase` only when you want to inspect the scratch
 restore. This is a local recovery rehearsal, not managed backups, PITR, WORM
 storage, or a cloud disaster-recovery plan.
+
+## GitHub Handoff
+
+Dry-run the push and PR handoff:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1
+```
+
+The dry run prints JSON with the current branch, whether `origin` exists,
+whether `gh auth status` succeeds, whether `.github\PULL_REQUEST_DRAFT.md`
+exists, whether the worktree is clean, and the exact next commands. After
+`gh auth login` and `git remote add origin <repo-url>`, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1 -Execute
+```
+
+`-Execute` refuses to push unless the remote exists, GitHub auth is active, the
+PR draft exists, and the worktree is clean.
 
 Dry-run retention report:
 
@@ -869,6 +890,7 @@ tests/unit/domain/test_events.py
 | Inspect stream dead letters | `uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite` | Shows invalid/conflicting stream records stored for admin inspection. |
 | Stream health report | `uv run fraud-v2 stream-health --db-path data\local\fraud_v2.sqlite --lag-report-path data\local\stream-lag.json --output-path data\local\stream-health-report.json --dashboard-path data\local\stream-health-dashboard.html --allow-critical` | Writes JSON and static HTML health artifacts from lag, supervisor, and dead-letter signals. |
 | Local stream service loop | `powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical` | Runs supervised stream consume once and writes timestamped health artifacts for Windows Task Scheduler or manual loops. |
+| GitHub handoff dry run | `powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1` | Reports remote/auth/worktree blockers and the exact push/PR commands. |
 | Local trace report | `uv run fraud-v2 trace-report --trace-path data\local\traces.jsonl --output-path data\local\trace-report.json --dashboard-path data\local\trace-report.html` | Summarizes optional local request spans into JSON and HTML. |
 | Secrets scan | `uv run fraud-v2 secrets-scan --root .` | Scans repo text files for real-looking credentials before commit or CI. |
 | Audit archive | `uv run fraud-v2 audit-archive --db-path data\local\fraud_v2.sqlite --output-dir data\local\audit-archive` | Exports audit entries and a manifest with archive hash and chain verification. |

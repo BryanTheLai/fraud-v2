@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.43.0 - 2026-05-05
+
+- Added `scripts/github-handoff.ps1` to report GitHub push/PR blockers as JSON
+  and execute `git push` plus `gh pr create` once a remote and GitHub auth exist.
+- Added unit coverage for the handoff script's blocker reporting and execute
+  guard.
+- Updated the local docs and PR draft with the executable GitHub handoff path.
+
 ## 0.42.0 - 2026-05-05
 
 - Added `scripts/postgres-backup-rehearsal.ps1` to create a local full-profile

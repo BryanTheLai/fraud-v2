@@ -76,6 +76,8 @@ Implemented:
   inspection, and stream health artifacts for Task Scheduler or manual loops.
 - GitHub Actions test, Docker build, and API image smoke workflow.
 - GitHub Actions capacity-profile smoke artifact upload.
+- Dry-run-safe GitHub handoff script for push/PR creation once auth and remote
+  exist.
 
 ## Test Plan
 
@@ -86,6 +88,8 @@ uv run ruff check .
 uv run fraud-v2 secrets-scan --root .
 uv run mypy src
 uv run pytest -q
+uv run pytest --collect-only -q
+powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1
 uv run fraud-v2 capacity-profile --profile smoke --users 50 --score-users 5 --min-load-events-per-second 0.1 --min-score-decisions-per-second 0.1 --output-dir data\local\ci-capacity --overwrite --fail-on-target-miss
 docker compose -f infra\docker-compose.yml --profile full config --quiet
 docker build -t fraud-v2:local .
@@ -96,11 +100,13 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Secrets scan: pass, 246 files scanned, zero findings
-- Pytest: pass, 109 collected tests
-- Capacity profile smoke: pass, 50 users, 316 events, 119.46 load events/sec,
-  64.243 score decisions/sec, JSON/HTML artifacts written
-- Docker build: pass, installed `fraud-v2==0.42.0`
+- Secrets scan: pass, 250 files scanned, zero findings
+- Pytest: pass, 111 collected tests
+- GitHub handoff dry run: pass, reports missing `origin` remote and missing
+  `gh auth status` as blockers
+- Capacity profile smoke: pass, 50 users, 316 events, 125.557 load events/sec,
+  49.029 score decisions/sec, JSON/HTML artifacts written
+- Docker build: pass, installed `fraud-v2==0.43.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Postgres backup rehearsal with source/restored
@@ -130,4 +136,5 @@ Latest local result:
   yet.
 - No real production deployment target yet.
 - GitHub push/PR creation is blocked locally until `gh auth login` succeeds
-  and a remote is configured.
+  and a remote is configured. `scripts\github-handoff.ps1` reports the blocker
+  and can execute the push/PR once configured.

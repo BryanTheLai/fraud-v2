@@ -61,6 +61,7 @@ It now runs locally in two modes:
 | Stream health reporting | Local-safe done | `stream-health` writes JSON and static HTML operator artifacts from lag, supervisor, and stream dead-letter signals. |
 | Stream dead letters | Local-safe done | Invalid stream records, empty payloads, message errors, and idempotency conflicts persist to SQLite/Postgres for admin inspection. Optional Redpanda DLQ topic publishing is full-smoke verified. |
 | CI | Done | GitHub Actions for tests, capacity-profile artifact upload, Docker build, and API image smoke. |
+| GitHub handoff | Local-safe done | `scripts/github-handoff.ps1` reports remote/auth/worktree blockers and can push/create the PR once configured. |
 
 ## Still Fake Or Local-Only
 
@@ -90,7 +91,7 @@ It now runs locally in two modes:
 | Data security | Real PII cannot live in this local repo casually. Encrypted local evidence export exists for synthetic/local decision bundles only. | Add external OIDC, field-level encryption, audit retention, secrets manager, DLP rules. |
 | Production deployment target | Architecture differs for VM, Kubernetes, managed cloud, or on-prem. | Pick target environment and SLOs. |
 | Production capacity plan | Named local capacity receipts exist, but no real traffic or SLO model. | Run larger synthetic profiles and then replay real redacted event distributions. |
-| GitHub auth | Push/PR cannot happen from this machine yet. | Run `gh auth login`, then push branch and create PR. |
+| GitHub auth | Push/PR cannot happen from this machine yet. | Run `gh auth login`, configure `origin`, then run `scripts\github-handoff.ps1 -Execute`. |
 
 ## Commands That Passed
 
@@ -114,3 +115,5 @@ feature/full-profile-adapters
 
 `gh auth status` reports no logged-in GitHub host. No remote is configured.
 Local commits are complete; push and PR creation require GitHub authentication.
+Run `powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1` for a
+JSON blocker report and exact commands.
