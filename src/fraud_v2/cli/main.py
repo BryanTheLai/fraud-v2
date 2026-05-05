@@ -27,6 +27,7 @@ from fraud_v2.infrastructure.redpanda_dead_letter_publisher import RedpandaDeadL
 from fraud_v2.infrastructure.redpanda_lag import RedpandaLagProbe
 from fraud_v2.infrastructure.redpanda_publisher import RedpandaEventPublisher
 from fraud_v2.llm_lab.provider import NoveltyLedger, provider_from_env
+from fraud_v2.models.eval_dashboard import write_model_eval_dashboard
 from fraud_v2.models.registry import JsonModelRegistry, ModelStatus
 from fraud_v2.models.shadow import write_shadow_scores
 from fraud_v2.models.train import train_baseline
@@ -699,6 +700,20 @@ def shadow_score(
         status=status,
     )
     _print_json(report)
+
+
+@app.command()
+def model_eval_dashboard(
+    report_path: Path = Path("data/models/baseline/baseline-report.json"),
+    output_path: Path = Path("data/models/eval-dashboard.html"),
+    shadow_scores_path: Path | None = None,
+) -> None:
+    summary = write_model_eval_dashboard(
+        report_path=report_path,
+        output_path=output_path,
+        shadow_scores_path=shadow_scores_path,
+    )
+    _print_json(summary)
 
 
 def _parse_as_of(raw_value: str | None) -> datetime:

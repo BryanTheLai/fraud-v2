@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.34.0 - 2026-05-05
+
+- Added `fraud-v2 model-eval-dashboard` to render baseline model reports and
+  optional shadow-score summaries into a local HTML dashboard.
+- Added dashboard metrics for average precision, Brier score, model threshold,
+  cost threshold, feature count, shadow rows, and shadow flag rate.
+- Added threshold candidate and feature-column tables for local model review.
+
 ## 0.33.0 - 2026-05-05
 
 - Added a PaySim public-dataset CSV converter that writes canonical JSONL fraud

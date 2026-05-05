@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-033 - Add PaySim Dataset Converter](tasks/active/TC-20260505-033-add-paysim-dataset-converter.md)
+- [TC-20260505-034 - Add Model Eval Dashboard](tasks/active/TC-20260505-034-add-model-eval-dashboard.md)
 
 ## Runs Waiting For Bryan
 
@@ -41,6 +41,7 @@ Updated: 2026-05-05
 - [RR-20260505-031](runs/RR-20260505-031.md)
 - [RR-20260505-032](runs/RR-20260505-032.md)
 - [RR-20260505-033](runs/RR-20260505-033.md)
+- [RR-20260505-034](runs/RR-20260505-034.md)
 
 ## Blocked Work
 
@@ -95,6 +96,7 @@ Updated: 2026-05-05
 - Added a local synthetic load benchmark receipt CLI.
 - Added encrypted local decision-evidence exports.
 - Added PaySim public dataset conversion into canonical local events.
+- Added a static local model eval dashboard artifact.
 
 ## Lessons Added
 
@@ -106,5 +108,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M33 PaySim dataset conversion. Next implementation
-task should add model eval dashboards if Bryan chooses to go deeper.
+Review local MVP through M34 model eval dashboard. Next implementation task
+should add lag/dashboard alerting or service-manager docs if Bryan chooses to
+go deeper.

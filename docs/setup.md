@@ -206,6 +206,7 @@ uv run fraud-v2 policy-promote-approved strict-policy-test --required-approvals 
 uv run fraud-v2 model-register --status shadow
 uv run fraud-v2 model-promote baseline-20260505-001
 uv run fraud-v2 shadow-score --status active
+uv run fraud-v2 model-eval-dashboard --report-path data\models\baseline\baseline-report.json --output-path data\models\eval-dashboard.html
 uv run fraud-v2 public-dataset paysim
 uv run fraud-v2 public-dataset-convert paysim data\public\raw\paysim.csv --output-path data\public\converted\paysim-events.jsonl --limit-rows 10000
 ```
@@ -505,6 +506,32 @@ stable local entity IDs and writes canonical payment, settlement, chargeback,
 and label events. This is a public/synthetic benchmark path, not permission to
 load real PII.
 
+## Model Eval Dashboard
+
+After training a baseline model, render a local HTML dashboard:
+
+```powershell
+uv run fraud-v2 train `
+  --events-path data\synthetic\tiny\events.jsonl `
+  --output-dir data\models\baseline
+uv run fraud-v2 model-eval-dashboard `
+  --report-path data\models\baseline\baseline-report.json `
+  --output-path data\models\eval-dashboard.html
+```
+
+If shadow scores exist, include them:
+
+```powershell
+uv run fraud-v2 model-eval-dashboard `
+  --report-path data\models\baseline\baseline-report.json `
+  --shadow-scores-path data\models\shadow-scores.json `
+  --output-path data\models\eval-dashboard.html
+```
+
+The dashboard is a static local artifact with training metrics, threshold
+candidates, feature columns, and optional shadow-score flag rate. It does not
+promote a model or change fraud decisions.
+
 ## Encrypted Local Evidence Export
 
 After scoring a decision, export an encrypted human-review bundle:
@@ -672,6 +699,7 @@ tests/unit/domain/test_events.py
 | Register model | `uv run fraud-v2 model-register --status shadow` | Stores model/report hashes and metrics in `data\models\registry.json`. |
 | Promote model | `uv run fraud-v2 model-promote baseline-20260505-001` | Marks one model active and demotes the previous active model to shadow. |
 | Shadow score | `uv run fraud-v2 shadow-score --status active` | Scores registered model output without changing decisions. |
+| Model eval dashboard | `uv run fraud-v2 model-eval-dashboard --report-path data\models\baseline\baseline-report.json --output-path data\models\eval-dashboard.html` | Writes a static local model review dashboard. |
 | Describe public dataset | `uv run fraud-v2 public-dataset paysim` | Shows manual download and access notes. |
 | Convert PaySim CSV | `uv run fraud-v2 public-dataset-convert paysim data\public\raw\paysim.csv --output-path data\public\converted\paysim-events.jsonl` | Converts a manually downloaded PaySim-style CSV into canonical events. |
 | Show threshold policy | `uv run fraud-v2 policy-show` | Prints the built-in or file-backed threshold policy. |

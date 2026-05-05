@@ -42,6 +42,7 @@ It now runs locally in two modes:
 | Local load benchmark | Local-safe done | `load-benchmark` writes generation/load/scoring throughput receipts against deterministic synthetic data and SQLite. |
 | Model registry | Done | JSON-backed artifact/report hashing and status controls. |
 | Shadow scoring | Done | Registered model probabilities logged without changing decisions. |
+| Model eval dashboard | Local-safe done | Static HTML eval dashboard renders baseline report metrics, threshold candidates, features, and optional shadow-score summary. |
 | LLM synthetic lab | Local-safe done | Offline default plus OpenAI/Azure provider boundary. |
 | Full Docker profile | Done | Full profile smoke passed locally with API app state on Postgres, review-decision submission, and adapter checks for Redis, Neo4j, and Redpanda. |
 | Grafana observability | Local-safe done | Provisioned dashboard for decisions, latency, ingested events, and API target health. |
