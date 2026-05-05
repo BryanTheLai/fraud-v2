@@ -31,6 +31,8 @@ Stream health can now be summarized into local JSON and HTML operator reports.
 health into a repeatable Windows laptop runner.
 API requests can also write local JSONL trace spans and render trace reports
 when `FRAUD_TRACE_EXPORT_PATH` is set.
+The CI and local CLI include a safe secrets scan for real-looking keys before
+code leaves the laptop.
 Threshold policies also have local signed approval commands for governance
 rehearsal before promotion. A local load benchmark CLI writes repeatable
 synthetic performance receipts for laptop validation. Decision evidence exports
@@ -169,6 +171,7 @@ uv run fraud-v2 stream-health --db-path data/local/fraud_v2.sqlite --lag-report-
 powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -DryRun
 powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical
 uv run fraud-v2 trace-report --trace-path data/local/traces.jsonl --output-path data/local/trace-report.json --dashboard-path data/local/trace-report.html
+uv run fraud-v2 secrets-scan --root .
 uv run fraud-v2 compliance-draft <decision-id> --db-path data/local/fraud_v2.sqlite
 $env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
 uv run fraud-v2 evidence-export <decision-id> --db-path data/local/fraud_v2.sqlite --output-path data/local/evidence/decision-evidence.enc.json
@@ -199,6 +202,7 @@ OpenAI/Azure-backed synthetic scenario generation is available through
 ```powershell
 uv run ruff format --check .
 uv run ruff check .
+uv run fraud-v2 secrets-scan --root .
 uv run mypy src
 uv run pytest -q
 ```

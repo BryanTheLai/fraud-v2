@@ -55,6 +55,7 @@ from fraud_v2.public_data.paysim import convert_paysim_csv
 from fraud_v2.public_data.registry import describe_public_dataset
 from fraud_v2.replay.runner import run_replay
 from fraud_v2.security.auth import AuthRole
+from fraud_v2.security.secrets import report_payload, scan_secrets
 from fraud_v2.storage.ports import FraudStore
 from fraud_v2.storage.postgres_store import PostgresStore
 from fraud_v2.storage.sqlite_store import SQLiteStore
@@ -833,6 +834,20 @@ def trace_report(
         dashboard_path=dashboard_path,
     )
     _print_json(report)
+
+
+@app.command()
+def secrets_scan(
+    root: Path = Path("."),
+    output_path: Path | None = None,
+    fail_on_findings: bool = typer.Option(True, "--fail-on-findings/--allow-findings"),
+) -> None:
+    report = scan_secrets(root)
+    payload = report_payload(report)
+    _write_json_payload(payload, output_path)
+    _print_json(payload)
+    if report.findings and fail_on_findings:
+        raise typer.Exit(code=2)
 
 
 def _parse_as_of(raw_value: str | None) -> datetime:

@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-037 - Add Local Trace Reports](tasks/active/TC-20260505-037-add-local-trace-reports.md)
+- [TC-20260505-038 - Add Secrets Scan](tasks/active/TC-20260505-038-add-secrets-scan.md)
 
 ## Runs Waiting For Bryan
 
@@ -45,6 +45,7 @@ Updated: 2026-05-05
 - [RR-20260505-035](runs/RR-20260505-035.md)
 - [RR-20260505-036](runs/RR-20260505-036.md)
 - [RR-20260505-037](runs/RR-20260505-037.md)
+- [RR-20260505-038](runs/RR-20260505-038.md)
 
 ## Blocked Work
 
@@ -105,6 +106,7 @@ Updated: 2026-05-05
 - Added a Windows local stream service runner for supervised consume and
   stream-health artifact loops.
 - Added optional local request trace JSONL export and trace report artifacts.
+- Added local and CI secrets scanning for real-looking committed credentials.
 
 ## Lessons Added
 
@@ -116,6 +118,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M37 local trace reports. Next implementation task
-should add secrets hygiene or a larger synthetic capacity receipt if Bryan
+Review local MVP through M38 secrets scanning. Next implementation task should
+add a larger synthetic capacity receipt or audit archive manifest if Bryan
 chooses to go deeper.

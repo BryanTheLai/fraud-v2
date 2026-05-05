@@ -20,6 +20,8 @@ jobs:
         run: uv run ruff format --check .
       - name: Lint
         run: uv run ruff check .
+      - name: Secrets scan
+        run: uv run fraud-v2 secrets-scan --root .
       - name: Typecheck
         run: uv run mypy src
       - name: Test

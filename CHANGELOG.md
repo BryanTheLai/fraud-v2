@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.38.0 - 2026-05-05
+
+- Added `fraud-v2 secrets-scan` to scan text files for real-looking API keys,
+  tokens, private keys, and high-entropy credential assignments.
+- Added safe placeholder allowlisting so local docs and Docker dev secrets do
+  not create false positives.
+- Added the secrets scan to GitHub Actions before typechecking and tests.
+
 ## 0.37.0 - 2026-05-05
 
 - Added optional local JSONL trace export for API requests through

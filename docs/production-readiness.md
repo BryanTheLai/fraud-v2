@@ -66,7 +66,7 @@ It now runs locally in two modes:
 | SAR/adverse action | Drafts only. No filing. No legal compliance claim. |
 | Data | Synthetic by default. PaySim-style public CSV conversion exists after manual dataset download and terms review. |
 | Auth | Local role-token, HS256 JWT, and JWKS/OIDC-shaped JWT verification exist. No real user lifecycle or sessions. |
-| Secrets | `.env` pattern only. No vault/KMS. |
+| Secrets | Local `secrets-scan` checks for real-looking committed credentials. No vault/KMS. |
 | Audit immutability | Hash-chained SQLite only. No WORM/object-lock storage. |
 | Retention enforcement | Explicit local prune exists for non-audit records. No schedules, legal holds, archive tiers, or WORM audit archival yet. |
 | Persistence | SQLite remains the lite default; Docker full mode uses Postgres for app state. |

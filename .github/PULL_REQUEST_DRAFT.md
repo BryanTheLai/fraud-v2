@@ -39,6 +39,8 @@ Implemented:
   Prometheus alert rules.
 - Optional local JSONL request trace spans and `trace-report` JSON/HTML
   artifacts.
+- Local and CI secrets scan for real-looking API keys, tokens, private keys,
+  and credential assignments.
 - Tamper-evident local audit log and admin audit verification endpoints.
 - Dry-run local retention reporting plus explicit local retention pruning for
   expired events, decisions, reviews, and outbox records.
@@ -85,15 +87,16 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: pass, 99 collected tests
-- Docker build: pass, installed `fraud-v2==0.37.0`
+- Secrets scan: pass, 230 files scanned, zero findings
+- Pytest: pass, 101 collected tests
+- Docker build: pass, installed `fraud-v2==0.38.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Redis feature cache, Neo4j projection, and
   Redpanda publish-consume-to-Postgres with zero stream dead letters on the
   valid path, zero lag after valid consume, supervised stream ingest, stream
   health report with `status: healthy` and `health_score: 100`, local trace
-  report proof, plus invalid-record DLQ topic proof
+  report proof, secrets scan proof, plus invalid-record DLQ topic proof
 
 ## Known Limits
 

@@ -196,6 +196,7 @@ uv run fraud-v2 stream-health --db-path data\local\fraud_v2.sqlite --lag-report-
 powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -DryRun
 powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical
 uv run fraud-v2 trace-report --trace-path data\local\traces.jsonl --output-path data\local\trace-report.json --dashboard-path data\local\trace-report.html
+uv run fraud-v2 secrets-scan --root .
 uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite
 $env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
 uv run fraud-v2 evidence-export <decision-id> --db-path data\local\fraud_v2.sqlite --output-path data\local\evidence\decision-evidence.enc.json
@@ -577,6 +578,20 @@ a local laptop receipt, not a production capacity plan. Increase `--users` and
 `--score-users` when you want a heavier run; keep `--overwrite` explicit so the
 benchmark does not silently mix old and new data.
 
+## Secrets Hygiene
+
+Run the local secrets scan before pushing or sharing logs:
+
+```powershell
+uv run fraud-v2 secrets-scan --root .
+```
+
+The scanner checks committed text files for real-looking OpenAI/Azure keys,
+GitHub tokens, AWS access keys, private key material, and high-entropy
+credential assignments. It skips generated local data and allows documented dev
+placeholders such as `dev-token-change-me`. It does not replace a managed
+secret scanner, DLP, or a vault.
+
 ## Public Dataset Conversion
 
 Public datasets are not downloaded automatically. Download only datasets you are
@@ -758,6 +773,7 @@ tests/unit/domain/test_events.py
 |---|---|---|
 | format | `uv run ruff format .` | yes |
 | lint | `uv run ruff check .` | yes |
+| secrets | `uv run fraud-v2 secrets-scan --root .` | yes |
 | typecheck | `uv run mypy src` | yes |
 | tests | `uv run pytest -q` | yes |
 | integration | `uv run pytest tests\integration -q` | yes before feature complete |
@@ -787,6 +803,7 @@ tests/unit/domain/test_events.py
 | Stream health report | `uv run fraud-v2 stream-health --db-path data\local\fraud_v2.sqlite --lag-report-path data\local\stream-lag.json --output-path data\local\stream-health-report.json --dashboard-path data\local\stream-health-dashboard.html --allow-critical` | Writes JSON and static HTML health artifacts from lag, supervisor, and dead-letter signals. |
 | Local stream service loop | `powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical` | Runs supervised stream consume once and writes timestamped health artifacts for Windows Task Scheduler or manual loops. |
 | Local trace report | `uv run fraud-v2 trace-report --trace-path data\local\traces.jsonl --output-path data\local\trace-report.json --dashboard-path data\local\trace-report.html` | Summarizes optional local request spans into JSON and HTML. |
+| Secrets scan | `uv run fraud-v2 secrets-scan --root .` | Scans repo text files for real-looking credentials before commit or CI. |
 | Export compliance draft | `uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes a human-review-only local draft. |
 | Export encrypted evidence | `uv run fraud-v2 evidence-export <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes an AES-256-GCM encrypted local decision evidence bundle. |
 | Retention report | `uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite` | Counts expired records without deleting them. |
