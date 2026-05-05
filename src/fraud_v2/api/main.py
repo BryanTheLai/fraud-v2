@@ -25,7 +25,7 @@ from fraud_v2.connectors.mock_vendors import ConnectorResult
 from fraud_v2.connectors.signal_lab import LocalCameraMetadataAnalyzer, LocalPublicKybConnector
 from fraud_v2.decision.engine import DecisionEngine
 from fraud_v2.domain.audit import AuditEntry, AuditVerificationReport
-from fraud_v2.domain.decisions import DecisionRequest, DecisionResponse
+from fraud_v2.domain.decisions import DecisionRequest, DecisionResponse, RiskSignal
 from fraud_v2.domain.entities import EntityRef
 from fraud_v2.domain.enums import EntityType, EventType, FeatureFreshnessStatus, ReviewOutcome
 from fraud_v2.domain.errors import DecisionNotFound, DuplicatePayloadConflict
@@ -52,6 +52,7 @@ from fraud_v2.observability.traces import append_local_trace_span
 from fraud_v2.policy.thresholds import load_threshold_policy
 from fraud_v2.review.service import ReviewService
 from fraud_v2.security.auth import AuthPrincipal, AuthRole, require_roles
+from fraud_v2.simulation.workbench import SimulationRequest, SimulationResponse, run_simulation
 from fraud_v2.storage.ports import FraudStore
 from fraud_v2.storage.postgres_store import PostgresStore
 from fraud_v2.storage.sqlite_store import SQLiteStore
@@ -574,6 +575,84 @@ def signal_lab_dashboard(
 </html>"""
 
 
+@app.get("/dashboard/simulate", response_class=HTMLResponse)
+def simulation_dashboard(
+    amount: float = Query(default=750.0, ge=0),
+    virtual_camera: bool = False,
+    low_behavior_entropy: bool = False,
+    high_application_velocity: bool = False,
+    payment_velocity: bool = False,
+    prior_chargeback: bool = False,
+    one_hop_from_fraud: bool = False,
+    public_kyb_watch: bool = False,
+    sanctions_hit: bool = False,
+    app_bec_pattern: bool = False,
+    model_or_graph_outage: bool = False,
+    settings: Settings = Depends(get_settings),
+) -> str:
+    request = SimulationRequest(
+        amount=amount,
+        virtual_camera=virtual_camera,
+        low_behavior_entropy=low_behavior_entropy,
+        high_application_velocity=high_application_velocity,
+        payment_velocity=payment_velocity,
+        prior_chargeback=prior_chargeback,
+        one_hop_from_fraud=one_hop_from_fraud,
+        public_kyb_watch=public_kyb_watch,
+        sanctions_hit=sanctions_hit,
+        app_bec_pattern=app_bec_pattern,
+        model_or_graph_outage=model_or_graph_outage,
+    )
+    result = run_simulation(request, policy=load_threshold_policy(settings.policy_path))
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>fraud-v2 simulation workbench</title>
+    {_base_style()}
+  </head>
+  <body>
+    {_top_nav("Simulation Workbench", "Manual local knobs for presenting risk movement without touching real systems.")}
+    <main class="shell">
+      <section class="main">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Build one local scenario</h2>
+              <p>Every knob is synthetic. No real KYC, PII, liveness, sanctions, payment, customer message, or filing.</p>
+            </div>
+            <span class="badge neutral">No real action</span>
+          </div>
+          <form method="get" action="/dashboard/simulate">
+            <div class="custom-grid">
+              <label>Amount<input name="amount" value="{escape(_fmt(request.amount))}" type="number" min="0" step="50"></label>
+            </div>
+            <div class="scenario-grid">
+              {_simulation_checkbox("virtual_camera", "Virtual camera", request.virtual_camera, "Camera metadata is missing or virtual-driver shaped.")}
+              {_simulation_checkbox("low_behavior_entropy", "Low behavior entropy", request.low_behavior_entropy, "Session rhythm is too uniform for normal human behavior.")}
+              {_simulation_checkbox("high_application_velocity", "Application velocity", request.high_application_velocity, "Same device submits many applications quickly.")}
+              {_simulation_checkbox("payment_velocity", "Payment velocity", request.payment_velocity, "Multiple payment attempts arrive in a short window.")}
+              {_simulation_checkbox("prior_chargeback", "Prior chargeback", request.prior_chargeback, "Prior dispute/default signal exists.")}
+              {_simulation_checkbox("one_hop_from_fraud", "One hop from fraud", request.one_hop_from_fraud, "Graph evidence links the applicant to confirmed fraud.")}
+              {_simulation_checkbox("public_kyb_watch", "Public KYB watch", request.public_kyb_watch, "Business registry-style signal needs review.")}
+              {_simulation_checkbox("sanctions_hit", "Sanctions-style hit", request.sanctions_hit, "Local sanctions-shaped flag exists.")}
+              {_simulation_checkbox("app_bec_pattern", "APP/BEC pattern", request.app_bec_pattern, "Payment instruction pattern deserves Break-the-Spell friction.")}
+              {_simulation_checkbox("model_or_graph_outage", "Model/graph outage", request.model_or_graph_outage, "Dependency degraded; policy forces review.")}
+            </div>
+            <p><button class="button" type="submit">Simulate result</button></p>
+          </form>
+        </div>
+        {_simulation_result_panel(result)}
+      </section>
+      <aside class="rail">
+        {_action_ladder()}
+        {_simulation_boundary_panel()}
+      </aside>
+    </main>
+  </body>
+</html>"""
+
+
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(db: FraudStore = Depends(store)) -> str:
     events = db.list_events()
@@ -628,6 +707,7 @@ def dashboard(db: FraudStore = Depends(store)) -> str:
           | <a href="/dashboard/graph?entity_id=user_00000">Graph evidence</a>
           | <a href="/dashboard/ops">Ops metrics</a>
           | <a href="/dashboard/ml">ML dashboard</a>
+          | <a href="/dashboard/simulate">Simulation</a>
           | <a href="/docs">API docs</a>
           | <a href="/metrics">Metrics</a>
         </p>
@@ -708,6 +788,7 @@ def _top_nav(title: str, subtitle: str) -> str:
         <a href="/dashboard/ops">Ops metrics</a>
         <a href="/dashboard/ml">ML dashboard</a>
         <a href="/dashboard/signals">Signal lab</a>
+        <a href="/dashboard/simulate">Simulation</a>
         <a href="/dashboard/graph?entity_id=user_00000">Graph</a>
         <a href="/docs">API docs</a>
         <a href="/metrics">Raw metrics</a>
@@ -874,6 +955,66 @@ def _status_tile(label: str, value: str, css_class: str) -> str:
         f'<div class="label">{escape(label)}</div>'
         f'<p><span class="badge {badge_class}">{escape(value)}</span></p>'
         "</div>"
+    )
+
+
+def _simulation_checkbox(name: str, label: str, checked: bool, note: str) -> str:
+    checked_attr = " checked" if checked else ""
+    return f"""<label class="scenario">
+      <span><input name="{escape(name)}" value="true" type="checkbox"{checked_attr}> {escape(label)}</span>
+      <p>{escape(note)}</p>
+    </label>"""
+
+
+def _simulation_result_panel(result: SimulationResponse) -> str:
+    return f"""<div class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Simulation result</h2>
+          <p>Policy {escape(result.policy_version)}. Local-only score, no real action.</p>
+        </div>
+        <span class="badge neutral">No real action</span>
+      </div>
+      <div class="hero-row">
+        {_plain_tile("Score", result.score, "0-100 local simulator score")}
+        {_status_tile("Tier", result.tier.value, result.tier.value.lower())}
+        {_status_tile("Action", result.action.value, _action_class(result.action.value))}
+        {_status_tile("Mode", "DEGRADED" if result.degraded else "NORMAL", "yellow" if result.degraded else "green")}
+      </div>
+      <h3>Reasons</h3>
+      {_reason_list(result.safe_reasons)}
+      <h3>Signals</h3>
+      {_risk_signal_table(result.signals)}
+    </div>"""
+
+
+def _simulation_boundary_panel() -> str:
+    return """<section class="panel">
+      <h2>Boundary</h2>
+      <table><tbody>
+        <tr><td>Data</td><td>Synthetic/local only</td></tr>
+        <tr><td>Vendors</td><td>No external calls</td></tr>
+        <tr><td>Actions</td><td>No customer message, no hold, no filing</td></tr>
+        <tr><td>Purpose</td><td>Presentation, policy tuning, edge-case rehearsal</td></tr>
+      </tbody></table>
+    </section>"""
+
+
+def _risk_signal_table(signals: list[RiskSignal]) -> str:
+    if not signals:
+        return "<p>No risk signals selected.</p>"
+    rows = "".join(
+        "<tr>"
+        f"<td>{escape(signal.code)}</td>"
+        f"<td>{signal.severity}</td>"
+        f"<td>{escape(signal.source)}</td>"
+        f"<td>{escape(signal.safe_reason)}</td>"
+        "</tr>"
+        for signal in signals
+    )
+    return (
+        "<table><thead><tr><th>Code</th><th>Severity</th><th>Source</th><th>Safe Reason</th></tr></thead>"
+        f"<tbody>{rows}</tbody></table>"
     )
 
 
@@ -1074,6 +1215,7 @@ def _ml_report_panel(report: dict[str, Any] | None, report_path: Path) -> str:
           <p>Then refresh this page. Expected report path: {escape(str(report_path))}</p>
         </div>"""
     candidates = report.get("threshold_candidates", [])[:12]
+    feature_importances = report.get("feature_importances", [])[:12]
     return f"""<div class="panel">
       <div class="panel-head">
         <div><h2>{escape(str(report.get("model_version", "model")))}</h2><p>{escape(str(report.get("model_family", "unknown")))}</p></div>
@@ -1087,6 +1229,8 @@ def _ml_report_panel(report: dict[str, Any] | None, report_path: Path) -> str:
       </div>
       <h3>Feature columns</h3>
       <p>{", ".join(f"<code>{escape(str(feature))}</code>" for feature in report.get("features", []))}</p>
+      <h3>Feature importance</h3>
+      {_feature_importance_table(feature_importances)}
       <h3>Threshold candidates</h3>
       <table><thead><tr><th>Threshold</th><th>TP</th><th>FP</th><th>FN</th><th>Profit</th></tr></thead><tbody>
         {"".join(_threshold_candidate_row(candidate) for candidate in candidates)}
@@ -1183,6 +1327,22 @@ def _threshold_candidate_row(candidate: dict[str, Any]) -> str:
         f"<td>{escape(str(candidate.get('fn', '')))}</td>"
         f"<td>{escape(_fmt(candidate.get('profit')))}</td>"
         "</tr>"
+    )
+
+
+def _feature_importance_table(feature_importances: list[dict[str, Any]]) -> str:
+    if not feature_importances:
+        return "<p>No feature importance values found in the model report.</p>"
+    rows = "".join(
+        "<tr>"
+        f"<td>{escape(str(item.get('feature', '')))}</td>"
+        f"<td>{escape(_fmt(item.get('importance')))}</td>"
+        "</tr>"
+        for item in feature_importances
+    )
+    return (
+        "<table><thead><tr><th>Feature</th><th>Importance</th></tr></thead>"
+        f"<tbody>{rows}</tbody></table>"
     )
 
 

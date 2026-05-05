@@ -46,11 +46,16 @@ def train_baseline(events_path: Path, output_dir: Path) -> dict[str, Any]:
     precision, recall, f1, _ = precision_recall_fscore_support(
         y_test, predictions, average="binary", zero_division=0
     )
+    feature_importances = _feature_importances(
+        dataset.feature_columns,
+        model.feature_importances_,
+    )
     report = {
         "model_family": "sklearn_random_forest",
         "model_version": "baseline-20260505-001",
         "rows": int(len(frame)),
         "features": dataset.feature_columns,
+        "feature_importances": feature_importances,
         "average_precision": float(average_precision_score(y_test, probabilities)),
         "brier_score": float(brier_score_loss(y_test, probabilities)),
         "precision_at_threshold": float(precision),
@@ -67,6 +72,18 @@ def train_baseline(events_path: Path, output_dir: Path) -> dict[str, Any]:
     joblib.dump(model, output_dir / "baseline.joblib")
     (output_dir / "baseline-report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     return report
+
+
+def _feature_importances(
+    feature_columns: list[str],
+    importances: np.ndarray,
+) -> list[dict[str, float | str]]:
+    ranked = sorted(
+        zip(feature_columns, importances, strict=True),
+        key=lambda item: float(item[1]),
+        reverse=True,
+    )
+    return [{"feature": feature, "importance": float(importance)} for feature, importance in ranked]
 
 
 def _best_threshold(labels: np.ndarray, probabilities: np.ndarray) -> tuple[float, float]:

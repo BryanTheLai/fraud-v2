@@ -79,6 +79,14 @@ def test_api_generate_and_score(tmp_path) -> None:  # type: ignore[no-untyped-de
     assert "Public KYB" in signals.text
     assert "No external calls" in signals.text
 
+    simulate = client.get(
+        "/dashboard/simulate?amount=1000&virtual_camera=true&one_hop_from_fraud=true"
+    )
+    assert simulate.status_code == 200
+    assert "Simulation Workbench" in simulate.text
+    assert "ONE_HOP_FROM_CONFIRMED_FRAUD" in simulate.text
+    assert "No real action" in simulate.text
+
     reset = client.post("/demo/reset", follow_redirects=False)
     assert reset.status_code == 303
 

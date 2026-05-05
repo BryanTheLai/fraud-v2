@@ -63,6 +63,7 @@ from fraud_v2.public_data.registry import describe_public_dataset
 from fraud_v2.replay.runner import run_replay
 from fraud_v2.security.auth import AuthRole
 from fraud_v2.security.secrets import report_payload, scan_secrets
+from fraud_v2.simulation.workbench import SimulationRequest, run_simulation
 from fraud_v2.storage.backup import restore_sqlite_backup, write_sqlite_backup
 from fraud_v2.storage.ports import FraudStore
 from fraud_v2.storage.postgres_store import PostgresStore
@@ -275,6 +276,38 @@ def signal_lab(
             "public_kyb": kyb.model_dump(mode="json"),
         }
     )
+
+
+@app.command()
+def simulate_risk(
+    amount: float = typer.Option(750.0, min=0),
+    virtual_camera: bool = typer.Option(False, "--virtual-camera"),
+    low_behavior_entropy: bool = typer.Option(False, "--low-behavior-entropy"),
+    high_application_velocity: bool = typer.Option(False, "--high-application-velocity"),
+    payment_velocity: bool = typer.Option(False, "--payment-velocity"),
+    prior_chargeback: bool = typer.Option(False, "--prior-chargeback"),
+    one_hop_from_fraud: bool = typer.Option(False, "--one-hop-from-fraud"),
+    public_kyb_watch: bool = typer.Option(False, "--public-kyb-watch"),
+    sanctions_hit: bool = typer.Option(False, "--sanctions-hit"),
+    app_bec_pattern: bool = typer.Option(False, "--app-bec-pattern"),
+    model_or_graph_outage: bool = typer.Option(False, "--model-or-graph-outage"),
+    policy_path: Path | None = None,
+) -> None:
+    request = SimulationRequest(
+        amount=amount,
+        virtual_camera=virtual_camera,
+        low_behavior_entropy=low_behavior_entropy,
+        high_application_velocity=high_application_velocity,
+        payment_velocity=payment_velocity,
+        prior_chargeback=prior_chargeback,
+        one_hop_from_fraud=one_hop_from_fraud,
+        public_kyb_watch=public_kyb_watch,
+        sanctions_hit=sanctions_hit,
+        app_bec_pattern=app_bec_pattern,
+        model_or_graph_outage=model_or_graph_outage,
+    )
+    result = run_simulation(request, policy=load_threshold_policy(policy_path))
+    _print_json(result.model_dump(mode="json"))
 
 
 @app.command()

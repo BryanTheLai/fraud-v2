@@ -19,6 +19,8 @@ def test_readiness_report_contains_capabilities_and_blockers() -> None:
     assert report["version"] == "0.45.0"
     assert report["regulated_production_ready"] is False
     assert "SQLite backup/restore" in report["implemented_capabilities"]
+    assert "simulation workbench UI and CLI" in report["implemented_capabilities"]
+    assert "model feature importance reporting" in report["implemented_capabilities"]
     assert "real verified labels" in report["production_blockers"]
     assert report["summary"]["checks"] == len(report["checks"])
 

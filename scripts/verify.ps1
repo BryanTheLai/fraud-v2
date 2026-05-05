@@ -42,6 +42,13 @@ Invoke-VerifyStep "readiness report" {
 Invoke-VerifyStep "release runbook" {
   uv run fraud-v2 release-runbook --output-path data\local\release-runbook-smoke.md
 }
+Invoke-VerifyStep "simulation workbench" {
+  uv run fraud-v2 simulate-risk `
+    --amount 1000 `
+    --virtual-camera `
+    --one-hop-from-fraud `
+    --app-bec-pattern
+}
 Invoke-VerifyStep "capacity profile" {
   uv run fraud-v2 capacity-profile `
     --profile smoke `

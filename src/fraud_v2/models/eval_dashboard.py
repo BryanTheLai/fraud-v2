@@ -63,6 +63,7 @@ def _threshold_value(raw_value: object) -> float | None:
 def _html(report: dict[str, Any], summary: dict[str, Any]) -> str:
     features = report.get("features", [])
     candidates = report.get("threshold_candidates", [])[:10]
+    feature_importances = report.get("feature_importances", [])[:12]
     model_version = escape(str(summary["model_version"]))
     model_family = escape(str(summary["model_family"]))
     return f"""<!doctype html>
@@ -104,6 +105,8 @@ def _html(report: dict[str, Any], summary: dict[str, Any]) -> str:
     </section>
     <h2>Feature Columns</h2>
     <p>{", ".join(f"<code>{escape(str(feature))}</code>" for feature in features)}</p>
+    <h2>Feature Importance</h2>
+    {_feature_importance_table(feature_importances)}
     <h2>Top Threshold Candidates</h2>
     <table>
       <thead><tr><th>Threshold</th><th>TP</th><th>FP</th><th>FN</th><th>Profit</th></tr></thead>
@@ -112,6 +115,22 @@ def _html(report: dict[str, Any], summary: dict[str, Any]) -> str:
   </body>
 </html>
 """
+
+
+def _feature_importance_table(feature_importances: list[dict[str, Any]]) -> str:
+    if not feature_importances:
+        return "<p>No feature importance values found in the model report.</p>"
+    rows = "".join(
+        "<tr>"
+        f"<td>{escape(str(item.get('feature', '')))}</td>"
+        f"<td>{escape(_fmt(item.get('importance')))}</td>"
+        "</tr>"
+        for item in feature_importances
+    )
+    return (
+        "<table><thead><tr><th>Feature</th><th>Importance</th></tr></thead>"
+        f"<tbody>{rows}</tbody></table>"
+    )
 
 
 def _metric(label: str, value: object) -> str:

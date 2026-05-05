@@ -24,6 +24,10 @@ def test_model_eval_dashboard_writes_html_summary(tmp_path) -> None:  # type: ig
                 "threshold_candidates": [
                     {"threshold": 0.35, "tp": 4, "fp": 1, "fn": 2, "profit": 1200}
                 ],
+                "feature_importances": [
+                    {"feature": "device_count", "importance": 0.72},
+                    {"feature": "amount", "importance": 0.28},
+                ],
             }
         ),
         encoding="utf-8",
@@ -50,6 +54,8 @@ def test_model_eval_dashboard_writes_html_summary(tmp_path) -> None:  # type: ig
     assert "Model Eval Dashboard" in html
     assert "baseline-test" in html
     assert "device_count" in html
+    assert "Feature Importance" in html
+    assert "0.7200" in html
 
 
 def test_model_eval_dashboard_handles_missing_shadow_scores(tmp_path) -> None:  # type: ignore[no-untyped-def]
