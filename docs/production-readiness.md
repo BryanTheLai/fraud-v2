@@ -49,6 +49,7 @@ It now runs locally in two modes:
 | Request tracing/logging | Local-safe done | `X-Trace-ID`, structured JSON request logs, HTTP metrics, and Prometheus alert rules. |
 | Local trace artifacts | Local-safe done | Optional `FRAUD_TRACE_EXPORT_PATH` writes JSONL request spans; `trace-report` renders JSON and static HTML summaries. |
 | Audit log | Local-safe done | SQLite hash chain for event, decision, review, and outbox actions. |
+| Audit archive | Local-safe done | `audit-archive` exports audit entries plus manifest with archive SHA-256, root entry hash, and chain verification. |
 | Retention reporting/pruning | Local-safe done | Dry-run per-table retention report plus explicit prune for expired non-audit records. No pruning by default. |
 | Stream ingestion | Local-safe done | Redpanda consumer CLI stores canonical events through SQLite/Postgres with idempotent duplicate handling. Full smoke proves publish-consume-Postgres round trip. |
 | Stream supervision | Local-safe done | `stream-supervise` runs repeated bounded consume batches with backoff, failure accounting, idle accounting, and full-smoke Postgres ingest proof. |
@@ -67,7 +68,7 @@ It now runs locally in two modes:
 | Data | Synthetic by default. PaySim-style public CSV conversion exists after manual dataset download and terms review. |
 | Auth | Local role-token, HS256 JWT, and JWKS/OIDC-shaped JWT verification exist. No real user lifecycle or sessions. |
 | Secrets | Local `secrets-scan` checks for real-looking committed credentials. No vault/KMS. |
-| Audit immutability | Hash-chained SQLite only. No WORM/object-lock storage. |
+| Audit immutability | Hash-chained SQLite plus local archive manifests. No WORM/object-lock storage. |
 | Retention enforcement | Explicit local prune exists for non-audit records. No schedules, legal holds, archive tiers, or WORM audit archival yet. |
 | Persistence | SQLite remains the lite default; Docker full mode uses Postgres for app state. |
 | Policy governance | JSON policy packs, local promotion registry, and local signed approvals exist. No external KMS/HSM, registry service, legal approval system, or enterprise change-management integration yet. |

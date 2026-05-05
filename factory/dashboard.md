@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-038 - Add Secrets Scan](tasks/active/TC-20260505-038-add-secrets-scan.md)
+- [TC-20260505-039 - Add Audit Archive](tasks/active/TC-20260505-039-add-audit-archive.md)
 
 ## Runs Waiting For Bryan
 
@@ -46,6 +46,7 @@ Updated: 2026-05-05
 - [RR-20260505-036](runs/RR-20260505-036.md)
 - [RR-20260505-037](runs/RR-20260505-037.md)
 - [RR-20260505-038](runs/RR-20260505-038.md)
+- [RR-20260505-039](runs/RR-20260505-039.md)
 
 ## Blocked Work
 
@@ -107,6 +108,7 @@ Updated: 2026-05-05
   stream-health artifact loops.
 - Added optional local request trace JSONL export and trace report artifacts.
 - Added local and CI secrets scanning for real-looking committed credentials.
+- Added local audit archive export with manifest hash and chain proof.
 
 ## Lessons Added
 
@@ -118,6 +120,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M38 secrets scanning. Next implementation task should
-add a larger synthetic capacity receipt or audit archive manifest if Bryan
+Review local MVP through M39 audit archive. Next implementation task should
+add a larger synthetic capacity receipt or local backup/restore rehearsal if Bryan
 chooses to go deeper.

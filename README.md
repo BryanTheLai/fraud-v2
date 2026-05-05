@@ -37,6 +37,8 @@ Threshold policies also have local signed approval commands for governance
 rehearsal before promotion. A local load benchmark CLI writes repeatable
 synthetic performance receipts for laptop validation. Decision evidence exports
 can be encrypted locally for human review without creating a regulatory filing.
+Audit entries can be exported into a local JSONL archive plus manifest for
+custody review.
 PaySim-style public fraud CSVs can be converted into canonical local events
 after you manually download a dataset you are allowed to use.
 Model training reports can be rendered into a local HTML eval dashboard.
@@ -172,6 +174,7 @@ powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once 
 powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical
 uv run fraud-v2 trace-report --trace-path data/local/traces.jsonl --output-path data/local/trace-report.json --dashboard-path data/local/trace-report.html
 uv run fraud-v2 secrets-scan --root .
+uv run fraud-v2 audit-archive --db-path data/local/fraud_v2.sqlite --output-dir data/local/audit-archive
 uv run fraud-v2 compliance-draft <decision-id> --db-path data/local/fraud_v2.sqlite
 $env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
 uv run fraud-v2 evidence-export <decision-id> --db-path data/local/fraud_v2.sqlite --output-path data/local/evidence/decision-evidence.enc.json

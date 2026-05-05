@@ -233,6 +233,18 @@ print(case.case_id)
   Assert-FraudCondition ($audit.Count -gt 0) "Expected audit entries after scoring."
   $auditVerify = Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/audit/verify"
   Assert-FraudCondition ($auditVerify.valid -eq $true) "Expected audit hash chain to verify."
+  $auditArchiveResult = docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync fraud-v2 audit-archive `
+      --store-backend postgres `
+      --postgres-dsn postgresql://fraud:fraud@postgres:5432/fraud_v2 `
+      --output-dir data/local/full-smoke-audit-archive 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Audit archive smoke failed: $auditArchiveResult"
+  Write-Host ($auditArchiveResult -join "`n")
+  Assert-FraudCondition (($auditArchiveResult -join "`n") -like '*"chain_valid": true*') "Audit archive manifest did not verify the chain."
+  Assert-FraudCondition (($auditArchiveResult -join "`n") -like '*"archive_sha256":*') "Audit archive manifest missing archive hash."
   $retention = Invoke-FraudApi -Method "Get" -Uri "$ApiBase/v1/retention/report"
   Assert-FraudCondition ($retention.total_expired -ge 0) "Expected retention report to load."
 

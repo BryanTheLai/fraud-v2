@@ -11,6 +11,7 @@ from uuid import UUID
 import jwt
 import typer
 
+from fraud_v2.compliance.audit_archive import write_audit_archive
 from fraud_v2.compliance.drafts import write_compliance_draft
 from fraud_v2.compliance.evidence import (
     EVIDENCE_PASSPHRASE_ENV,
@@ -696,6 +697,23 @@ def evidence_export(
             "kdf": envelope["kdf"],
         }
     )
+
+
+@app.command()
+def audit_archive(
+    output_dir: Path = Path("data/local/audit-archive"),
+    limit: int = typer.Option(10000, min=1, max=100000),
+    store_backend: str = typer.Option("sqlite", "--store-backend"),
+    db_path: Path = Path("data/local/fraud_v2.sqlite"),
+    postgres_dsn: str = "postgresql://fraud:fraud@localhost:5432/fraud_v2",
+) -> None:
+    store = _store_from_cli(
+        store_backend=store_backend,
+        db_path=db_path,
+        postgres_dsn=postgres_dsn,
+    )
+    manifest = write_audit_archive(store=store, output_dir=output_dir, limit=limit)
+    _print_json(manifest)
 
 
 @app.command()

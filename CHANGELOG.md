@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.39.0 - 2026-05-05
+
+- Added `fraud-v2 audit-archive` to export local audit entries as JSONL plus a
+  manifest.
+- Added manifest fields for archive SHA-256, root entry hash, sequence bounds,
+  and audit-chain verification status.
+- Expanded the full-profile smoke to prove Postgres-backed audit archive
+  generation.
+
 ## 0.38.0 - 2026-05-05
 
 - Added `fraud-v2 secrets-scan` to scan text files for real-looking API keys,

@@ -197,6 +197,7 @@ powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once 
 powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical
 uv run fraud-v2 trace-report --trace-path data\local\traces.jsonl --output-path data\local\trace-report.json --dashboard-path data\local\trace-report.html
 uv run fraud-v2 secrets-scan --root .
+uv run fraud-v2 audit-archive --db-path data\local\fraud_v2.sqlite --output-dir data\local\audit-archive
 uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite
 $env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
 uv run fraud-v2 evidence-export <decision-id> --db-path data\local\fraud_v2.sqlite --output-path data\local\evidence\decision-evidence.enc.json
@@ -289,6 +290,19 @@ Invoke-RestMethod `
 
 The local audit log is hash-chained in SQLite. It detects local tampering but is
 not production WORM storage.
+
+Export a portable local audit archive:
+
+```powershell
+uv run fraud-v2 audit-archive `
+  --db-path data\local\fraud_v2.sqlite `
+  --output-dir data\local\audit-archive
+```
+
+The archive writes `audit-entries.jsonl` and `audit-manifest.json`. The manifest
+includes sequence bounds, archive SHA-256, root entry hash, and audit-chain
+verification status. This is local custody evidence, not WORM/object-lock
+storage.
 
 Dry-run retention report:
 
@@ -804,6 +818,7 @@ tests/unit/domain/test_events.py
 | Local stream service loop | `powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical` | Runs supervised stream consume once and writes timestamped health artifacts for Windows Task Scheduler or manual loops. |
 | Local trace report | `uv run fraud-v2 trace-report --trace-path data\local\traces.jsonl --output-path data\local\trace-report.json --dashboard-path data\local\trace-report.html` | Summarizes optional local request spans into JSON and HTML. |
 | Secrets scan | `uv run fraud-v2 secrets-scan --root .` | Scans repo text files for real-looking credentials before commit or CI. |
+| Audit archive | `uv run fraud-v2 audit-archive --db-path data\local\fraud_v2.sqlite --output-dir data\local\audit-archive` | Exports audit entries and a manifest with archive hash and chain verification. |
 | Export compliance draft | `uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes a human-review-only local draft. |
 | Export encrypted evidence | `uv run fraud-v2 evidence-export <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes an AES-256-GCM encrypted local decision evidence bundle. |
 | Retention report | `uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite` | Counts expired records without deleting them. |
