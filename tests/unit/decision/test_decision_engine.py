@@ -41,3 +41,21 @@ def test_decision_engine_scores_low_risk_user(tmp_path) -> None:  # type: ignore
 
     assert decision.risk_score <= 20
     assert decision.action == DecisionAction.APPROVE
+
+
+def test_decision_engine_preview_does_not_persist_decision(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    store = SQLiteStore(tmp_path / "fraud.sqlite")
+    dataset = SyntheticFraudGenerator(seed=1).generate(users=50)
+    store.add_events(dataset.events)
+    as_of = max(event.occurred_at for event in dataset.events)
+
+    decision = DecisionEngine(store).preview(
+        DecisionRequest(
+            target_entity=EntityRef(entity_type=EntityType.USER, entity_id="user_00000"),
+            as_of=as_of,
+            amount=1000,
+        )
+    )
+
+    assert decision.risk_tier == RiskTier.RED
+    assert store.list_decisions() == []

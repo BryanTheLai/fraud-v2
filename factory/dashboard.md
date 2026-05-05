@@ -1,11 +1,11 @@
 # Code Factory Dashboard: fraud-v2
 
-Updated: 2026-05-05
+Updated: 2026-05-06
 
 ## Active Task
 
-- None. Simulation workbench and ML feature-importance release is implemented
-  and verified; GitHub handoff is ready.
+- None. Instant Cash cockpit and local model-benchmark release is implemented
+  and verified; GitHub handoff remains ready.
 
 ## Waiting For Bryan
 
@@ -26,6 +26,11 @@ Updated: 2026-05-05
   readiness report, local doctor, verify script, and cleanup script.
 - Added the local simulation workbench (`/dashboard/simulate` and
   `fraud-v2 simulate-risk`) plus baseline model feature-importance reporting.
+- Added `/cockpit` as the main presentation surface with scenario tabs,
+  graph/timeline/evidence, production blockers, no-action boundaries, and
+  rules-only vs model-only vs hybrid expected-profit comparison.
+- Added `fraud-v2 model-benchmark` for local logistic regression vs random
+  forest comparison on AUPRC, Brier, Recall at 1 percent FPR, and profit.
 
 ## Current Blockers
 
@@ -37,6 +42,5 @@ Updated: 2026-05-05
 ## Next Practical Command
 
 ```powershell
-gh auth login
 powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1 -Execute
 ```

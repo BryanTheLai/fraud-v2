@@ -19,10 +19,13 @@ For every meaningful gap, separate:
 
 ## Current Continue/Pause Register
 
-Date: 2026-05-05.
+Date: 2026-05-06.
 
 Implementation update:
 
+- `/cockpit` is now the main Instant Cash Fraud Cockpit: scenario-first,
+  presentation-ready, and explicit about missing data, blockers, graph
+  evidence, no-real-action boundaries, and model/rules tradeoffs.
 - `/demo` cockpit exists with seeded scenario buttons, custom run controls, and
   local reset.
 - `/dashboard/cases/{case_id}` exists with timeline, reasons, features, graph,
@@ -39,6 +42,9 @@ Implementation update:
   previews, and dependency-outage behavior without mutating real state.
 - Baseline training reports now include feature importances; the static and
   in-app ML dashboards render them.
+- `fraud-v2 model-benchmark` compares logistic regression and random forest
+  with AUPRC, Brier score, Recall at 1 percent FPR, and best-profit threshold;
+  `/cockpit` renders that report when present.
 - Yellow case rails can render a Break-the-Spell draft checklist; no real
   customer message is sent.
 - Graph SVG now has a legend, node type markers, confirmed-fraud styling, and
@@ -51,6 +57,7 @@ Implementation update:
 | Item | Still Vague Or Blocked | Main Options | Tradeoff | Decision |
 |---|---|---|---|---|
 | Demo cockpit | Built locally; production audience/story can still sharpen. | Keep separate `/demo`; merge into dashboard; replace dashboard. | Separate `/demo` keeps the presentation surface clean without losing analyst proof. | Keep implemented `/demo`. |
+| Main cockpit | Built as `/cockpit`; old pages remain secondary. | Replace old dashboard; keep old dashboard; redirect root. | Keeping old pages preserves proof surfaces while `/cockpit` becomes the product story. | Continue with `/cockpit` as main entry; keep old pages. |
 | Old TNG RiskOps UI reuse | Source code not found locally. | Copy visual pattern; find old repo; rebuild from scratch. | Source reuse is fastest only if repo exists. Pattern reuse is enough. | Continue: reuse pattern, not code. |
 | Analyst case detail | Current dashboard has rows but no full case file. | Row-only; drawer; case page. | Case page is best for presentation and evidence. | Continue: build case page. |
 | UI-based simulation | Built locally; no real external actions. | Keep UI/CLI knobs; add raw JSON editor; wire to live seeded DB. | Current knobs are simple and presentable. Raw JSON is powerful but intimidating. DB mutation can confuse demos. | Keep implemented UI/CLI knobs; defer raw JSON editor. |
@@ -255,16 +262,19 @@ Research lane:
 
 ## Recommended Build Order
 
-1. Done: `/demo` cockpit with scenario buttons, reset, and result panel.
-2. Done: case detail page using TNG-style timeline, facts, missing data, decision rail.
-3. Done: graph visual upgrade with legend, node markers, and highlighted risk edges.
-4. Done: `/dashboard/ops` human metrics page, keeping raw `/metrics`.
-5. Done: ML dashboard with training report, calibration, PSI, Kappa, profit threshold, Recall@1% FPR, and feature importance.
-6. Done: `/dashboard/simulate` plus `fraud-v2 simulate-risk` for UI/CLI manual simulation.
-7. Instant Cash expansion: Benford, repayment/default timeline, chargeback ratio,
+1. Done: `/cockpit` main presentation cockpit with scenario tabs, graph,
+   timeline, ML/rules/hybrid comparison, blockers, and no-action boundaries.
+2. Done: `/demo` cockpit with scenario buttons, reset, and result panel.
+3. Done: case detail page using TNG-style timeline, facts, missing data, decision rail.
+4. Done: graph visual upgrade with legend, node markers, and highlighted risk edges.
+5. Done: `/dashboard/ops` human metrics page, keeping raw `/metrics`.
+6. Done: ML dashboard with training report, calibration, PSI, Kappa, profit threshold, Recall@1% FPR, and feature importance.
+7. Done: `/dashboard/simulate` plus `fraud-v2 simulate-risk` for UI/CLI manual simulation.
+8. Done: `fraud-v2 model-benchmark` for local model-family comparison.
+9. Instant Cash expansion: Benford, repayment/default timeline, chargeback ratio,
    idempotency proof, Break-the-Spell simulated prompt.
-8. Public-data adapters: local public-KYB-shaped connector exists; live
+10. Public-data adapters: local public-KYB-shaped connector exists; live
    OFAC/GLEIF/Companies House calls stay paused until terms, rate limits, and
    secrets/access are decided.
-9. Optional sandbox adapters for Stripe Identity or Persona only if credentials
+11. Optional sandbox adapters for Stripe Identity or Persona only if credentials
    are available and the integration is clearly marked as sandbox.

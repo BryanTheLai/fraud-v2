@@ -16,6 +16,11 @@ class DecisionEngine:
         self.rules = RuleEngine()
 
     def score(self, request: DecisionRequest) -> DecisionResponse:
+        response = self.preview(request)
+        self.store.save_decision(response)
+        return response
+
+    def preview(self, request: DecisionRequest) -> DecisionResponse:
         events = self.store.list_events()
         features = FeatureBuilder(events).build(request.target_entity, request.as_of)
         graph = GraphService(events)
@@ -46,7 +51,6 @@ class DecisionEngine:
             safe_reasons=[signal.safe_reason for signal in signals]
             or ["No major risk signals found."],
         )
-        self.store.save_decision(response)
         return response
 
     def _score(self, signals: list[RiskSignal], features: FeatureVector) -> int:

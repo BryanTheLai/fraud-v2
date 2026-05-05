@@ -49,6 +49,11 @@ Invoke-VerifyStep "simulation workbench" {
     --one-hop-from-fraud `
     --app-bec-pattern
 }
+Invoke-VerifyStep "model benchmark" {
+  uv run fraud-v2 model-benchmark `
+    --events-path data\synthetic\tiny\events.jsonl `
+    --output-path data\models\benchmark-report.json
+}
 Invoke-VerifyStep "capacity profile" {
   uv run fraud-v2 capacity-profile `
     --profile smoke `

@@ -2,7 +2,7 @@
 project: fraud-v2
 owner: Bryan
 created_at: 2026-05-04
-updated_at: 2026-05-05
+updated_at: 2026-05-06
 status: current
 source_task: TC-20260504-001
 version: 3
@@ -109,6 +109,14 @@ uv run fraud-v2 train `
   --output-dir data\models\baseline
 ```
 
+Generate the local model benchmark used by the cockpit:
+
+```powershell
+uv run fraud-v2 model-benchmark `
+  --events-path data\synthetic\tiny\events.jsonl `
+  --output-path data\models\benchmark-report.json
+```
+
 Generate the local MLOps report used by the ML dashboard:
 
 ```powershell
@@ -128,6 +136,7 @@ Open:
 
 | Page | URL |
 |---|---|
+| Main cockpit | `http://127.0.0.1:8000/cockpit` |
 | Demo cockpit | `http://127.0.0.1:8000/demo` |
 | Analyst dashboard | `http://127.0.0.1:8000/dashboard` |
 | Graph evidence | `http://127.0.0.1:8000/dashboard/graph?entity_id=user_00000` |
@@ -249,6 +258,7 @@ What the normal gate runs:
 - `local-doctor`
 - `readiness-report`
 - `release-runbook`
+- `model-benchmark`
 - `capacity-profile --profile smoke`
 
 `-Full` also runs Docker Compose config, Docker build, and `full-smoke.ps1`.
@@ -280,7 +290,7 @@ are grouped here.
 |---|---|
 | Data | `generate`, `load`, `public-dataset`, `public-dataset-convert` |
 | Decisions | `demo-reset`, `score`, `replay`, `monitor` |
-| ML | `train`, `model-register`, `model-list`, `model-promote`, `shadow-score`, `model-eval-dashboard` |
+| ML | `train`, `model-benchmark`, `model-register`, `model-list`, `model-promote`, `shadow-score`, `model-eval-dashboard` |
 | Policy | `policy-show`, `policy-register`, `policy-list`, `policy-promote`, `policy-keygen`, `policy-approve`, `policy-approval-status`, `policy-promote-approved` |
 | Streams | `outbox-drain`, `stream-consume`, `stream-supervise`, `stream-lag`, `stream-dead-letters`, `stream-health` |
 | Review/compliance | `compliance-draft`, `evidence-export`, `retention-report`, `retention-prune` |

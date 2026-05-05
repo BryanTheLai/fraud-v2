@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.51.0 - 2026-05-06
+
+- Added `/cockpit` as the main Instant Cash Fraud Cockpit with scenario tabs,
+  safe reasons, timeline, graph evidence, missing-data notes, production
+  blockers, and a no-real-action explanation.
+- Added rules-only vs model-only vs hybrid score comparison with local expected
+  profit so the presentation explains why hybrid decisioning is recommended.
+- Added `fraud-v2 model-benchmark` to compare local logistic regression and
+  random forest baselines on AUPRC, Brier score, Recall at 1 percent FPR, and
+  best-profit threshold.
+- Added `DecisionEngine.preview` so presentation scoring can render without
+  polluting the local decision store on page refresh.
+
 ## 0.50.0 - 2026-05-05
 
 - Added `fraud-v2 simulate-risk` and `/dashboard/simulate` so demos can tune

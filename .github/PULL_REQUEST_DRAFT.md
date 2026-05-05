@@ -44,6 +44,11 @@ Implemented:
   checks without external vendor calls.
 - Local simulation workbench dashboard and CLI for manual synthetic risk knobs,
   APP/BEC intervention previews, and model/graph outage rehearsal.
+- Instant Cash cockpit at `/cockpit` with scenario tabs, safe reasons, timeline,
+  graph evidence, missing-data notes, production blockers, no-real-action
+  boundary, and rules/model/hybrid expected-profit comparison.
+- Local model benchmark CLI comparing logistic regression and random forest on
+  AUPRC, Brier score, Recall at 1 percent FPR, and best-profit threshold.
 - Break-the-Spell draft preview on yellow case rails, with no real customer
   messaging.
 - Benford-derived declared-income features for the Instant Cash fraud lane.
@@ -119,6 +124,7 @@ uv run fraud-v2 local-doctor --output-path data\local\local-doctor.json --dashbo
 uv run fraud-v2 mlops-report --events-path data\synthetic\tiny\events.jsonl --output-path data\local\mlops-report.json --simulate-score-shift-points 12
 uv run fraud-v2 signal-lab
 uv run fraud-v2 simulate-risk --amount 1000 --virtual-camera --one-hop-from-fraud --app-bec-pattern
+uv run fraud-v2 model-benchmark --events-path data\synthetic\tiny\events.jsonl --output-path data\models\benchmark-report.json
 uv run fraud-v2 capacity-profile --profile smoke --users 50 --score-users 5 --min-load-events-per-second 0.1 --min-score-decisions-per-second 0.1 --output-dir data\local\ci-capacity --overwrite --fail-on-target-miss
 docker compose -f infra\docker-compose.yml --profile full config --quiet
 docker build -t fraud-v2:local .
@@ -129,14 +135,14 @@ powershell -ExecutionPolicy Bypass -File scripts\clean-local.ps1
 Latest local result:
 
 - Ruff format/check: pass
-- Mypy: pass, 96 source files checked
-- Secrets scan: pass, 179 files scanned, zero findings
-- Pytest: pass, 132 collected tests
+- Mypy: pass, 98 source files checked
+- Secrets scan: pass, 183 files scanned, zero findings
+- Pytest: pass, 135 collected tests
 - GitHub handoff dry run: pass, reports configured `origin` remote, clean
   worktree, GitHub CLI auth, and no blockers
 - Verify script: pass for core and `-Full` modes
 - Release runbook smoke: pass, wrote a 2,356-byte Markdown runbook
-- Readiness report smoke: pass, wrote JSON/HTML, reported 8 checks, 25
+- Readiness report smoke: pass, wrote JSON/HTML, reported 8 checks, 27
   implemented capabilities, 6 production blockers, and ready status once the
   worktree is clean
 - Local doctor smoke: pass, wrote JSON/HTML, reported `lite_ready: true`,
@@ -148,9 +154,13 @@ Latest local result:
   `REVIEW` without external calls
 - Simulation workbench smoke: pass, returned local-only/no-action red result
   from amount, virtual-camera, graph-neighbor, and APP/BEC knobs
-- Capacity profile smoke: pass, 50 users, 316 events, 89.313 load events/sec,
-  53.356 score decisions/sec, JSON/HTML artifacts written
-- Docker build: pass, installed `fraud-v2==0.50.0`
+- Model benchmark smoke: pass, 120 rows, 36 test rows, recommended
+  `sklearn_random_forest`, AUPRC `0.5786`, best profit `749.964`
+- Cockpit browser smoke: pass, Edge headless rendered `/cockpit?scenario=graph_ring`
+  and wrote a 133,175-byte screenshot artifact
+- Capacity profile smoke: pass, 50 users, 316 events, 94.615 load events/sec,
+  48.027 score decisions/sec, JSON/HTML artifacts written
+- Docker build: pass, installed `fraud-v2==0.51.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Postgres backup rehearsal with source/restored

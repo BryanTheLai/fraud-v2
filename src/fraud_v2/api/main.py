@@ -18,6 +18,15 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from fraud_v2 import __version__
+from fraud_v2.cockpit import (
+    CockpitScenario,
+    DecisionModeComparison,
+    SignalContribution,
+    cockpit_scenario,
+    cockpit_scenarios,
+    compare_decision_modes,
+    signal_contributions,
+)
 from fraud_v2.compliance.interventions import build_break_spell_draft
 from fraud_v2.compliance.reasons import adverse_action_style_reasons
 from fraud_v2.config.settings import Settings, get_settings
@@ -248,11 +257,117 @@ def _write_request_trace(
 def root() -> dict[str, str]:
     return {
         "service": "fraud-v2",
+        "cockpit": "/cockpit",
         "docs": "/docs",
         "demo": "/demo",
         "dashboard": "/dashboard",
         "health": "/health/ready",
     }
+
+
+@app.get("/cockpit", response_class=HTMLResponse)
+def instant_cash_cockpit(
+    scenario: str = Query(default="graph_ring"),
+    db: FraudStore = Depends(store),
+    settings: Settings = Depends(get_settings),
+) -> str:
+    _ensure_demo_seed(db)
+    selected = cockpit_scenario(scenario)
+    policy = load_threshold_policy(settings.policy_path)
+    decision = DecisionEngine(db, policy=policy).preview(
+        DecisionRequest(
+            target_entity=EntityRef(entity_type=EntityType.USER, entity_id=selected.user_id),
+            as_of=selected.as_of_datetime(),
+            amount=selected.amount,
+            context={"surface": "cockpit", "scenario": selected.key},
+        )
+    )
+    simulation = run_simulation(selected.simulation, policy=policy)
+    events = [
+        event for event in db.list_events() if event.occurred_at <= decision.feature_vector.as_of
+    ]
+    graph = GraphService(events).neighborhood(decision.target_entity, depth=2)
+    fraud_keys = _confirmed_fraud_graph_keys(events)
+    modes = compare_decision_modes(selected, decision, policy)
+    contributions = signal_contributions(decision, simulation)
+    benchmark_report = _load_model_report(Path("data/models/benchmark-report.json"))
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Instant Cash Fraud Cockpit</title>
+    {_base_style()}
+  </head>
+  <body>
+    {_top_nav("Instant Cash Fraud Cockpit", "One presentation surface: scenario, score, graph, ML, action, blockers.")}
+    <main class="shell">
+      <section class="main">
+        <div class="panel cockpit-hero">
+          <div class="panel-head">
+            <div>
+              <h2>{escape(selected.title)}</h2>
+              <p>{escape(selected.narrative)}</p>
+            </div>
+            <span class="badge neutral">{escape(selected.blog_category)}</span>
+          </div>
+          {_cockpit_scenario_tabs(selected.key)}
+          <div class="hero-row">
+            {_plain_tile("Hybrid score", modes[-1].score, "Recommended local operating score")}
+            {_status_tile("Tier", modes[-1].tier.value, modes[-1].tier.value.lower())}
+            {_status_tile("Action", modes[-1].action.value, _action_class(modes[-1].action.value))}
+            {_plain_tile("Model probability", f"{selected.model_probability:.0%}", selected.typology)}
+          </div>
+        </div>
+        <div class="split">
+          <section class="panel">
+            <h2>Rules-only vs model-only vs hybrid</h2>
+            <p>Hybrid wins locally because the model ranks risk while rules keep the decision explainable and bounded.</p>
+            {_mode_comparison_table(modes)}
+          </section>
+          <section class="panel">
+            <h2>Score contribution</h2>
+            <p>Signals are synthetic/local, but each reason is safe to show in a review workflow.</p>
+            {_contribution_table(contributions)}
+          </section>
+        </div>
+        <div class="split">
+          <section class="panel">
+            <h2>Timeline</h2>
+            {_cockpit_timeline(selected)}
+            <h3>Local event proof</h3>
+            {_event_timeline_table(events, selected.user_id)}
+          </section>
+          <section class="panel">
+            <h2>Explain this decision</h2>
+            {_reason_list(decision.safe_reasons)}
+            <h3>Missing data</h3>
+            {_plain_list(selected.missing_data)}
+            <h3>No real action happened</h3>
+            <p>Approval, block, hold, customer message, SAR, KYC/KYB, and money movement are simulated or absent unless explicitly wired later with approved vendors and legal review.</p>
+          </section>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Graph and ring evidence</h2>
+              <p>Local NetworkX graph proof. This is the truthful substitute before real consortium data or GNN training exists.</p>
+            </div>
+            <a class="button secondary" href="/dashboard/graph?entity_id={escape(selected.user_id)}">Open graph page</a>
+          </div>
+          <div class="graph">{_graph_svg(graph, decision.target_entity.graph_key, fraud_keys)}</div>
+          <h3>What matters</h3>
+          {_plain_list(selected.graph_evidence)}
+        </div>
+        {_model_benchmark_panel(benchmark_report)}
+      </section>
+      <aside class="rail">
+        {_cockpit_decision_rail(selected, decision, simulation)}
+        {_cockpit_gap_panel(selected)}
+        {_action_ladder()}
+      </aside>
+    </main>
+  </body>
+</html>"""
 
 
 @app.get("/demo", response_class=HTMLResponse)
@@ -747,7 +862,9 @@ def _base_style() -> str:
       .panel-head { display:flex; justify-content:space-between; gap:12px; align-items:start; border-bottom:1px solid var(--line); padding-bottom:12px; margin-bottom:12px; }
       .scenario-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); gap:10px; }
       .scenario { background:#f8fafc; border:1px solid var(--line); border-radius:6px; padding:12px; display:grid; gap:8px; }
+      .scenario.active { border-color: var(--orange); background: #fff7ed; }
       .scenario strong { font-size: 14px; }
+      .cockpit-hero { border-top:4px solid var(--orange); }
       .hero-row { display:grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap:10px; }
       .score-tile { background: var(--navy); color: #fff; }
       .score-tile p, .score-tile .label { color: #cbd5e1; }
@@ -770,6 +887,9 @@ def _base_style() -> str:
       th { color:#52616b; background:#f6f8fa; font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
       .split { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
       .graph { border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#fff; }
+      .bar { min-width:120px; background:#edf2f7; border-radius:4px; overflow:hidden; height:10px; }
+      .bar span { display:block; height:10px; background:var(--orange); }
+      .recommended-row td { background:#fff7ed; font-weight:700; }
       ul.clean { margin: 8px 0 0; padding-left: 18px; }
       li { margin: 6px 0; }
       @media (max-width: 900px) { .shell, .split { grid-template-columns: 1fr; } }
@@ -783,6 +903,7 @@ def _top_nav(title: str, subtitle: str) -> str:
         <div><h1>{escape(title)}</h1><p>{escape(subtitle)}</p></div>
       </div>
       <nav class="navlinks">
+        <a href="/cockpit">Cockpit</a>
         <a href="/demo">Demo</a>
         <a href="/dashboard">Analyst dashboard</a>
         <a href="/dashboard/ops">Ops metrics</a>
@@ -816,6 +937,131 @@ def _scenario_card(scenario: DemoScenario) -> str:
       <form method="post" action="/demo/run?scenario={escape(scenario.key)}">
         <button class="button" type="submit">Run scenario</button>
       </form>
+    </div>"""
+
+
+def _cockpit_scenario_tabs(selected_key: str) -> str:
+    cards = []
+    for scenario in cockpit_scenarios():
+        active = " active" if scenario.key == selected_key else ""
+        cards.append(
+            f"""<a class="scenario{active}" href="/cockpit?scenario={escape(scenario.key)}">
+              <strong>{escape(scenario.title)}</strong>
+              <p>{escape(scenario.expected_operator_action)}</p>
+              <span class="badge neutral">{escape(scenario.typology)}</span>
+            </a>"""
+        )
+    return f"<div class='scenario-grid'>{''.join(cards)}</div>"
+
+
+def _mode_comparison_table(modes: list[DecisionModeComparison]) -> str:
+    rows = []
+    for mode in modes:
+        row_class = " class='recommended-row'" if mode.recommended else ""
+        rows.append(
+            f"<tr{row_class}>"
+            f"<td>{escape(mode.label)}</td>"
+            f"<td>{mode.score}</td>"
+            f"<td><span class='badge {mode.tier.value.lower()}'>{mode.tier.value}</span></td>"
+            f"<td>{escape(mode.action.value)}</td>"
+            f"<td>{escape(_fmt(mode.expected_profit))}</td>"
+            f"<td>{escape(mode.note)}</td>"
+            "</tr>"
+        )
+    return (
+        "<table><thead><tr><th>Mode</th><th>Score</th><th>Tier</th><th>Action</th>"
+        "<th>Expected profit</th><th>Why it matters</th></tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table>"
+    )
+
+
+def _contribution_table(contributions: list[SignalContribution]) -> str:
+    rows = []
+    max_points = max((item.points for item in contributions), default=1)
+    for item in contributions:
+        width = 0 if max_points == 0 else round(item.points / max_points * 100)
+        rows.append(
+            "<tr>"
+            f"<td>{escape(item.code)}</td>"
+            f"<td>{item.points}</td>"
+            f"<td><div class='bar'><span style='width:{width}%'></span></div></td>"
+            f"<td>{escape(item.source)}</td>"
+            f"<td>{escape(item.safe_reason)}</td>"
+            "</tr>"
+        )
+    return (
+        "<table><thead><tr><th>Signal</th><th>Points</th><th>Weight</th><th>Source</th>"
+        "<th>Safe reason</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
+    )
+
+
+def _cockpit_timeline(scenario: CockpitScenario) -> str:
+    rows = "".join(
+        f"<tr><td>{index}</td><td>{escape(step)}</td></tr>"
+        for index, step in enumerate(scenario.timeline, start=1)
+    )
+    return (
+        f"<table><thead><tr><th>Step</th><th>Event</th></tr></thead><tbody>{rows}</tbody></table>"
+    )
+
+
+def _cockpit_decision_rail(
+    scenario: CockpitScenario,
+    decision: DecisionResponse,
+    simulation: SimulationResponse,
+) -> str:
+    return f"""<section class="panel">
+      <h2>Decision rail</h2>
+      <table><tbody>
+        <tr><td>Scenario</td><td>{escape(scenario.title)}</td></tr>
+        <tr><td>Expected label</td><td>{escape(scenario.expected_label)}</td></tr>
+        <tr><td>Rules score</td><td>{decision.risk_score}</td></tr>
+        <tr><td>Simulation score</td><td>{simulation.score}</td></tr>
+        <tr><td>Policy</td><td>{escape(decision.policy_version)}</td></tr>
+        <tr><td>Model</td><td>{escape(decision.model_version or "n/a")}</td></tr>
+        <tr><td>Trace</td><td>{escape(str(decision.reasoning_trace_id)[:8])}</td></tr>
+      </tbody></table>
+    </section>"""
+
+
+def _cockpit_gap_panel(scenario: CockpitScenario) -> str:
+    return f"""<section class="panel">
+      <h2>Production blockers</h2>
+      {_plain_list(scenario.production_blockers)}
+      <h3>Decision</h3>
+      <p>Implement local/simulated proof now. Pause real vendor, PII, money, messaging, and filing until access and approval exist.</p>
+    </section>"""
+
+
+def _model_benchmark_panel(report: dict[str, Any] | None) -> str:
+    if report is None:
+        return """<div class="panel">
+          <h2>ML benchmark</h2>
+          <p>No benchmark report found. Run this to compare local lightweight models:</p>
+          <pre>uv run fraud-v2 model-benchmark --events-path data\\synthetic\\tiny\\events.jsonl --output-path data\\models\\benchmark-report.json</pre>
+          <p>Use this as a model proof lane, not as a production claim.</p>
+        </div>"""
+    rows = "".join(
+        "<tr>"
+        f"<td>{escape(str(item.get('model_family', '')))}</td>"
+        f"<td>{escape(_fmt(item.get('average_precision')))}</td>"
+        f"<td>{escape(_fmt(item.get('brier_score')))}</td>"
+        f"<td>{escape(_fmt(item.get('recall_at_1pct_fpr')))}</td>"
+        f"<td>{escape(_fmt(item.get('best_profit')))}</td>"
+        "</tr>"
+        for item in report.get("models", [])
+    )
+    return f"""<div class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>ML benchmark</h2>
+          <p>{escape(str(report.get("rows", 0)))} local synthetic rows. Recommended: {escape(str(report.get("recommended_model_family", "n/a")))}</p>
+        </div>
+        <span class="badge neutral">local sklearn</span>
+      </div>
+      <table><thead><tr><th>Model</th><th>AUPRC</th><th>Brier</th><th>Recall @ 1% FPR</th><th>Best profit</th></tr></thead><tbody>{rows}</tbody></table>
+      <p>{escape(str(report.get("recommendation", "")))}</p>
     </div>"""
 
 
@@ -1042,6 +1288,10 @@ def _reason_list(reasons: list[str]) -> str:
     return (
         "<ul class='clean'>" + "".join(f"<li>{escape(reason)}</li>" for reason in reasons) + "</ul>"
     )
+
+
+def _plain_list(items: tuple[str, ...] | list[str]) -> str:
+    return "<ul class='clean'>" + "".join(f"<li>{escape(item)}</li>" for item in items) + "</ul>"
 
 
 def _feature_table(decision: DecisionResponse) -> str:

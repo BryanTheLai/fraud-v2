@@ -60,6 +60,14 @@ def test_api_generate_and_score(tmp_path) -> None:  # type: ignore[no-untyped-de
     assert "Run a seeded scenario" in demo.text
     assert "Blog layer coverage" in demo.text
 
+    cockpit = client.get("/cockpit?scenario=graph_ring")
+    assert cockpit.status_code == 200
+    assert "Instant Cash Fraud Cockpit" in cockpit.text
+    assert "Rules-only vs model-only vs hybrid" in cockpit.text
+    assert "Graph ring applicant" in cockpit.text
+    assert "Production blockers" in cockpit.text
+    assert "No real action happened" in cockpit.text
+
     demo_run = client.post("/demo/run?scenario=graph_neighbor", follow_redirects=False)
     assert demo_run.status_code == 303
     assert "/demo?decision_id=" in demo_run.headers["location"]

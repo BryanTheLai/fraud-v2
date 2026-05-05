@@ -17,6 +17,7 @@ def test_verify_script_runs_core_gate_and_optional_full_smoke() -> None:
     assert "uv run fraud-v2 local-doctor" in script
     assert "uv run fraud-v2 readiness-report" in script
     assert "uv run fraud-v2 simulate-risk" in script
+    assert "uv run fraud-v2 model-benchmark" in script
     assert "uv run fraud-v2 capacity-profile" in script
     assert "docker build -t fraud-v2:local ." in script
     assert "scripts\\full-smoke.ps1" in script

@@ -18,7 +18,7 @@ money movement.
 | Full | Docker API, Postgres, Redis, Redpanda, Neo4j, Prometheus, Grafana | Production-shaped local smoke proof. |
 | ML | Local sklearn training/eval artifacts | Baseline model, feature importance, and threshold experiments. |
 
-Latest verified version: `0.50.0`.
+Latest verified version: `0.51.0`.
 
 ## System Map
 
@@ -63,6 +63,7 @@ Reset the local demo database, train the baseline, score one user:
 ```powershell
 uv run fraud-v2 demo-reset --users 120 --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline
+uv run fraud-v2 model-benchmark --events-path data\synthetic\tiny\events.jsonl --output-path data\models\benchmark-report.json
 uv run fraud-v2 mlops-report --events-path data\synthetic\tiny\events.jsonl --output-path data\local\mlops-report.json
 uv run fraud-v2 simulate-risk --amount 1000 --virtual-camera --one-hop-from-fraud
 uv run fraud-v2 score user_00000 --db-path data\local\fraud_v2.sqlite
@@ -76,6 +77,7 @@ uv run uvicorn fraud_v2.api.main:app --host 127.0.0.1 --port 8000
 
 Open:
 
+- Main cockpit: `http://127.0.0.1:8000/cockpit`
 - Demo cockpit: `http://127.0.0.1:8000/demo`
 - Analyst dashboard: `http://127.0.0.1:8000/dashboard`
 - Graph evidence: `http://127.0.0.1:8000/dashboard/graph?entity_id=user_00000`
@@ -154,6 +156,7 @@ disturb a normal dev server on port `8000`.
 src/fraud_v2/
   api/             FastAPI app, auth boundaries, dashboards, health, metrics.
   cli/             `fraud-v2` Typer commands.
+  cockpit.py       Scenario-first presentation model and hybrid comparison.
   domain/          Pydantic events, decisions, reviews, enums, safe contracts.
   synthetic/       Deterministic synthetic event generator.
   public_data/     PaySim-style public CSV descriptor and converter.
@@ -162,7 +165,7 @@ src/fraud_v2/
   rules/           Rule scoring and reason codes.
   features/        Local feature assembly.
   graph/           NetworkX lite graph and Neo4j adapter paths.
-  models/          sklearn baseline training, registry, shadow scoring.
+  models/          sklearn baseline training, benchmarking, registry, shadow scoring.
   evaluation/      Monitoring, PSI drift, analyst Kappa, capacity receipts.
   policy/          Threshold policy packs, registry, signed approvals.
   simulation/      Local-only scenario workbench and risk knob scoring.
@@ -212,6 +215,7 @@ Expand-Archive -LiteralPath factory\archive\code-factory-receipts-20260504-20260
 | Load events | `uv run fraud-v2 load data\synthetic\tiny\events.jsonl --db-path data\local\fraud_v2.sqlite` |
 | Score one user | `uv run fraud-v2 score user_00000 --db-path data\local\fraud_v2.sqlite` |
 | Train baseline | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` |
+| Benchmark local models | `uv run fraud-v2 model-benchmark --events-path data\synthetic\tiny\events.jsonl --output-path data\models\benchmark-report.json` |
 | MLOps drift/Kappa report | `uv run fraud-v2 mlops-report --events-path data\synthetic\tiny\events.jsonl --output-path data\local\mlops-report.json` |
 | Local signal lab CLI | `uv run fraud-v2 signal-lab` |
 | Local simulation workbench CLI | `uv run fraud-v2 simulate-risk --amount 1000 --virtual-camera --one-hop-from-fraud` |

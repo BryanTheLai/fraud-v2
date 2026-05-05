@@ -31,6 +31,7 @@ from fraud_v2.infrastructure.redpanda_dead_letter_publisher import RedpandaDeadL
 from fraud_v2.infrastructure.redpanda_lag import RedpandaLagProbe
 from fraud_v2.infrastructure.redpanda_publisher import RedpandaEventPublisher
 from fraud_v2.llm_lab.provider import NoveltyLedger, provider_from_env
+from fraud_v2.models.benchmark import benchmark_model_families
 from fraud_v2.models.eval_dashboard import write_model_eval_dashboard
 from fraud_v2.models.registry import JsonModelRegistry, ModelStatus
 from fraud_v2.models.shadow import write_shadow_scores
@@ -206,6 +207,15 @@ def train(
     output_dir: Path = Path("data/models/baseline"),
 ) -> None:
     report = train_baseline(events_path, output_dir)
+    _print_json(report)
+
+
+@app.command()
+def model_benchmark(
+    events_path: Path = Path("data/synthetic/tiny/events.jsonl"),
+    output_path: Path = Path("data/models/benchmark-report.json"),
+) -> None:
+    report = benchmark_model_families(events_path=events_path, output_path=output_path)
     _print_json(report)
 
 
