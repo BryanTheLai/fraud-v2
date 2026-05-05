@@ -169,6 +169,17 @@ def load(
 
 
 @app.command()
+def demo_reset(
+    users: int = typer.Option(120, min=10),
+    db_path: Path = Path("data/local/fraud_v2.sqlite"),
+) -> None:
+    dataset = SyntheticFraudGenerator().generate(users=users)
+    store = SQLiteStore(db_path)
+    report = store.reset_demo_data(dataset.events)
+    _print_json({"db": str(db_path), "users": users, **report, "mode": "local_demo_reset"})
+
+
+@app.command()
 def score(
     user_id: str,
     db_path: Path = Path("data/local/fraud_v2.sqlite"),

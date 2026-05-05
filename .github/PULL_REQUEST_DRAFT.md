@@ -29,8 +29,16 @@ Implemented:
 - Local capacity-profile CLI that writes JSON/HTML synthetic capacity receipts
   with target checks.
 - Cost-weighted model threshold reporting.
+- Demo cockpit with seeded local scenarios, custom scoring controls, and reset.
 - Analyst dashboard with recent decisions and open review queue.
+- Primary case detail page with point-in-time timeline, features, graph, and
+  simulated decision rail.
 - Graph evidence dashboard for local analyst review.
+- Human-readable ops dashboard for queue, outbox, DLQ, audit, freshness, and
+  Prometheus/Grafana links.
+- In-app ML dashboard for baseline model calibration, Recall at 1 percent FPR,
+  profit threshold, and feature review.
+- Benford-derived declared-income features for the Instant Cash fraud lane.
 - Docker Compose full profile and `scripts/full-smoke.ps1`.
 - Provisioned Grafana dashboard for full-profile observability.
 - Local role-aware API authorization for admin, analyst, and system tokens.
@@ -110,8 +118,8 @@ powershell -ExecutionPolicy Bypass -File scripts\clean-local.ps1
 Latest local result:
 
 - Ruff format/check: pass
-- Mypy: pass
-- Secrets scan: pass, 268 files scanned, zero findings
+- Mypy: pass, 91 source files checked
+- Secrets scan: pass, 172 files scanned, zero findings
 - Pytest: pass, 123 collected tests
 - GitHub handoff dry run: pass, reports missing `origin` remote and missing
   `gh auth status` as blockers
@@ -126,7 +134,7 @@ Latest local result:
   41.3 GiB free disk
 - Capacity profile smoke: pass, 50 users, 316 events, 116.811 load events/sec,
   62.168 score decisions/sec, JSON/HTML artifacts written
-- Docker build: pass, installed `fraud-v2==0.47.0`
+- Docker build: pass, installed `fraud-v2==0.48.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Postgres backup rehearsal with source/restored

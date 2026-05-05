@@ -32,6 +32,7 @@ It now runs locally in two modes:
 | Lite backup/restore | Local-safe done | `sqlite-backup` and `sqlite-restore` write SHA-256 verified local recovery artifacts. |
 | Full-profile Postgres backup | Local-safe done | `scripts/postgres-backup-rehearsal.ps1` runs `pg_dump`, scratch restore, event-count verification, and manifest writing. |
 | API | Done | FastAPI routes, role-protected `/v1/*`, health, metrics, docs. |
+| Demo cockpit | Local-safe done | `/demo` runs seeded scenarios, customized local scores, and local demo reset. |
 | Rules/graph decisions | Done | Rules + NetworkX graph service, graph evidence dashboard, safe reasons, trace IDs. |
 | Versioned threshold policy | Local-safe done | Green/yellow/red thresholds, degraded floors, and high-amount signals load from validated JSON policy packs. |
 | Policy promotion registry | Local-safe done | Local JSON registry hashes candidate policies and promotes one active policy file for API loading. |
@@ -46,9 +47,11 @@ It now runs locally in two modes:
 | Model registry | Done | JSON-backed artifact/report hashing and status controls. |
 | Shadow scoring | Done | Registered model probabilities logged without changing decisions. |
 | Model eval dashboard | Local-safe done | Static HTML eval dashboard renders baseline report metrics, threshold candidates, features, and optional shadow-score summary. |
+| In-app ML dashboard | Local-safe done | `/dashboard/ml` surfaces calibration, Brier score, Recall at 1 percent FPR, profit thresholds, and Benford-derived features from the baseline report. |
 | LLM synthetic lab | Local-safe done | Offline default plus OpenAI/Azure provider boundary. |
 | Full Docker profile | Done | Full profile smoke passed locally with API app state on Postgres, review-decision submission, and adapter checks for Redis, Neo4j, and Redpanda. |
 | Grafana observability | Local-safe done | Provisioned dashboard for decisions, latency, ingested events, and API target health. |
+| Human ops dashboard | Local-safe done | `/dashboard/ops` summarizes queue depth, decision mix, DLQ count, outbox status, audit chain, feature freshness, and links raw Prometheus/Grafana. |
 | Request tracing/logging | Local-safe done | `X-Trace-ID`, structured JSON request logs, HTTP metrics, and Prometheus alert rules. |
 | Local trace artifacts | Local-safe done | Optional `FRAUD_TRACE_EXPORT_PATH` writes JSONL request spans; `trace-report` renders JSON and static HTML summaries. |
 | Audit log | Local-safe done | SQLite hash chain for event, decision, review, and outbox actions. |

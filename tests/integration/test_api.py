@@ -55,6 +55,27 @@ def test_api_generate_and_score(tmp_path) -> None:  # type: ignore[no-untyped-de
     assert "Graph evidence" in graph.text
     assert "USED_DEVICE" in graph.text
 
+    demo = client.get("/demo")
+    assert demo.status_code == 200
+    assert "Run a seeded scenario" in demo.text
+    assert "Blog layer coverage" in demo.text
+
+    demo_run = client.post("/demo/run?scenario=graph_neighbor", follow_redirects=False)
+    assert demo_run.status_code == 303
+    assert "/demo?decision_id=" in demo_run.headers["location"]
+
+    ops = client.get("/dashboard/ops")
+    assert ops.status_code == 200
+    assert "Reliability checks" in ops.text
+    assert "Raw Prometheus" in ops.text
+
+    ml = client.get("/dashboard/ml")
+    assert ml.status_code == 200
+    assert "ML Dashboard" in ml.text
+
+    reset = client.post("/demo/reset", follow_redirects=False)
+    assert reset.status_code == 303
+
     app.dependency_overrides.clear()
 
 

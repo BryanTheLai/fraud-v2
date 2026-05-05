@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.48.0 - 2026-05-05
+
+- Added the `/demo` cockpit with seeded scenario buttons, custom local scoring
+  controls, and local demo reset.
+- Added case-detail, human ops, and in-app ML dashboards for presentation-grade
+  review of decisions, metrics, and model economics.
+- Improved graph evidence rendering and added Benford-derived income features
+  to the decision/model feature vector.
+
 ## 0.47.0 - 2026-05-05
 
 - Added `scripts\verify.ps1` as the single local verification entry point for

@@ -76,6 +76,9 @@ class FeatureBuilder:
             and event.payload.label_value == LabelValue.FRAUD
             for event in user_events
         )
+        declared_income = self._latest_declared_income(user_events)
+        declared_income_leading_digit = self._leading_digit(declared_income)
+        benford_declared_income_deviation = self._benford_deviation(declared_income_leading_digit)
         virtual_camera_flag = any(
             isinstance(event.payload, CameraMetadataObserved)
             and (
@@ -105,6 +108,8 @@ class FeatureBuilder:
             "virtual_camera_flag": virtual_camera_flag,
             "low_behavior_entropy": low_behavior_entropy,
             "latest_device_known": latest_device is not None,
+            "declared_income_leading_digit": declared_income_leading_digit,
+            "benford_declared_income_deviation": benford_declared_income_deviation,
         }
         freshness = {name: FeatureFreshnessStatus.FRESH for name in values}
         if target.entity_type != EntityType.USER:
@@ -131,6 +136,34 @@ class FeatureBuilder:
             ):
                 return payload.device_id
         return None
+
+    def _latest_declared_income(self, events: list[EventEnvelope]) -> float | None:
+        for event in reversed(events):
+            payload = event.payload
+            if isinstance(payload, ApplicationSubmitted):
+                return float(payload.declared_income)
+        return None
+
+    def _leading_digit(self, value: float | None) -> int:
+        if value is None or value <= 0:
+            return 0
+        return int(str(int(value))[0])
+
+    def _benford_deviation(self, leading_digit: int) -> float:
+        if leading_digit <= 0:
+            return 0.0
+        expected = {
+            1: 0.301,
+            2: 0.176,
+            3: 0.125,
+            4: 0.097,
+            5: 0.079,
+            6: 0.067,
+            7: 0.058,
+            8: 0.051,
+            9: 0.046,
+        }
+        return round(1.0 - expected.get(leading_digit, 0.0), 3)
 
     def _has_user(self, event: EventEnvelope, user_id: str) -> bool:
         return any(

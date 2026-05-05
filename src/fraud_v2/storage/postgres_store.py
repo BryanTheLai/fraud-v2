@@ -199,6 +199,21 @@ class PostgresStore:
             inserted += 1
         return inserted
 
+    def reset_demo_data(self, events: list[EventEnvelope]) -> dict[str, int]:
+        with self._connect() as conn:
+            for table in (
+                "review_decisions",
+                "review_cases",
+                "decisions",
+                "stream_dead_letters",
+                "outbox_messages",
+                "events",
+                "audit_entries",
+            ):
+                conn.execute(f"delete from {table}")
+        inserted = self.add_events(events)
+        return {"events": inserted, "decisions": 0, "review_cases": 0}
+
     def list_events(self) -> list[EventEnvelope]:
         with self._connect() as conn:
             rows = conn.execute(

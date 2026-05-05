@@ -1,17 +1,21 @@
+# ruff: noqa: E501
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from html import escape
 from logging import getLogger
 from math import cos, pi, sin
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, Response
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from fraud_v2 import __version__
 from fraud_v2.compliance.reasons import adverse_action_style_reasons
@@ -20,7 +24,7 @@ from fraud_v2.decision.engine import DecisionEngine
 from fraud_v2.domain.audit import AuditEntry, AuditVerificationReport
 from fraud_v2.domain.decisions import DecisionRequest, DecisionResponse
 from fraud_v2.domain.entities import EntityRef
-from fraud_v2.domain.enums import EntityType
+from fraud_v2.domain.enums import EntityType, EventType, FeatureFreshnessStatus, ReviewOutcome
 from fraud_v2.domain.errors import DecisionNotFound, DuplicatePayloadConflict
 from fraud_v2.domain.events import EventEnvelope
 from fraud_v2.domain.retention import RetentionPolicy, RetentionReport
@@ -53,6 +57,82 @@ from fraud_v2.synthetic.generator import SyntheticFraudGenerator
 configure_logging()
 logger = getLogger("fraud_v2.api")
 app = FastAPI(title="fraud-v2", version=__version__)
+
+
+@dataclass(frozen=True)
+class DemoScenario:
+    key: str
+    title: str
+    user_id: str
+    amount: float
+    as_of: str
+    expected: str
+    narrative: str
+    action_note: str
+
+
+DEMO_SCENARIOS: tuple[DemoScenario, ...] = (
+    DemoScenario(
+        key="clean",
+        title="Clean instant-cash applicant",
+        user_id="user_00014",
+        amount=250,
+        as_of="2026-05-08T12:27:00Z",
+        expected="GREEN / APPROVE",
+        narrative="Normal device, normal session rhythm, no chargeback, no confirmed fraud label.",
+        action_note="Simulated auto-approve.",
+    ),
+    DemoScenario(
+        key="virtual_camera",
+        title="Virtual camera review",
+        user_id="user_00000",
+        amount=250,
+        as_of="2026-05-05T13:00:00Z",
+        expected="YELLOW / MANUAL_REVIEW",
+        narrative="Camera metadata is missing and behavior entropy is low, but future labels are hidden.",
+        action_note="Inject friction and send to analyst review.",
+    ),
+    DemoScenario(
+        key="graph_neighbor",
+        title="Graph-risk neighbor",
+        user_id="user_00050",
+        amount=250,
+        as_of="2026-05-08T12:27:00Z",
+        expected="YELLOW / MANUAL_REVIEW",
+        narrative="Applicant is near a confirmed fraud cluster through shared graph evidence.",
+        action_note="Hold final decision until graph evidence is reviewed.",
+    ),
+    DemoScenario(
+        key="confirmed_fraud",
+        title="Confirmed fraud block",
+        user_id="user_00000",
+        amount=1000,
+        as_of="2026-05-08T12:27:00Z",
+        expected="RED / BLOCK",
+        narrative="Chargeback, confirmed fraud label, camera anomaly, and low behavior entropy align.",
+        action_note="Simulated block. No real account action.",
+    ),
+    DemoScenario(
+        key="first_party",
+        title="First-party instant-cash default",
+        user_id="user_00003",
+        amount=1000,
+        as_of="2026-05-08T12:27:00Z",
+        expected="RED / BLOCK",
+        narrative="Instant-cash borrower has a later chargeback/default-style fraud label.",
+        action_note="Simulated payout hold and review evidence export.",
+    ),
+    DemoScenario(
+        key="break_spell",
+        title="APP/BEC break-the-spell",
+        user_id="user_00005",
+        amount=1000,
+        as_of="2026-05-05T13:00:00Z",
+        expected="YELLOW / SIMULATED_INTERVENTION",
+        narrative="Risky transfer pattern gets a customer prompt instead of a silent hard block.",
+        action_note="Simulated Break-the-Spell prompt. No real message sent.",
+    ),
+)
 
 
 def store(settings: Settings = Depends(get_settings)) -> FraudStore:
@@ -165,9 +245,261 @@ def root() -> dict[str, str]:
     return {
         "service": "fraud-v2",
         "docs": "/docs",
+        "demo": "/demo",
         "dashboard": "/dashboard",
         "health": "/health/ready",
     }
+
+
+@app.get("/demo", response_class=HTMLResponse)
+def demo_cockpit(
+    decision_id: UUID | None = None,
+    db: FraudStore = Depends(store),
+) -> str:
+    _ensure_demo_seed(db)
+    events = db.list_events()
+    decisions = db.list_decisions()
+    cases = db.list_review_cases()
+    selected_decision = _selected_decision(decision_id, decisions)
+    scenario_cards = "".join(_scenario_card(scenario) for scenario in DEMO_SCENARIOS)
+    selected_panel = _selected_decision_panel(selected_decision)
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>fraud-v2 demo cockpit</title>
+    {_base_style()}
+    <script>
+      async function runCustomScenario() {{
+        const scenario = document.getElementById("scenario").value;
+        const userId = document.getElementById("user_id").value;
+        const amount = document.getElementById("amount").value;
+        const asOf = document.getElementById("as_of").value;
+        const params = new URLSearchParams({{scenario: scenario, user_id: userId, amount: amount, as_of: asOf}});
+        const response = await fetch("/demo/run?" + params.toString(), {{method: "POST"}});
+        window.location.href = response.url;
+      }}
+    </script>
+  </head>
+  <body>
+    {_top_nav("Demo Cockpit", "Presentation workspace for local synthetic fraud scenarios.")}
+    <main class="shell">
+      <section class="main">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Run a seeded scenario</h2>
+              <p>Every action is local and simulated. No real KYC, PII, money movement, or filing.</p>
+            </div>
+            <form method="post" action="/demo/reset">
+              <button class="button secondary" type="submit">Reset demo state</button>
+            </form>
+          </div>
+          <div class="scenario-grid">{scenario_cards}</div>
+        </div>
+        <div class="panel">
+          <h2>Customize one run</h2>
+          <div class="custom-grid">
+            <label>Scenario<select id="scenario">{_scenario_options()}</select></label>
+            <label>User<input id="user_id" value="user_00050"></label>
+            <label>Amount<input id="amount" value="750" type="number" min="0" step="50"></label>
+            <label>As of<input id="as_of" value="2026-05-08T12:27:00Z"></label>
+          </div>
+          <button class="button" type="button" onclick="runCustomScenario()">Run customized score</button>
+        </div>
+        {selected_panel}
+        <div class="panel">
+          <h2>Recent decisions</h2>
+          {_decision_table(decisions[-10:])}
+        </div>
+      </section>
+      <aside class="rail">
+        {_queue_summary(events, decisions, cases)}
+        {_action_ladder()}
+        {_coverage_map()}
+      </aside>
+    </main>
+  </body>
+</html>"""
+
+
+@app.post("/demo/run")
+def run_demo_scenario(
+    scenario: str = Query(default="graph_neighbor"),
+    user_id: str | None = Query(default=None),
+    amount: float | None = Query(default=None, ge=0),
+    as_of: str | None = Query(default=None),
+    db: FraudStore = Depends(store),
+    settings: Settings = Depends(get_settings),
+) -> RedirectResponse:
+    _ensure_demo_seed(db)
+    selected = _scenario_by_key(scenario)
+    target_user_id = user_id or selected.user_id
+    target_amount = amount if amount is not None else selected.amount
+    target_as_of = _demo_as_of(as_of or selected.as_of)
+    decision = _score_local_decision(
+        db=db,
+        settings=settings,
+        user_id=target_user_id,
+        amount=target_amount,
+        as_of=target_as_of,
+    )
+    location = f"/demo?decision_id={decision.decision_id}"
+    return RedirectResponse(url=location, status_code=303)
+
+
+@app.post("/demo/reset")
+def reset_demo_state(db: FraudStore = Depends(store)) -> RedirectResponse:
+    dataset = SyntheticFraudGenerator().generate(users=120)
+    resetter = getattr(db, "reset_demo_data", None)
+    if not callable(resetter):
+        raise HTTPException(status_code=409, detail="demo reset is available for local stores only")
+    resetter(dataset.events)
+    return RedirectResponse(url="/demo", status_code=303)
+
+
+@app.get("/dashboard/cases/{case_id}", response_class=HTMLResponse)
+def case_dashboard(case_id: UUID, db: FraudStore = Depends(store)) -> str:
+    case = _case_by_id(db.list_review_cases(), case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail=f"review case not found: {case_id}")
+    decision = db.get_decision(case.decision_id)
+    events = [
+        event for event in db.list_events() if event.occurred_at <= decision.feature_vector.as_of
+    ]
+    graph = GraphService(events).neighborhood(decision.target_entity, depth=2)
+    fraud_keys = _confirmed_fraud_graph_keys(events)
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>fraud-v2 case {escape(str(case.case_id))}</title>
+    {_base_style()}
+  </head>
+  <body>
+    {_top_nav("Primary Case", "Timeline first. Facts second. Simulated actions only.")}
+    <main class="shell">
+      <section class="main">
+        <div class="hero-row">
+          {_score_tile(decision)}
+          {_status_tile("Recommendation", decision.action.value, _action_class(decision.action.value))}
+          {_status_tile("Resolution", case.status.upper(), "neutral")}
+          {_status_tile("Trace", str(decision.reasoning_trace_id)[:8], "neutral")}
+        </div>
+        <div class="split">
+          <section class="panel">
+            <h2>What happened</h2>
+            <p>Timeline for the target user, using only local synthetic events.</p>
+            {_event_timeline_table(events, decision.target_entity.entity_id)}
+          </section>
+          <section class="panel">
+            <h2>Why this case is high-risk</h2>
+            {_reason_list(decision.safe_reasons)}
+            <h3>Feature values</h3>
+            {_feature_table(decision)}
+          </section>
+        </div>
+        <div class="panel">
+          <h2>Graph evidence</h2>
+          <div class="graph">{_graph_svg(graph, decision.target_entity.graph_key, fraud_keys)}</div>
+          {_graph_relationship_table(graph["edges"])}
+        </div>
+      </section>
+      <aside class="rail">
+        {_decision_rail(case, decision)}
+        {_action_ladder()}
+      </aside>
+    </main>
+  </body>
+</html>"""
+
+
+@app.post("/demo/review/{case_id}")
+def simulate_review_decision(
+    case_id: UUID,
+    outcome: ReviewOutcome = Query(default=ReviewOutcome.NEEDS_MORE_INFO),
+    db: FraudStore = Depends(store),
+) -> RedirectResponse:
+    ReviewService(db).decide(
+        case_id,
+        ReviewDecisionRequest(
+            analyst_id="demo-analyst",
+            outcome=outcome,
+            confidence=0.9,
+            note="Simulated local analyst decision from demo UI.",
+        ),
+    )
+    return RedirectResponse(url=f"/dashboard/cases/{case_id}", status_code=303)
+
+
+@app.get("/dashboard/ops", response_class=HTMLResponse)
+def ops_dashboard(db: FraudStore = Depends(store)) -> str:
+    events = db.list_events()
+    decisions = db.list_decisions()
+    cases = db.list_review_cases()
+    dead_letters = db.list_stream_dead_letters(limit=100)
+    audit = db.verify_audit_chain()
+    outbox = db.outbox_counts()
+    stale_features = _stale_feature_count(decisions)
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>fraud-v2 ops dashboard</title>
+    {_base_style()}
+  </head>
+  <body>
+    {_top_nav("Ops Metrics", "Human-readable health. Raw Prometheus stays at /metrics.")}
+    <main class="shell single">
+      <section class="main">
+        <div class="hero-row">
+          {_plain_tile("Events", len(events), "Canonical synthetic/local events")}
+          {_plain_tile("Decisions", len(decisions), "Stored decision records")}
+          {_plain_tile("Open reviews", sum(1 for case in cases if case.status == "open"), "Manual queue")}
+          {_plain_tile("Dead letters", len(dead_letters), "Stream records needing inspection")}
+        </div>
+        <div class="split">
+          <section class="panel">
+            <h2>Reliability checks</h2>
+            <table><tbody>
+              {_ops_row("Audit hash chain", "healthy" if audit.valid else "broken", f"{audit.entries_checked} entries checked")}
+              {_ops_row("Feature freshness", "healthy" if stale_features == 0 else "watch", f"{stale_features} stale/missing/degraded values in recent decisions")}
+              {_ops_row("Outbox pending", "healthy" if outbox.get("PENDING", 0) == 0 else "watch", str(outbox))}
+              {_ops_row("Raw Prometheus", "available", "<a href='/metrics'>/metrics</a>")}
+              {_ops_row("Grafana full mode", "optional", "http://127.0.0.1:3000/d/fraud-v2-overview/fraud-v2-overview")}
+            </tbody></table>
+          </section>
+          <section class="panel">
+            <h2>Decision mix</h2>
+            {_tier_mix_table(decisions)}
+          </section>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>"""
+
+
+@app.get("/dashboard/ml", response_class=HTMLResponse)
+def ml_dashboard() -> str:
+    report_path = Path("data/models/baseline/baseline-report.json")
+    report = _load_model_report(report_path)
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>fraud-v2 ML dashboard</title>
+    {_base_style()}
+  </head>
+  <body>
+    {_top_nav("ML Dashboard", "Calibration, profit, threshold, and shadow-model proof.")}
+    <main class="shell single">
+      <section class="main">
+        {_ml_report_panel(report, report_path)}
+      </section>
+    </main>
+  </body>
+</html>"""
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -220,7 +552,10 @@ def dashboard(db: FraudStore = Depends(store)) -> str:
         <h2>Open review queue</h2>
         {review_queue}
         <p>
-          <a href="/dashboard/graph?entity_id=user_00000">Graph evidence</a>
+          <a href="/demo">Demo cockpit</a>
+          | <a href="/dashboard/graph?entity_id=user_00000">Graph evidence</a>
+          | <a href="/dashboard/ops">Ops metrics</a>
+          | <a href="/dashboard/ml">ML dashboard</a>
           | <a href="/docs">API docs</a>
           | <a href="/metrics">Metrics</a>
         </p>
@@ -236,6 +571,461 @@ def _metric_card(label: str, value: int) -> str:
         f'<div class="value">{value}</div>'
         "</div>"
     )
+
+
+def _base_style() -> str:
+    return """<style>
+      :root { --ink:#102033; --muted:#64748b; --line:#d8e0ea; --soft:#f6f8fb; --navy:#0f2238; --orange:#ff5a1f; --red:#c62828; --green:#137a3a; --yellow:#a16207; }
+      body { font-family: Segoe UI, Arial, sans-serif; margin: 0; color: var(--ink); background: #eef2f6; }
+      a { color: #0b5cad; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .top { background: #fff; border-bottom: 1px solid var(--line); padding: 16px 20px; }
+      .brand { display: flex; gap: 12px; align-items: center; }
+      .mark { width: 38px; height: 38px; border-radius: 5px; background: var(--navy); color: #fff; display: grid; place-items: center; font-weight: 800; }
+      h1 { font-size: 18px; margin: 0 0 3px; }
+      h2 { font-size: 16px; margin: 0 0 6px; }
+      h3 { font-size: 13px; margin: 16px 0 8px; color: #40546b; text-transform: uppercase; letter-spacing: .04em; }
+      p { color: var(--muted); margin: 0 0 12px; }
+      .navlinks { margin-top: 14px; display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; }
+      .shell { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 12px; padding: 12px; }
+      .shell.single { grid-template-columns: 1fr; }
+      .main { display: grid; gap: 12px; align-content: start; }
+      .rail { display: grid; gap: 12px; align-content: start; }
+      .panel, .tile { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
+      .panel-head { display:flex; justify-content:space-between; gap:12px; align-items:start; border-bottom:1px solid var(--line); padding-bottom:12px; margin-bottom:12px; }
+      .scenario-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); gap:10px; }
+      .scenario { background:#f8fafc; border:1px solid var(--line); border-radius:6px; padding:12px; display:grid; gap:8px; }
+      .scenario strong { font-size: 14px; }
+      .hero-row { display:grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap:10px; }
+      .score-tile { background: var(--navy); color: #fff; }
+      .score-tile p, .score-tile .label { color: #cbd5e1; }
+      .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+      .value { font-size: 28px; font-weight: 800; margin-top: 4px; }
+      .button { border:1px solid var(--orange); background:var(--orange); color:#111827; font-weight:700; border-radius:4px; padding:9px 12px; cursor:pointer; }
+      .button.secondary { background:#fff; border-color:var(--line); color:var(--ink); }
+      .button.danger { background:#fff4f2; color:var(--red); border-color:#f2b8b5; }
+      .button.good { background:#ecfdf3; color:var(--green); border-color:#a7f3c0; }
+      .badge { display:inline-block; border:1px solid var(--line); border-radius:5px; padding:4px 7px; font-size:12px; font-weight:700; }
+      .badge.red { color:var(--red); background:#fff4f2; border-color:#f2b8b5; }
+      .badge.yellow { color:var(--yellow); background:#fff8e7; border-color:#facc15; }
+      .badge.green { color:var(--green); background:#ecfdf3; border-color:#a7f3c0; }
+      .badge.neutral { color:#475569; background:#f8fafc; }
+      .custom-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin: 8px 0 12px; }
+      label { color:#40546b; font-size:12px; font-weight:700; display:grid; gap:5px; }
+      input, select { border:1px solid var(--line); border-radius:4px; padding:8px; font:inherit; background:#fff; }
+      table { width:100%; border-collapse:collapse; font-size:13px; }
+      th, td { border-bottom:1px solid #e5eaf0; padding:8px; text-align:left; vertical-align:top; }
+      th { color:#52616b; background:#f6f8fa; font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+      .split { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+      .graph { border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#fff; }
+      ul.clean { margin: 8px 0 0; padding-left: 18px; }
+      li { margin: 6px 0; }
+      @media (max-width: 900px) { .shell, .split { grid-template-columns: 1fr; } }
+    </style>"""
+
+
+def _top_nav(title: str, subtitle: str) -> str:
+    return f"""<header class="top">
+      <div class="brand">
+        <div class="mark">FV2</div>
+        <div><h1>{escape(title)}</h1><p>{escape(subtitle)}</p></div>
+      </div>
+      <nav class="navlinks">
+        <a href="/demo">Demo</a>
+        <a href="/dashboard">Analyst dashboard</a>
+        <a href="/dashboard/ops">Ops metrics</a>
+        <a href="/dashboard/ml">ML dashboard</a>
+        <a href="/dashboard/graph?entity_id=user_00000">Graph</a>
+        <a href="/docs">API docs</a>
+        <a href="/metrics">Raw metrics</a>
+      </nav>
+    </header>"""
+
+
+def _ensure_demo_seed(db: FraudStore) -> None:
+    if db.list_events():
+        return
+    db.add_events(SyntheticFraudGenerator().generate(users=120).events)
+
+
+def _scenario_by_key(key: str) -> DemoScenario:
+    for scenario in DEMO_SCENARIOS:
+        if scenario.key == key:
+            return scenario
+    raise HTTPException(status_code=404, detail=f"unknown demo scenario: {key}")
+
+
+def _scenario_card(scenario: DemoScenario) -> str:
+    return f"""<div class="scenario">
+      <div><strong>{escape(scenario.title)}</strong><p>{escape(scenario.narrative)}</p></div>
+      <div><span class="badge neutral">{escape(scenario.expected)}</span></div>
+      <form method="post" action="/demo/run?scenario={escape(scenario.key)}">
+        <button class="button" type="submit">Run scenario</button>
+      </form>
+    </div>"""
+
+
+def _scenario_options() -> str:
+    return "".join(
+        f'<option value="{escape(scenario.key)}">{escape(scenario.title)}</option>'
+        for scenario in DEMO_SCENARIOS
+    )
+
+
+def _demo_as_of(raw_value: str) -> datetime:
+    parsed = datetime.fromisoformat(raw_value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed
+
+
+def _score_local_decision(
+    *,
+    db: FraudStore,
+    settings: Settings,
+    user_id: str,
+    amount: float,
+    as_of: datetime,
+) -> DecisionResponse:
+    policy = load_threshold_policy(settings.policy_path)
+    request = DecisionRequest(
+        target_entity=EntityRef(entity_type=EntityType.USER, entity_id=user_id),
+        as_of=as_of,
+        amount=amount,
+        context={"surface": "demo"},
+    )
+    start = time.perf_counter()
+    decision = DecisionEngine(db, policy=policy).score(request)
+    ReviewService(db).ensure_case_for_decision(decision.decision_id)
+    decision_counter.labels(tier=decision.risk_tier.value, action=decision.action.value).inc()
+    decision_latency.observe(time.perf_counter() - start)
+    return decision
+
+
+def _selected_decision(
+    decision_id: UUID | None, decisions: list[DecisionResponse]
+) -> DecisionResponse | None:
+    if decision_id is None:
+        return decisions[-1] if decisions else None
+    for decision in decisions:
+        if decision.decision_id == decision_id:
+            return decision
+    return None
+
+
+def _selected_decision_panel(decision: DecisionResponse | None) -> str:
+    if decision is None:
+        return '<div class="panel"><h2>No selected decision</h2><p>Run a scenario to see the result.</p></div>'
+    return f"""<div class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Latest result</h2>
+          <p>{escape(str(decision.decision_id))}</p>
+        </div>
+        <a class="button secondary" href="/dashboard/graph?entity_id={escape(decision.target_entity.entity_id)}">Open graph</a>
+      </div>
+      <div class="hero-row">
+        {_score_tile(decision)}
+        {_status_tile("Tier", decision.risk_tier.value, decision.risk_tier.value.lower())}
+        {_status_tile("Action", decision.action.value, _action_class(decision.action.value))}
+        {_status_tile("Policy", decision.policy_version, "neutral")}
+      </div>
+      <h3>Reasons</h3>
+      {_reason_list(decision.safe_reasons)}
+    </div>"""
+
+
+def _queue_summary(
+    events: list[EventEnvelope],
+    decisions: list[DecisionResponse],
+    cases: list[ReviewCase],
+) -> str:
+    open_cases = [case for case in cases if case.status == "open"]
+    return f"""<section class="panel">
+      <h2>Queue summary</h2>
+      <table><tbody>
+        <tr><td>Events</td><td><strong>{len(events)}</strong></td></tr>
+        <tr><td>Decisions</td><td><strong>{len(decisions)}</strong></td></tr>
+        <tr><td>Open review cases</td><td><strong>{len(open_cases)}</strong></td></tr>
+        <tr><td>Red decisions</td><td><strong>{sum(1 for decision in decisions if decision.risk_tier.value == "RED")}</strong></td></tr>
+      </tbody></table>
+    </section>"""
+
+
+def _action_ladder() -> str:
+    return """<section class="panel">
+      <h2>Action ladder</h2>
+      <table>
+        <thead><tr><th>Score</th><th>Outcome</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>0-20</td><td><span class="badge green">Approve</span></td><td>No hold.</td></tr>
+          <tr><td>21-79</td><td><span class="badge yellow">Review</span></td><td>Pause, verify, or inject friction.</td></tr>
+          <tr><td>80+</td><td><span class="badge red">Block</span></td><td>Simulated block; human override visible.</td></tr>
+        </tbody>
+      </table>
+    </section>"""
+
+
+def _coverage_map() -> str:
+    rows = [
+        ("Gateway", "mock/public", "KYC/KYB/liveness are simulated or public-data only"),
+        ("Streaming", "implemented", "Outbox, Redpanda profile, lag/DLQ tools"),
+        ("Decision", "implemented", "Rules, graph features, safe reasons"),
+        ("Ops", "implemented", "Review queue, drafts, audit, metrics"),
+        ("MLOps", "partial", "Training/eval exists; dashboard is the next visible layer"),
+    ]
+    return (
+        '<section class="panel"><h2>Blog layer coverage</h2><table><tbody>'
+        + "".join(
+            f"<tr><td>{escape(layer)}</td><td><span class='badge neutral'>{escape(status)}</span></td><td>{escape(note)}</td></tr>"
+            for layer, status, note in rows
+        )
+        + "</tbody></table></section>"
+    )
+
+
+def _score_tile(decision: DecisionResponse) -> str:
+    return (
+        '<div class="tile score-tile">'
+        '<div class="label">Score</div>'
+        f'<div class="value">{decision.risk_score}</div>'
+        f"<p>{escape(decision.target_entity.entity_id)}</p>"
+        "</div>"
+    )
+
+
+def _status_tile(label: str, value: str, css_class: str) -> str:
+    badge_class = css_class if css_class in {"red", "yellow", "green", "neutral"} else "neutral"
+    return (
+        '<div class="tile">'
+        f'<div class="label">{escape(label)}</div>'
+        f'<p><span class="badge {badge_class}">{escape(value)}</span></p>'
+        "</div>"
+    )
+
+
+def _plain_tile(label: str, value: object, note: str) -> str:
+    return (
+        '<div class="tile">'
+        f'<div class="label">{escape(label)}</div>'
+        f'<div class="value">{escape(str(value))}</div>'
+        f"<p>{escape(note)}</p>"
+        "</div>"
+    )
+
+
+def _action_class(value: str) -> str:
+    if value in {"BLOCK", "HOLD_FUNDS", "SAR_DRAFT"}:
+        return "red"
+    if value in {"MANUAL_REVIEW", "STEP_UP_AUTH", "BREAK_THE_SPELL"}:
+        return "yellow"
+    if value == "APPROVE":
+        return "green"
+    return "neutral"
+
+
+def _reason_list(reasons: list[str]) -> str:
+    return (
+        "<ul class='clean'>" + "".join(f"<li>{escape(reason)}</li>" for reason in reasons) + "</ul>"
+    )
+
+
+def _feature_table(decision: DecisionResponse) -> str:
+    rows = []
+    for name, value in decision.feature_vector.values.items():
+        freshness = decision.feature_vector.freshness.get(name)
+        rows.append(
+            "<tr>"
+            f"<td>{escape(name)}</td>"
+            f"<td>{escape(str(value))}</td>"
+            f"<td>{escape(freshness.value if freshness else 'n/a')}</td>"
+            "</tr>"
+        )
+    return (
+        "<table><thead><tr><th>Feature</th><th>Value</th><th>Freshness</th></tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table>"
+    )
+
+
+def _case_by_id(cases: list[ReviewCase], case_id: UUID) -> ReviewCase | None:
+    for case in cases:
+        if case.case_id == case_id:
+            return case
+    return None
+
+
+def _event_timeline_table(events: list[EventEnvelope], user_id: str) -> str:
+    rows = []
+    user_events = [event for event in events if _has_user_ref(event, user_id)][-14:]
+    for event in user_events:
+        rows.append(
+            "<tr>"
+            f"<td>{escape(event.occurred_at.strftime('%m-%d %H:%M'))}</td>"
+            f"<td>{escape(event.event_type.value)}</td>"
+            f"<td>{escape(_timeline_result(event))}</td>"
+            "</tr>"
+        )
+    if not rows:
+        return "<p>No user timeline events found.</p>"
+    return (
+        "<table><thead><tr><th>Time</th><th>Event</th><th>Result</th></tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table>"
+    )
+
+
+def _has_user_ref(event: EventEnvelope, user_id: str) -> bool:
+    return any(
+        ref.entity_type == EntityType.USER and ref.entity_id == user_id for ref in event.entity_refs
+    )
+
+
+def _timeline_result(event: EventEnvelope) -> str:
+    if event.event_type == EventType.LABEL_CREATED:
+        return "label became available"
+    if event.event_type == EventType.CHARGEBACK_RECEIVED:
+        return "dispute/chargeback"
+    if event.event_type == EventType.PAYMENT_ATTEMPTED:
+        return "payment attempted"
+    if event.event_type == EventType.PAYMENT_SETTLED:
+        return "payment settled"
+    if event.event_type == EventType.CAMERA_METADATA_OBSERVED:
+        return "metadata observed"
+    if event.event_type == EventType.BEHAVIORAL_SIGNAL_OBSERVED:
+        return "session signal observed"
+    return "completed"
+
+
+def _decision_rail(case: ReviewCase, decision: DecisionResponse) -> str:
+    action_class = _action_class(decision.action.value)
+    review_buttons = ""
+    if case.status == "open":
+        review_buttons = f"""<form method="post" action="/demo/review/{case.case_id}?outcome=CONFIRMED_FRAUD">
+            <button class="button danger" type="submit">Mark fraud</button>
+          </form>
+          <form method="post" action="/demo/review/{case.case_id}?outcome=CONFIRMED_LEGITIMATE">
+            <button class="button good" type="submit">Mark legitimate</button>
+          </form>
+          <form method="post" action="/demo/review/{case.case_id}?outcome=ESCALATED">
+            <button class="button secondary" type="submit">Escalate</button>
+          </form>"""
+    return f"""<section class="panel">
+      <h2>Decision rail</h2>
+      <div class="tile score-tile">
+        <div class="label">Recommended action</div>
+        <h2>{escape(decision.action.value)}</h2>
+        <p>{decision.risk_score}% risk score. Simulated local action only.</p>
+      </div>
+      <p><span class="badge {action_class}">{escape(decision.risk_tier.value)}</span></p>
+      {review_buttons}
+      <p>Compliance exports stay draft-only. No real SAR, account freeze, payout hold, or customer message is sent.</p>
+    </section>"""
+
+
+def _ops_row(name: str, state: str, detail: str) -> str:
+    css_class = (
+        "green"
+        if state == "healthy"
+        else "yellow"
+        if state in {"watch", "available", "optional"}
+        else "red"
+    )
+    return (
+        "<tr>"
+        f"<td>{escape(name)}</td>"
+        f"<td><span class='badge {css_class}'>{escape(state)}</span></td>"
+        f"<td>{detail}</td>"
+        "</tr>"
+    )
+
+
+def _stale_feature_count(decisions: list[DecisionResponse]) -> int:
+    stale = {
+        FeatureFreshnessStatus.STALE,
+        FeatureFreshnessStatus.MISSING,
+        FeatureFreshnessStatus.DEGRADED,
+    }
+    return sum(
+        1
+        for decision in decisions[-20:]
+        for status in decision.feature_vector.freshness.values()
+        if status in stale
+    )
+
+
+def _tier_mix_table(decisions: list[DecisionResponse]) -> str:
+    tiers = ["GREEN", "YELLOW", "RED"]
+    rows = []
+    for tier in tiers:
+        count = sum(1 for decision in decisions if decision.risk_tier.value == tier)
+        rows.append(f"<tr><td>{tier}</td><td>{count}</td></tr>")
+    return (
+        "<table><thead><tr><th>Tier</th><th>Count</th></tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table>"
+    )
+
+
+def _load_model_report(report_path: Path) -> dict[str, Any] | None:
+    if not report_path.exists():
+        return None
+    return json.loads(report_path.read_text(encoding="utf-8"))
+
+
+def _ml_report_panel(report: dict[str, Any] | None, report_path: Path) -> str:
+    if report is None:
+        return f"""<div class="panel">
+          <h2>No model report found</h2>
+          <p>Run this first:</p>
+          <pre>uv run fraud-v2 train --events-path data\\synthetic\\tiny\\events.jsonl --output-dir data\\models\\baseline</pre>
+          <p>Then refresh this page. Expected report path: {escape(str(report_path))}</p>
+        </div>"""
+    candidates = report.get("threshold_candidates", [])[:12]
+    return f"""<div class="panel">
+      <div class="panel-head">
+        <div><h2>{escape(str(report.get("model_version", "model")))}</h2><p>{escape(str(report.get("model_family", "unknown")))}</p></div>
+        <span class="badge neutral">{escape(str(report.get("rows", 0)))} rows</span>
+      </div>
+      <div class="hero-row">
+        {_plain_tile("Average precision", _fmt(report.get("average_precision")), "Rare-fraud ranking quality")}
+        {_plain_tile("Brier score", _fmt(report.get("brier_score")), "Calibration error; lower is better")}
+        {_plain_tile("Recall @ 1% FPR threshold", _threshold_label(report.get("recall_under_1pct_fpr_threshold")), "Strict false-positive operating point")}
+        {_plain_tile("Profit threshold", _threshold_label(report.get("cost_weighted_threshold")), "Custom financial reward winner")}
+      </div>
+      <h3>Feature columns</h3>
+      <p>{", ".join(f"<code>{escape(str(feature))}</code>" for feature in report.get("features", []))}</p>
+      <h3>Threshold candidates</h3>
+      <table><thead><tr><th>Threshold</th><th>TP</th><th>FP</th><th>FN</th><th>Profit</th></tr></thead><tbody>
+        {"".join(_threshold_candidate_row(candidate) for candidate in candidates)}
+      </tbody></table>
+    </div>"""
+
+
+def _threshold_label(raw_value: object) -> str:
+    if not isinstance(raw_value, dict):
+        return "n/a"
+    return _fmt(raw_value.get("threshold"))
+
+
+def _threshold_candidate_row(candidate: dict[str, Any]) -> str:
+    return (
+        "<tr>"
+        f"<td>{escape(_fmt(candidate.get('threshold')))}</td>"
+        f"<td>{escape(str(candidate.get('tp', '')))}</td>"
+        f"<td>{escape(str(candidate.get('fp', '')))}</td>"
+        f"<td>{escape(str(candidate.get('fn', '')))}</td>"
+        f"<td>{escape(_fmt(candidate.get('profit')))}</td>"
+        "</tr>"
+    )
+
+
+def _fmt(value: object) -> str:
+    if value is None:
+        return "n/a"
+    if isinstance(value, int | float):
+        return f"{value:.4f}"
+    return str(value)
 
 
 def _decision_table(decisions: list[DecisionResponse]) -> str:
@@ -272,8 +1062,9 @@ def graph_dashboard(
     db: FraudStore = Depends(store),
 ) -> str:
     target = EntityRef(entity_type=entity_type, entity_id=entity_id)
-    graph = GraphService(db.list_events()).neighborhood(target, depth=depth)
-    svg = _graph_svg(graph, target.graph_key)
+    events = db.list_events()
+    graph = GraphService(events).neighborhood(target, depth=depth)
+    svg = _graph_svg(graph, target.graph_key, _confirmed_fraud_graph_keys(events))
     relationships = _graph_relationship_table(graph["edges"])
     return f"""
     <!doctype html>
@@ -303,7 +1094,12 @@ def graph_dashboard(
     """
 
 
-def _graph_svg(graph: dict[str, list[dict[str, str]]], target_key: str) -> str:
+def _graph_svg(
+    graph: dict[str, list[dict[str, str]]],
+    target_key: str,
+    fraud_keys: set[str] | None = None,
+) -> str:
+    fraud_keys = fraud_keys or set()
     nodes = graph["nodes"][:18]
     if not nodes:
         return (
@@ -333,24 +1129,37 @@ def _graph_svg(graph: dict[str, list[dict[str, str]]], target_key: str) -> str:
             continue
         x1, y1 = positions[source]
         x2, y2 = positions[target]
+        highlighted = (
+            source == target_key
+            or target == target_key
+            or source in fraud_keys
+            or target in fraud_keys
+        )
+        stroke = "#ff5a1f" if highlighted else "#c3ccd6"
+        width_value = "3.0" if highlighted else "1.2"
+        opacity = "1.0" if highlighted else "0.55"
         edge_lines.append(
             f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
-            'stroke="#9aa7b2" stroke-width="1.4" />'
+            f'stroke="{stroke}" stroke-width="{width_value}" opacity="{opacity}" />'
         )
 
     node_shapes = []
     for node in ordered_nodes:
         node_id = node["id"]
         x, y = positions[node_id]
-        color = _graph_node_color(node["label"])
+        color = "#dc2626" if node_id in fraud_keys else _graph_node_color(node["label"])
         stroke = "#111827" if node_id == target_key else "#ffffff"
-        stroke_width = 3 if node_id == target_key else 2
+        stroke_width = 4 if node_id == target_key else 2
         label = _short_node_label(node_id)
+        icon = _graph_node_icon(node["label"])
         node_shapes.append(
             f'<circle cx="{x:.1f}" cy="{y:.1f}" r="26" fill="{color}" '
             f'stroke="{stroke}" stroke-width="{stroke_width}" />'
+            f'<text x="{x:.1f}" y="{y + 5:.1f}" text-anchor="middle" '
+            'font-size="13" font-weight="800" fill="#ffffff">'
+            f"{escape(icon)}</text>"
             f'<text x="{x:.1f}" y="{y + 43:.1f}" text-anchor="middle" '
-            'font-size="11" fill="#17202a">'
+            'font-size="12" font-weight="650" fill="#17202a">'
             f"{escape(label)}</text>"
         )
 
@@ -358,6 +1167,9 @@ def _graph_svg(graph: dict[str, list[dict[str, str]]], target_key: str) -> str:
         f'<svg viewBox="0 0 {width} {height}" width="100%" height="520" role="img" '
         f'aria-label="Graph evidence for {escape(target_key)}">'
         '<rect width="900" height="520" fill="#ffffff" />'
+        '<text x="24" y="32" font-size="13" font-weight="700" fill="#102033">Highlighted edges touch the target or a confirmed fraud node</text>'
+        '<rect x="24" y="448" width="852" height="48" rx="6" fill="#f8fafc" stroke="#d8e0ea" />'
+        '<text x="42" y="478" font-size="12" fill="#102033">U=user  D=device  IP=network  $=bank account  T=transaction  A=application  red node=confirmed fraud</text>'
         + "".join(edge_lines)
         + "".join(node_shapes)
         + "</svg>"
@@ -393,6 +1205,32 @@ def _graph_node_color(label: str) -> str:
     }.get(label, "#475569")
 
 
+def _graph_node_icon(label: str) -> str:
+    return {
+        "USER": "U",
+        "DEVICE": "D",
+        "IP_ADDRESS": "IP",
+        "TRANSACTION": "T",
+        "BANK_ACCOUNT": "$",
+        "APPLICATION": "A",
+    }.get(label, "?")
+
+
+def _confirmed_fraud_graph_keys(events: list[EventEnvelope]) -> set[str]:
+    keys: set[str] = set()
+    for event in events:
+        payload = event.payload
+        if (
+            event.event_type == EventType.LABEL_CREATED
+            and getattr(payload, "label_value", None) == "FRAUD"
+        ):
+            target = getattr(payload, "target_entity", None)
+            graph_key = getattr(target, "graph_key", None)
+            if isinstance(graph_key, str):
+                keys.add(graph_key)
+    return keys
+
+
 def _short_node_label(node_id: str) -> str:
     if ":" not in node_id:
         return node_id[:24]
@@ -407,7 +1245,7 @@ def _review_table(cases: list[ReviewCase]) -> str:
     for case in cases:
         rows.append(
             "<tr>"
-            f"<td>{escape(str(case.case_id))}</td>"
+            f'<td><a href="/dashboard/cases/{case.case_id}">{escape(str(case.case_id))}</a></td>'
             f"<td>{escape(str(case.decision_id))}</td>"
             f"<td>{escape(case.target_entity_id)}</td>"
             f"<td>{case.priority}</td>"

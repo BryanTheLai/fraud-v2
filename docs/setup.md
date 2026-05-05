@@ -89,10 +89,24 @@ Load SQLite:
 uv run fraud-v2 load data\synthetic\tiny\events.jsonl --db-path data\local\fraud_v2.sqlite
 ```
 
+Or reset the whole seeded local demo database in one command:
+
+```powershell
+uv run fraud-v2 demo-reset --users 120 --db-path data\local\fraud_v2.sqlite
+```
+
 Score one user:
 
 ```powershell
 uv run fraud-v2 score user_00000 --db-path data\local\fraud_v2.sqlite
+```
+
+Generate the baseline model report used by the ML dashboard:
+
+```powershell
+uv run fraud-v2 train `
+  --events-path data\synthetic\tiny\events.jsonl `
+  --output-dir data\models\baseline
 ```
 
 Start the API:
@@ -105,10 +119,13 @@ Open:
 
 | Page | URL |
 |---|---|
-| API docs | `http://127.0.0.1:8000/docs` |
+| Demo cockpit | `http://127.0.0.1:8000/demo` |
 | Analyst dashboard | `http://127.0.0.1:8000/dashboard` |
 | Graph evidence | `http://127.0.0.1:8000/dashboard/graph?entity_id=user_00000` |
-| Metrics | `http://127.0.0.1:8000/metrics` |
+| Human ops metrics | `http://127.0.0.1:8000/dashboard/ops` |
+| ML dashboard | `http://127.0.0.1:8000/dashboard/ml` |
+| API docs | `http://127.0.0.1:8000/docs` |
+| Raw Prometheus metrics | `http://127.0.0.1:8000/metrics` |
 
 ## Local Auth
 
@@ -251,7 +268,7 @@ are grouped here.
 | Area | Commands |
 |---|---|
 | Data | `generate`, `load`, `public-dataset`, `public-dataset-convert` |
-| Decisions | `score`, `replay`, `monitor` |
+| Decisions | `demo-reset`, `score`, `replay`, `monitor` |
 | ML | `train`, `model-register`, `model-list`, `model-promote`, `shadow-score`, `model-eval-dashboard` |
 | Policy | `policy-show`, `policy-register`, `policy-list`, `policy-promote`, `policy-keygen`, `policy-approve`, `policy-approval-status`, `policy-promote-approved` |
 | Streams | `outbox-drain`, `stream-consume`, `stream-supervise`, `stream-lag`, `stream-dead-letters`, `stream-health` |

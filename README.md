@@ -18,7 +18,7 @@ money movement.
 | Full | Docker API, Postgres, Redis, Redpanda, Neo4j, Prometheus, Grafana | Production-shaped local smoke proof. |
 | ML | Local sklearn training/eval artifacts | Baseline model and threshold experiments. |
 
-Latest verified version: `0.47.0`.
+Latest verified version: `0.48.0`.
 
 ## System Map
 
@@ -58,11 +58,11 @@ uv run fraud-v2 local-doctor `
   --dashboard-path data\local\local-doctor.html
 ```
 
-Generate data, load SQLite, score one user:
+Reset the local demo database, train the baseline, score one user:
 
 ```powershell
-uv run fraud-v2 generate --users 120 --output data\synthetic\tiny\events.jsonl
-uv run fraud-v2 load data\synthetic\tiny\events.jsonl --db-path data\local\fraud_v2.sqlite
+uv run fraud-v2 demo-reset --users 120 --db-path data\local\fraud_v2.sqlite
+uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline
 uv run fraud-v2 score user_00000 --db-path data\local\fraud_v2.sqlite
 ```
 
@@ -74,10 +74,13 @@ uv run uvicorn fraud_v2.api.main:app --host 127.0.0.1 --port 8000
 
 Open:
 
-- API docs: `http://127.0.0.1:8000/docs`
+- Demo cockpit: `http://127.0.0.1:8000/demo`
 - Analyst dashboard: `http://127.0.0.1:8000/dashboard`
 - Graph evidence: `http://127.0.0.1:8000/dashboard/graph?entity_id=user_00000`
-- Metrics: `http://127.0.0.1:8000/metrics`
+- Human ops metrics: `http://127.0.0.1:8000/dashboard/ops`
+- ML dashboard: `http://127.0.0.1:8000/dashboard/ml`
+- API docs: `http://127.0.0.1:8000/docs`
+- Raw Prometheus metrics: `http://127.0.0.1:8000/metrics`
 
 Protected `/v1/*` calls use local bearer auth:
 
@@ -198,6 +201,7 @@ Expand-Archive -LiteralPath factory\archive\code-factory-receipts-20260504-20260
 
 | Job | Command |
 |---|---|
+| Reset seeded local demo | `uv run fraud-v2 demo-reset --users 120 --db-path data\local\fraud_v2.sqlite` |
 | Generate synthetic events | `uv run fraud-v2 generate --users 120 --output data\synthetic\tiny\events.jsonl` |
 | Load events | `uv run fraud-v2 load data\synthetic\tiny\events.jsonl --db-path data\local\fraud_v2.sqlite` |
 | Score one user | `uv run fraud-v2 score user_00000 --db-path data\local\fraud_v2.sqlite` |
@@ -236,6 +240,7 @@ Run `uv run fraud-v2 --help` for the full CLI list.
 | [docs/vagueness-register.md](docs/vagueness-register.md) | Open ambiguity and local defaults. |
 | [docs/blockers-and-vague-decisions.md](docs/blockers-and-vague-decisions.md) | Blunt blockers, options, and recommendations. |
 | [docs/solution-tradeoffs.md](docs/solution-tradeoffs.md) | Architecture tradeoffs and decisions. |
+| [docs/presentation-cockpit-and-gap-plan.md](docs/presentation-cockpit-and-gap-plan.md) | Demo cockpit, metrics, graph, ML, vendor, and blog-gap implementation plan. |
 | [factory/dashboard.md](factory/dashboard.md) | Current Code Factory dashboard. |
 
 ## Current Blockers
