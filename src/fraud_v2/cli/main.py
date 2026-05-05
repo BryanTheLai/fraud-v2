@@ -41,6 +41,7 @@ from fraud_v2.observability.stream_health import (
     write_stream_health_artifacts,
 )
 from fraud_v2.observability.traces import summarize_local_traces
+from fraud_v2.operations.readiness import write_readiness_report
 from fraud_v2.operations.release_runbook import write_release_runbook
 from fraud_v2.policy.approvals import (
     JsonPolicyApprovalStore,
@@ -269,6 +270,15 @@ def release_runbook(
 ) -> None:
     runbook = write_release_runbook(output_path=output_path)
     _print_json({"output_path": str(output_path), "bytes": len(runbook.encode("utf-8"))})
+
+
+@app.command()
+def readiness_report(
+    output_path: Path = Path("data/local/readiness-report.json"),
+    dashboard_path: Path | None = Path("data/local/readiness-report.html"),
+) -> None:
+    report = write_readiness_report(output_path=output_path, dashboard_path=dashboard_path)
+    _print_json(report)
 
 
 @app.command()

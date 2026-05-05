@@ -63,6 +63,7 @@ It now runs locally in two modes:
 | CI | Done | GitHub Actions for tests, capacity-profile artifact upload, Docker build, and API image smoke. |
 | GitHub handoff | Local-safe done | `scripts/github-handoff.ps1` reports remote/auth/worktree blockers and can push/create the PR once configured. |
 | Release runbook | Local-safe done | `release-runbook` generates one local operator handoff with run, verify, recovery, GitHub, and hard-limit steps. |
+| Readiness report | Local-safe done | `readiness-report` generates JSON/HTML snapshots of local checks, implemented capabilities, and hard production blockers. |
 
 ## Still Fake Or Local-Only
 

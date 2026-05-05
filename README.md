@@ -47,6 +47,8 @@ GitHub push/PR handoff has a dry-run script that reports missing auth or remote
 configuration before it can execute.
 `fraud-v2 release-runbook` generates a single local operator handoff with run,
 verify, recovery, GitHub, and hard-limit commands.
+`fraud-v2 readiness-report` generates JSON and HTML snapshots of local
+readiness, implemented capabilities, and hard production blockers.
 PaySim-style public fraud CSVs can be converted into canonical local events
 after you manually download a dataset you are allowed to use.
 Model training reports can be rendered into a local HTML eval dashboard.
@@ -183,6 +185,7 @@ powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once 
 powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical
 powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1
 uv run fraud-v2 release-runbook --output-path data/local/release-runbook.md
+uv run fraud-v2 readiness-report --output-path data/local/readiness-report.json --dashboard-path data/local/readiness-report.html
 uv run fraud-v2 trace-report --trace-path data/local/traces.jsonl --output-path data/local/trace-report.json --dashboard-path data/local/trace-report.html
 uv run fraud-v2 secrets-scan --root .
 uv run fraud-v2 audit-archive --db-path data/local/fraud_v2.sqlite --output-dir data/local/audit-archive

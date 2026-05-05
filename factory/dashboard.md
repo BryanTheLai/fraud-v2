@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-044 - Add Release Runbook](tasks/active/TC-20260505-044-add-release-runbook.md)
+- [TC-20260505-045 - Add Readiness Report](tasks/active/TC-20260505-045-add-readiness-report.md)
 
 ## Runs Waiting For Bryan
 
@@ -52,6 +52,7 @@ Updated: 2026-05-05
 - [RR-20260505-042](runs/RR-20260505-042.md)
 - [RR-20260505-043](runs/RR-20260505-043.md)
 - [RR-20260505-044](runs/RR-20260505-044.md)
+- [RR-20260505-045](runs/RR-20260505-045.md)
 
 ## Blocked Work
 
@@ -119,6 +120,7 @@ Updated: 2026-05-05
 - Added full-profile Postgres backup rehearsal with scratch restore proof.
 - Added dry-run-safe GitHub handoff automation for push/PR blockers.
 - Added generated release runbook for local operator handoff.
+- Added generated readiness reports for local checks and production blockers.
 
 ## Lessons Added
 
@@ -130,5 +132,5 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M44 release runbook. Remaining gaps are real-production
+Review local MVP through M45 readiness report. Remaining gaps are real-production
 blockers that need Bryan/legal/vendor/cloud decisions.

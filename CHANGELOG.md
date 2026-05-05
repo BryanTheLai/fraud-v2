@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.45.0 - 2026-05-05
+
+- Added `fraud-v2 readiness-report` to generate JSON and HTML local readiness
+  snapshots with environment checks, implemented capabilities, and hard
+  production blockers.
+- Added unit coverage for readiness report generation, artifact writing, and
+  HTML escaping.
+- Updated docs, PR draft, and factory receipts for the readiness snapshot path.
+
 ## 0.44.0 - 2026-05-05
 
 - Added `fraud-v2 release-runbook` to generate a local Markdown operator

@@ -198,6 +198,7 @@ powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once 
 powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical
 powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1
 uv run fraud-v2 release-runbook --output-path data\local\release-runbook.md
+uv run fraud-v2 readiness-report --output-path data\local\readiness-report.json --dashboard-path data\local\readiness-report.html
 uv run fraud-v2 trace-report --trace-path data\local\traces.jsonl --output-path data\local\trace-report.json --dashboard-path data\local\trace-report.html
 uv run fraud-v2 secrets-scan --root .
 uv run fraud-v2 audit-archive --db-path data\local\fraud_v2.sqlite --output-dir data\local\audit-archive
@@ -373,6 +374,20 @@ uv run fraud-v2 release-runbook --output-path data\local\release-runbook.md
 The runbook includes the current version, branch, latest commit, lite/full-mode
 commands, required verification, recovery rehearsals, GitHub handoff, and hard
 limits. It is a generated local artifact, not a deployment approval.
+
+## Readiness Report
+
+Generate a machine-readable readiness snapshot:
+
+```powershell
+uv run fraud-v2 readiness-report `
+  --output-path data\local\readiness-report.json `
+  --dashboard-path data\local\readiness-report.html
+```
+
+The report captures branch, commit, worktree state, GitHub handoff blockers,
+required artifact presence, implemented local capabilities, and hard production
+blockers. It intentionally keeps `regulated_production_ready: false`.
 
 Dry-run retention report:
 
@@ -905,6 +920,7 @@ tests/unit/domain/test_events.py
 | Local stream service loop | `powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical` | Runs supervised stream consume once and writes timestamped health artifacts for Windows Task Scheduler or manual loops. |
 | GitHub handoff dry run | `powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1` | Reports remote/auth/worktree blockers and the exact push/PR commands. |
 | Release runbook | `uv run fraud-v2 release-runbook --output-path data\local\release-runbook.md` | Writes one local operator handoff with run, verify, recovery, GitHub, and hard-limit steps. |
+| Readiness report | `uv run fraud-v2 readiness-report --output-path data\local\readiness-report.json --dashboard-path data\local\readiness-report.html` | Writes JSON and HTML readiness snapshots with local checks and production blockers. |
 | Local trace report | `uv run fraud-v2 trace-report --trace-path data\local\traces.jsonl --output-path data\local\trace-report.json --dashboard-path data\local\trace-report.html` | Summarizes optional local request spans into JSON and HTML. |
 | Secrets scan | `uv run fraud-v2 secrets-scan --root .` | Scans repo text files for real-looking credentials before commit or CI. |
 | Audit archive | `uv run fraud-v2 audit-archive --db-path data\local\fraud_v2.sqlite --output-dir data\local\audit-archive` | Exports audit entries and a manifest with archive hash and chain verification. |

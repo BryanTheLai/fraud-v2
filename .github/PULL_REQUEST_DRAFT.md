@@ -79,6 +79,8 @@ Implemented:
 - Dry-run-safe GitHub handoff script for push/PR creation once auth and remote
   exist.
 - Generated release runbook CLI for local operator handoff.
+- Generated readiness report CLI for local checks, capabilities, and production
+  blockers.
 
 ## Test Plan
 
@@ -92,6 +94,7 @@ uv run pytest -q
 uv run pytest --collect-only -q
 powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1
 uv run fraud-v2 release-runbook --output-path data\local\release-runbook.md
+uv run fraud-v2 readiness-report --output-path data\local\readiness-report.json --dashboard-path data\local\readiness-report.html
 uv run fraud-v2 capacity-profile --profile smoke --users 50 --score-users 5 --min-load-events-per-second 0.1 --min-score-decisions-per-second 0.1 --output-dir data\local\ci-capacity --overwrite --fail-on-target-miss
 docker compose -f infra\docker-compose.yml --profile full config --quiet
 docker build -t fraud-v2:local .
@@ -102,18 +105,22 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Secrets scan: pass, 255 files scanned, zero findings
-- Pytest: pass, 113 collected tests
+- Secrets scan: pass, 259 files scanned, zero findings
+- Pytest: pass, 116 collected tests
 - GitHub handoff dry run: pass, reports missing `origin` remote and missing
   `gh auth status` as blockers
 - Release runbook smoke: pass, wrote a 2,356-byte Markdown runbook
-- Capacity profile smoke: pass, 50 users, 316 events, 117.292 load events/sec,
-  56.446 score decisions/sec, JSON/HTML artifacts written
-- Docker build: pass, installed `fraud-v2==0.44.0`
+- Readiness report smoke: pass, wrote JSON/HTML, reported 8 checks, 18
+  implemented capabilities, 7 production blockers, and blocked status from
+  missing GitHub remote/auth
+- Capacity profile smoke: pass, 50 users, 316 events, 123.987 load events/sec,
+  47.366 score decisions/sec, JSON/HTML artifacts written
+- Docker build: pass, installed `fraud-v2==0.45.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Postgres backup rehearsal with source/restored
-  event counts of 194/194 and `verified: true`, audit archive proof, Redis
+  event counts of 194/194 and `verified: true`, audit archive proof over 196
+  entries, Redis
   feature cache, Neo4j projection, and
   Redpanda publish-consume-to-Postgres with zero stream dead letters on the
   valid path, zero lag after valid consume, supervised stream ingest, stream
