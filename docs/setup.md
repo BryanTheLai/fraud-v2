@@ -134,6 +134,7 @@ Open:
 | Human ops metrics | `http://127.0.0.1:8000/dashboard/ops` |
 | ML dashboard | `http://127.0.0.1:8000/dashboard/ml` |
 | Signal lab | `http://127.0.0.1:8000/dashboard/signals` |
+| Simulation workbench | `http://127.0.0.1:8000/dashboard/simulate` |
 | API docs | `http://127.0.0.1:8000/docs` |
 | Raw Prometheus metrics | `http://127.0.0.1:8000/metrics` |
 
@@ -362,14 +363,24 @@ uv run fraud-v2 public-dataset-convert paysim `
   --limit-rows 10000
 ```
 
+Run a manual local simulation without touching the database:
+
+```powershell
+uv run fraud-v2 simulate-risk `
+  --amount 1000 `
+  --virtual-camera `
+  --one-hop-from-fraud `
+  --app-bec-pattern
+```
+
 Run GitHub handoff dry-run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1
 ```
 
-Push/PR creation remains blocked until `origin` exists and `gh auth login` has
-been run.
+The `origin` remote is configured on the current branch. PR creation remains
+blocked until `gh auth login` has been run on this machine.
 
 ## Environment Variables
 

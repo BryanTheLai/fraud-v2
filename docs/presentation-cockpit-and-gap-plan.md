@@ -34,6 +34,11 @@ Implementation update:
   renders it when `data/local/mlops-report.json` exists.
 - `/dashboard/signals` and `fraud-v2 signal-lab` show local camera metadata and
   public-KYB-style checks without external vendor calls.
+- `/dashboard/simulate` and `fraud-v2 simulate-risk` expose manual synthetic
+  risk knobs for presentation, threshold rehearsal, APP/BEC intervention
+  previews, and dependency-outage behavior without mutating real state.
+- Baseline training reports now include feature importances; the static and
+  in-app ML dashboards render them.
 - Yellow case rails can render a Break-the-Spell draft checklist; no real
   customer message is sent.
 - Graph SVG now has a legend, node type markers, confirmed-fraud styling, and
@@ -45,17 +50,17 @@ Implementation update:
 
 | Item | Still Vague Or Blocked | Main Options | Tradeoff | Decision |
 |---|---|---|---|---|
-| Demo cockpit | Exact UI route and flow are not built yet. | Keep plain dashboard; add `/demo`; replace dashboard. | Replacing dashboard risks churn. Separate `/demo` gives a presentation surface without losing current proof. | Continue: add `/demo`. |
+| Demo cockpit | Built locally; production audience/story can still sharpen. | Keep separate `/demo`; merge into dashboard; replace dashboard. | Separate `/demo` keeps the presentation surface clean without losing analyst proof. | Keep implemented `/demo`. |
 | Old TNG RiskOps UI reuse | Source code not found locally. | Copy visual pattern; find old repo; rebuild from scratch. | Source reuse is fastest only if repo exists. Pattern reuse is enough. | Continue: reuse pattern, not code. |
 | Analyst case detail | Current dashboard has rows but no full case file. | Row-only; drawer; case page. | Case page is best for presentation and evidence. | Continue: build case page. |
-| UI-based simulation | Manual CLI/API is too hidden for demo. | CLI only; scenario buttons; customizable builder; raw JSON. | Buttons are presentable. Builder proves flexibility. Raw JSON is power-user only. | Continue: buttons plus advanced JSON/knobs. |
-| Demo reset | Counters get messy after scoring. | No reset; CLI reset; UI reset; snapshots. | UI reset is best but must only touch local demo data. | Continue: CLI reset plus UI reset. |
+| UI-based simulation | Built locally; no real external actions. | Keep UI/CLI knobs; add raw JSON editor; wire to live seeded DB. | Current knobs are simple and presentable. Raw JSON is powerful but intimidating. DB mutation can confuse demos. | Keep implemented UI/CLI knobs; defer raw JSON editor. |
+| Demo reset | Built locally for seeded demo DB. | Keep current reset; add snapshots; no reset. | Current reset is enough for demos. Snapshots help later if scenarios branch more. | Keep implemented reset. |
 | Graph visual | Current graph is truthful but flat. | Better SVG; Cytoscape.js; D3; Neo4j Browser. | Better SVG is low-risk. Cytoscape is better later. | Continue: improve SVG now; pause Cytoscape. |
 | Graph ML | Blog implies GNN/message passing. | Rules only; graph features; node2vec; GraphSAGE/PyG. | True GNN is attractive but easy to fake without labels. Graph features are honest and useful. | Continue: graph features; pause production GNN. |
 | Metrics UX | Raw Prometheus is machine-facing. | Keep raw only; add `/dashboard/ops`; rely on Grafana. | Raw stays required. Grafana needs full mode. Human ops page helps lite mode. | Continue: add `/dashboard/ops`. |
 | ML dashboard | Model pieces exist but are not prominent. | Static report only; in-app ML dashboard; notebook. | In-app dashboard makes the ML project visible. Notebook is less demoable. | Continue: build ML dashboard. |
 | Tabular ML | Current sklearn baseline exists. | Keep sklearn; add XGBoost/LightGBM optional; deep models. | XGBoost/LightGBM likely best practical next step; deep models need more data. | Continue: optional XGBoost/LightGBM; pause deep model as default. |
-| Calibration and profit | Evaluations exist but not front-and-center. | Leave report; add charts; add threshold tuner. | Charts/tuner make the fraud economics real. | Continue. |
+| Calibration and profit | In-app ML dashboard exists; interactive threshold tuning is still future polish. | Leave report; render tables; add slider/tuner. | Tables are reliable. Slider makes demos better but can be added without changing model logic. | Keep tables now; defer slider until the UI needs it. |
 | Drift and PSI | Real production drift needs real reference/current data. | Static metric; drift simulator; ops alert. | Simulator is useful for demo but not a production monitoring claim. | Implemented local simulator/report; keep real production drift paused until real traffic. |
 | Cohen's Kappa / IRR | Real IRR needs multiple analysts. | Ignore; simulate second reviewer; real analysts. | Real analysts unavailable. Simulation proves math only. | Implemented simulated reviewers; pause real analyst QA until real reviewers exist. |
 | KYC/KYB | Real production access is not available in repo. | Mocks; sandbox adapters; public registries; real vendors. | Real vendors need accounts, billing, secrets, legal/privacy review. Public data is safe but incomplete. | Continue mocks/public/sandbox; pause production KYC/KYB. |
@@ -72,7 +77,7 @@ Implementation update:
 | Real money actions | Explicitly blocked. | Simulated actions; human-gated sandbox; real actions. | Real actions require rails and authority. | Pause real actions; continue simulation. |
 | Production auth/RBAC | Local token is not production access control. | Keep token; OIDC/JWT; enterprise IAM. | OIDC is useful later but not needed for laptop demo. | Pause for now; keep role-shaped local auth. |
 | Full cloud deployment | Local Docker exists, cloud target unknown. | Stay local; single VM; managed cloud/Kubernetes. | Cloud/IaC depends on target and budget. | Pause; keep local-first. |
-| GitHub PR/push | No remote/auth previously configured. | Local commits only; configure origin/gh auth. | Needs operator login. | Pause until `gh auth login` and remote exist. |
+| GitHub PR/push | Remote exists and branch pushes; GitHub CLI auth is still missing for PR creation. | Push only; run `gh auth login`; create PR manually in browser. | Push works now. PR automation needs operator auth. | Continue push; pause PR automation until `gh auth login`. |
 | Synthetic data expansion | Current data is enough but narrow. | Deterministic generator; LLM edge cases; public datasets. | Deterministic base keeps tests stable. LLM adds breadth. | Continue: deterministic core plus LLM edge cases. |
 | LLM role | Tempting to use as scorer. | Data generation; analyst note drafting; final risk scoring. | LLM scoring is non-deterministic and hard to govern. | Continue for data/eval/notes; pause final scoring. |
 | Production claim | Tempting to call it production-ready. | Production-shaped local lab; regulated production system. | Truth matters. | Continue calling it local lab; pause production claims. |
@@ -113,7 +118,7 @@ Build `/demo` or make `/dashboard` into a cockpit.
 | Surface | Possible Solutions | Tradeoffs | Recommendation |
 |---|---|---|---|
 | Main route | Keep `/dashboard` only; add `/demo`; replace `/dashboard` entirely | Keeping only dashboard is simple but cramped. Separate `/demo` is clearer for presentation. Replacing risks breaking current proof surface. | Add `/demo`, keep `/dashboard` as current analyst surface. |
-| Scenario runner | Manual CLI; fixed UI buttons; editable scenario builder; raw JSON editor | CLI is reliable but not presentable. Buttons are fastest. Builder proves flexibility. JSON editor is powerful but intimidating. | Buttons plus an "advanced JSON" drawer. |
+| Scenario runner | Manual CLI; fixed UI buttons; editable scenario builder; raw JSON editor | CLI is reliable. Buttons are presentable. Builder proves flexibility. JSON editor is powerful but intimidating. | Implemented `/dashboard/simulate` plus `simulate-risk`; defer raw JSON drawer. |
 | Demo reset | Do nothing; CLI reset; UI reset button; seeded scenario snapshots | No reset makes demos messy. CLI reset is okay. UI reset is best for presentation but must be safe. | Add `fraud-v2 demo-reset` and a UI reset button that only touches local demo DB. |
 | Decision display | Table row only; detail drawer; dedicated case page | Row is too shallow. Drawer is good for speed. Case page is best for screenshots. | Add decision/case detail page. |
 | Evidence | Reasons only; graph only; timeline only; all together | Single evidence type under-explains. All together can be dense. | Use case page: reasons, feature values, graph, timeline, audit trace. |
@@ -157,18 +162,27 @@ Manual simulation should become a first-class local feature.
 | APP/BEC intervention | transfer to risky beneficiary with unusual session | Yellow plus "Break the Spell" prompt | Simulated now |
 | KYB suspicious company | stale company, bad sanctions/LEI/public registry signal | Review | Mock/public-data now |
 
-Add scenario customization:
+Implemented scenario customization:
 
 - amount
+- camera metadata
+- behavior entropy
+- application velocity
+- payment velocity
+- prior chargeback
+- one-hop graph proximity to confirmed fraud
+- public-KYB-style watch signal
+- sanctions-shaped local flag
+- APP/BEC pattern
+- model/graph outage degraded mode
+
+Still useful but deferred:
+
 - device age
 - IP/geo
 - payee reuse
-- camera metadata
-- behavior entropy
-- prior chargeback
-- graph distance to confirmed fraud
 - delayed label timing
-- model/rule policy version
+- explicit model/rule policy selector in the UI
 
 ## Blog Gap Matrix
 
@@ -181,12 +195,12 @@ Add scenario customization:
 | Real-time/Kappa | Unified stream processing and online/offline parity | Redpanda/outbox in full mode, SQLite lite | Keep current; add replay parity tests; add Feast-style interfaces; add Flink | Flink is resource/complexity heavy. Parity tests give most value. | Add parity test/report before Flink. |
 | Feature freshness | Freshness metrics and circuit breakers | Feature freshness fields and metrics exist | Surface in UI; add stale-feature simulation; add breaker dashboard | UI makes it demoable. | Build `/dashboard/ops` freshness panel. |
 | Graph/GNN | Heterogeneous graph and inductive GNN | NetworkX graph rules, Neo4j adapter | Better graph rules; node embeddings; PyG GraphSAGE; full GNN service | GNN needs labels and careful eval. Node embeddings are simpler ML proof. | Add graph-feature ML baseline first; defer PyG GNN to research mode. |
-| Behavioral entropy | Real human interaction telemetry | Synthetic behavior events | Keep synthetic; add browser telemetry demo; add privacy-gated real collection | Real telemetry is privacy-sensitive. Synthetic is safe. | Add UI knobs and synthetic generator expansion. |
+| Behavioral entropy | Real human interaction telemetry | Synthetic behavior events plus simulation knob | Keep synthetic; add browser telemetry demo; add privacy-gated real collection | Real telemetry is privacy-sensitive. Synthetic is safe. | Keep UI knob and synthetic generator; pause real capture. |
 | Graph UI | Analyst spider-web explanation | Static SVG | Improved SVG; Cytoscape.js; Neo4j Browser link | SVG is lowest-risk. Cytoscape is best app UX. | Improve SVG now; plan Cytoscape if graph becomes central. |
 | Action ops | Green/yellow/red with friction/block | Implemented as safe simulated decisions | Add decision rail; add action ladder; add simulated intervention; add real actions | Real actions forbidden. Simulated actions make demo real enough. | Build decision rail and action ladder. |
 | Manual review | Analyst queue feeds labels | API/model exists, light UI | Queue table; case detail; analyst labels; IRR dashboard | Case detail gives biggest demo gain. IRR needs multiple reviewers or simulated reviewers. | Build case detail + simulated second reviewer for Kappa demo. |
 | Compliance | Adverse reasons and SAR | Safe reasons and draft-only compliance | Keep drafts; add export; add reason quality checks; real filing | Real filings forbidden. | Add visible draft/export flow, clearly "human review only". |
-| MLOps | PIT correctness, calibration, PSI, Kappa, Recall@1% FPR, profit | Training/eval pieces exist | Add ML dashboard; add threshold tuner; add drift simulator; add model registry UI | High demo value. Resource-light. | Build ML dashboard. Important for making this an ML project. |
+| MLOps | PIT correctness, calibration, PSI, Kappa, Recall@1% FPR, profit | Training/eval, feature importance, ML dashboard, PSI/Kappa report | Add threshold tuner; add model registry UI; add live drift alerts | High demo value. Resource-light, but live alerts need real traffic. | Keep current dashboard; defer tuner/UI registry until needed. |
 | Instant Cash | First-party fraud, Benford, chargeback ratio, idempotency, Break the Spell | Payments/chargebacks/idempotency concepts exist partially | Add Benford feature; repayment/default labels; chargeback ratio; intervention UI | Very aligned with blog. Mostly local/synthetic. | Build now. |
 | Production auth/RBAC | Real operator controls | Local token roles | Keep local; add OIDC later | OIDC not needed for laptop demo. | Keep local token; document production blocker. |
 
@@ -241,15 +255,16 @@ Research lane:
 
 ## Recommended Build Order
 
-1. `/demo` cockpit with scenario buttons, reset, and result panel.
-2. Case detail page using TNG-style timeline, facts, missing data, decision rail.
-3. Graph visual upgrade: legend, highlight path, grouped relationship table.
-4. `/dashboard/ops` human metrics page, keep raw `/metrics`.
-5. ML dashboard: training report, calibration, PSI, Kappa, profit curve, Recall@1% FPR.
-6. Instant Cash expansion: Benford, repayment/default timeline, chargeback ratio,
+1. Done: `/demo` cockpit with scenario buttons, reset, and result panel.
+2. Done: case detail page using TNG-style timeline, facts, missing data, decision rail.
+3. Done: graph visual upgrade with legend, node markers, and highlighted risk edges.
+4. Done: `/dashboard/ops` human metrics page, keeping raw `/metrics`.
+5. Done: ML dashboard with training report, calibration, PSI, Kappa, profit threshold, Recall@1% FPR, and feature importance.
+6. Done: `/dashboard/simulate` plus `fraud-v2 simulate-risk` for UI/CLI manual simulation.
+7. Instant Cash expansion: Benford, repayment/default timeline, chargeback ratio,
    idempotency proof, Break-the-Spell simulated prompt.
-7. Public-data adapters: local public-KYB-shaped connector exists; live
+8. Public-data adapters: local public-KYB-shaped connector exists; live
    OFAC/GLEIF/Companies House calls stay paused until terms, rate limits, and
    secrets/access are decided.
-8. Optional sandbox adapters for Stripe Identity or Persona only if credentials
+9. Optional sandbox adapters for Stripe Identity or Persona only if credentials
    are available and the integration is clearly marked as sandbox.

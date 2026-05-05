@@ -6,6 +6,7 @@ Code Factory workflow.
 ## Rules
 
 - Ship verified outcomes, not claims.
+- Think of all possible solutions, think of tradeoffs for each, then think about whether we should implement or keep it as is. Do this for everything we are talking about. Don't be afraid to boil the ocean, but do keep in mind hard blockers like lack of enterprise-level access and whether the juice is worth the squeeze. Do not confuse effort to build with resources to build; effort to build should be ignored, but resources should be evaluated properly.
 - Keep local laptop runability as a hard requirement.
 - Do not use real PII.
 - Do not call real KYC, banking, liveness, consortium, SAR, or payment vendors.
@@ -47,4 +48,3 @@ docker build -t fraud-v2:local .
 
 GitHub push and PR creation require `gh auth login` and a remote. If auth is
 missing, finish local commits and record the blocker in the Run Record.
-

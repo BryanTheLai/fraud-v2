@@ -33,6 +33,7 @@ It now runs locally in two modes:
 | Full-profile Postgres backup | Local-safe done | `scripts/postgres-backup-rehearsal.ps1` runs `pg_dump`, scratch restore, event-count verification, and manifest writing. |
 | API | Done | FastAPI routes, role-protected `/v1/*`, health, metrics, docs. |
 | Demo cockpit | Local-safe done | `/demo` runs seeded scenarios, customized local scores, and local demo reset. |
+| Simulation workbench | Local-safe done | `/dashboard/simulate` and `simulate-risk` expose manual risk knobs for presentation, policy rehearsal, outage simulation, and APP/BEC Break-the-Spell previews without real actions. |
 | Rules/graph decisions | Done | Rules + NetworkX graph service, graph evidence dashboard, safe reasons, trace IDs. |
 | Versioned threshold policy | Local-safe done | Green/yellow/red thresholds, degraded floors, and high-amount signals load from validated JSON policy packs. |
 | Policy promotion registry | Local-safe done | Local JSON registry hashes candidate policies and promotes one active policy file for API loading. |
@@ -40,14 +41,14 @@ It now runs locally in two modes:
 | Review workflow | Done | Manual-review decisions create cases and confirmed analyst outcomes append replayable label events. |
 | Compliance drafts | Local-safe done | Draft export only; no filings, no legal claim. |
 | Encrypted evidence export | Local-safe done | `evidence-export` writes AES-256-GCM encrypted decision bundles with safe fields and no-filing metadata. |
-| Baseline ML | Done | sklearn random forest training report. |
+| Baseline ML | Done | sklearn random forest training report with feature importances. |
 | Cost evaluation | Done | Profit threshold and recall under 1 percent FPR. |
 | Local load benchmark | Local-safe done | `load-benchmark` writes generation/load/scoring throughput receipts against deterministic synthetic data and SQLite. |
 | Capacity profile | Local-safe done | `capacity-profile` writes named synthetic capacity receipts with target checks plus JSON/HTML artifacts. |
 | Model registry | Done | JSON-backed artifact/report hashing and status controls. |
 | Shadow scoring | Done | Registered model probabilities logged without changing decisions. |
 | Model eval dashboard | Local-safe done | Static HTML eval dashboard renders baseline report metrics, threshold candidates, features, and optional shadow-score summary. |
-| In-app ML dashboard | Local-safe done | `/dashboard/ml` surfaces calibration, Brier score, Recall at 1 percent FPR, profit thresholds, and Benford-derived features from the baseline report. |
+| In-app ML dashboard | Local-safe done | `/dashboard/ml` surfaces calibration, Brier score, Recall at 1 percent FPR, profit thresholds, feature importances, and Benford-derived features from the baseline report. |
 | MLOps drift and IRR | Local-safe done | `mlops-report` writes PSI score drift, red-threshold confusion proxy, and simulated analyst Cohen's Kappa; `/dashboard/ml` renders it when present. |
 | Signal lab | Local-safe done | `/dashboard/signals` and `signal-lab` run local camera-metadata and public-KYB-style checks without external vendor calls. |
 | Break-the-Spell | Local-safe done | Yellow case rails can render a draft customer intervention checklist; no real customer message is sent. |
@@ -80,6 +81,7 @@ It now runs locally in two modes:
 | KYC/device/consortium/KYB | Mock and public-shape local connectors only. No real vendors and no live sanctions/KYB calls. |
 | SAR/adverse action | Drafts only. No filing. No legal compliance claim. |
 | Data | Synthetic by default. PaySim-style public CSV conversion exists after manual dataset download and terms review. |
+| Simulation | UI/CLI simulation is deterministic and local-only. It is not evidence of real identity, sanctions, liveness, or money movement. |
 | Auth | Local role-token, HS256 JWT, and JWKS/OIDC-shaped JWT verification exist. No real user lifecycle or sessions. |
 | Secrets | Local `secrets-scan` checks for real-looking committed credentials. No vault/KMS. |
 | Audit immutability | Hash-chained SQLite plus local archive manifests. No WORM/object-lock storage. |
@@ -101,7 +103,7 @@ It now runs locally in two modes:
 | Data security | Real PII cannot live in this local repo casually. Encrypted local evidence export exists for synthetic/local decision bundles only. | Add external OIDC, field-level encryption, audit retention, secrets manager, DLP rules. |
 | Production deployment target | Architecture differs for VM, Kubernetes, managed cloud, or on-prem. | Pick target environment and SLOs. |
 | Production capacity plan | Named local capacity receipts exist, but no real traffic or SLO model. | Run larger synthetic profiles and then replay real redacted event distributions. |
-| GitHub auth | Push/PR requires this machine to be authenticated with GitHub CLI. | Run `gh auth login`, then run `scripts\github-handoff.ps1 -Execute`. |
+| GitHub auth | Push works after normal git auth; PR creation requires this machine to be authenticated with GitHub CLI. | Run `gh auth login`, then run `scripts\github-handoff.ps1 -Execute`. |
 
 ## Commands That Passed
 

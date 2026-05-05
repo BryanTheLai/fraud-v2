@@ -16,9 +16,9 @@ money movement.
 |---|---|---|
 | Lite | Python, FastAPI, SQLite, NetworkX, synthetic data | Fast laptop development and tests. |
 | Full | Docker API, Postgres, Redis, Redpanda, Neo4j, Prometheus, Grafana | Production-shaped local smoke proof. |
-| ML | Local sklearn training/eval artifacts | Baseline model and threshold experiments. |
+| ML | Local sklearn training/eval artifacts | Baseline model, feature importance, and threshold experiments. |
 
-Latest verified version: `0.49.0`.
+Latest verified version: `0.50.0`.
 
 ## System Map
 
@@ -64,6 +64,7 @@ Reset the local demo database, train the baseline, score one user:
 uv run fraud-v2 demo-reset --users 120 --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline
 uv run fraud-v2 mlops-report --events-path data\synthetic\tiny\events.jsonl --output-path data\local\mlops-report.json
+uv run fraud-v2 simulate-risk --amount 1000 --virtual-camera --one-hop-from-fraud
 uv run fraud-v2 score user_00000 --db-path data\local\fraud_v2.sqlite
 ```
 
@@ -81,6 +82,7 @@ Open:
 - Human ops metrics: `http://127.0.0.1:8000/dashboard/ops`
 - ML dashboard: `http://127.0.0.1:8000/dashboard/ml`
 - Signal lab: `http://127.0.0.1:8000/dashboard/signals`
+- Simulation workbench: `http://127.0.0.1:8000/dashboard/simulate`
 - API docs: `http://127.0.0.1:8000/docs`
 - Raw Prometheus metrics: `http://127.0.0.1:8000/metrics`
 
@@ -163,6 +165,7 @@ src/fraud_v2/
   models/          sklearn baseline training, registry, shadow scoring.
   evaluation/      Monitoring, PSI drift, analyst Kappa, capacity receipts.
   policy/          Threshold policy packs, registry, signed approvals.
+  simulation/      Local-only scenario workbench and risk knob scoring.
   review/          Analyst review and replayable label events.
   compliance/      Human-review-only compliance drafts and intervention previews.
   connectors/      Mock KYC/device/consortium plus local signal-lab checks.
@@ -211,6 +214,7 @@ Expand-Archive -LiteralPath factory\archive\code-factory-receipts-20260504-20260
 | Train baseline | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` |
 | MLOps drift/Kappa report | `uv run fraud-v2 mlops-report --events-path data\synthetic\tiny\events.jsonl --output-path data\local\mlops-report.json` |
 | Local signal lab CLI | `uv run fraud-v2 signal-lab` |
+| Local simulation workbench CLI | `uv run fraud-v2 simulate-risk --amount 1000 --virtual-camera --one-hop-from-fraud` |
 | Replay decisions | `uv run fraud-v2 replay --events-path data\synthetic\tiny\events.jsonl` |
 | Capacity receipt | `uv run fraud-v2 capacity-profile --profile smoke --overwrite` |
 | Readiness report | `uv run fraud-v2 readiness-report --output-path data\local\readiness-report.json --dashboard-path data\local\readiness-report.html` |

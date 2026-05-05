@@ -22,7 +22,7 @@ Implemented:
 - Docker full-profile API uses Postgres as primary app storage.
 - Replay, monitoring, compliance draft, model registry, and shadow scoring CLIs.
 - Static local model eval dashboard generated from training reports and optional
-  shadow scores.
+  shadow scores, including feature importance.
 - Encrypted local decision evidence export CLI for human-review bundles.
 - Local synthetic load benchmark CLI that writes generation/load/scoring
   performance receipts.
@@ -37,11 +37,13 @@ Implemented:
 - Human-readable ops dashboard for queue, outbox, DLQ, audit, freshness, and
   Prometheus/Grafana links.
 - In-app ML dashboard for baseline model calibration, Recall at 1 percent FPR,
-  profit threshold, and feature review.
+  profit threshold, feature importance, and feature review.
 - Local MLOps report and in-app rendering for PSI drift, red-threshold
   confusion proxy, and simulated analyst Cohen's Kappa.
 - Local signal lab dashboard and CLI for camera metadata plus public-KYB-style
   checks without external vendor calls.
+- Local simulation workbench dashboard and CLI for manual synthetic risk knobs,
+  APP/BEC intervention previews, and model/graph outage rehearsal.
 - Break-the-Spell draft preview on yellow case rails, with no real customer
   messaging.
 - Benford-derived declared-income features for the Instant Cash fraud lane.
@@ -116,6 +118,7 @@ uv run fraud-v2 readiness-report --output-path data\local\readiness-report.json 
 uv run fraud-v2 local-doctor --output-path data\local\local-doctor.json --dashboard-path data\local\local-doctor.html
 uv run fraud-v2 mlops-report --events-path data\synthetic\tiny\events.jsonl --output-path data\local\mlops-report.json --simulate-score-shift-points 12
 uv run fraud-v2 signal-lab
+uv run fraud-v2 simulate-risk --amount 1000 --virtual-camera --one-hop-from-fraud --app-bec-pattern
 uv run fraud-v2 capacity-profile --profile smoke --users 50 --score-users 5 --min-load-events-per-second 0.1 --min-score-decisions-per-second 0.1 --output-dir data\local\ci-capacity --overwrite --fail-on-target-miss
 docker compose -f infra\docker-compose.yml --profile full config --quiet
 docker build -t fraud-v2:local .
@@ -126,14 +129,14 @@ powershell -ExecutionPolicy Bypass -File scripts\clean-local.ps1
 Latest local result:
 
 - Ruff format/check: pass
-- Mypy: pass, 94 source files checked
-- Secrets scan: pass, 176 files scanned, zero findings
-- Pytest: pass, 127 collected tests
+- Mypy: pass, 96 source files checked
+- Secrets scan: pass, 179 files scanned, zero findings
+- Pytest: pass, 132 collected tests
 - GitHub handoff dry run: pass, reports configured `origin` remote and missing
   `gh auth status` as the blocker
 - Verify script: pass for core and `-Full` modes
 - Release runbook smoke: pass, wrote a 2,356-byte Markdown runbook
-- Readiness report smoke: pass, wrote JSON/HTML, reported 8 checks, 23
+- Readiness report smoke: pass, wrote JSON/HTML, reported 8 checks, 25
   implemented capabilities, 7 production blockers, and blocked status from
   missing GitHub auth
 - Local doctor smoke: pass, wrote JSON/HTML, reported `lite_ready: true`,
@@ -143,9 +146,11 @@ Latest local result:
 - MLOps report smoke: pass, 120 scored users, PSI `1.343972`, Kappa `0.890177`
 - Signal lab smoke: pass, local camera metadata and public-KYB checks returned
   `REVIEW` without external calls
-- Capacity profile smoke: pass, 50 users, 316 events, 102.728 load events/sec,
-  37.509 score decisions/sec, JSON/HTML artifacts written
-- Docker build: pass, installed `fraud-v2==0.49.0`
+- Simulation workbench smoke: pass, returned local-only/no-action red result
+  from amount, virtual-camera, graph-neighbor, and APP/BEC knobs
+- Capacity profile smoke: pass, 50 users, 316 events, 89.313 load events/sec,
+  53.356 score decisions/sec, JSON/HTML artifacts written
+- Docker build: pass, installed `fraud-v2==0.50.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Postgres backup rehearsal with source/restored
@@ -167,6 +172,8 @@ Latest local result:
 - Mock vendors only.
 - Signal lab checks are local signal demos only; no live KYB, sanctions, or
   liveness vendors.
+- Simulation workbench output is deterministic local rehearsal only; it is not
+  real identity, sanctions, liveness, payment, or filing evidence.
 - Compliance drafts only; no filings.
 - Local bearer-token/JWT auth only; no external user lifecycle or sessions yet.
 - Stream supervisor, stream health reports, trace reports, and Windows service loop are local
@@ -180,5 +187,6 @@ Latest local result:
   no external KMS/HSM, legal approval workflow, or production policy registry
   yet.
 - No real production deployment target yet.
-- GitHub push/PR creation requires `gh auth login`. `scripts\github-handoff.ps1`
-  reports blockers and can execute the push/PR once authenticated.
+- GitHub PR creation requires `gh auth login`. The `origin` remote is
+  configured and normal branch push works; `scripts\github-handoff.ps1` reports
+  blockers and can create the PR once authenticated.

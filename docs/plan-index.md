@@ -30,6 +30,7 @@ production-shaped local fraud lab:
 - observability
 - replay
 - resilience
+- local UI/CLI simulation
 
 ## Current Documents
 
@@ -54,9 +55,9 @@ production-shaped local fraud lab:
 | Runtime | Python 3.12, FastAPI, Typer CLI. |
 | Lite mode | SQLite, NetworkX, synthetic data, local dashboards, metrics. |
 | Full mode | Docker API, Postgres, Redis, Redpanda, Neo4j, Prometheus, Grafana. |
-| UI | FastAPI HTML analyst dashboard and graph evidence pages. NiceGUI was an original plan option, not the current implementation. |
+| UI | FastAPI HTML demo, simulation, analyst, graph, ops, signal, and ML dashboards. NiceGUI was an original plan option, not the current implementation. |
 | Observability | Structured logs, `X-Trace-ID`, optional JSONL trace reports, Prometheus, Grafana. Loki/OTel were original plan options, not current services. |
-| ML | sklearn baseline, model registry, shadow scoring, eval dashboard. |
+| ML | sklearn baseline, feature importance, model registry, shadow scoring, eval dashboard. |
 | Governance | Threshold policy packs, registry, local signed approvals, readiness reports. |
 | Receipts | Code Factory task/run receipts are archived losslessly under `factory/archive`. |
 

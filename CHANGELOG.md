@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.50.0 - 2026-05-05
+
+- Added `fraud-v2 simulate-risk` and `/dashboard/simulate` so demos can tune
+  synthetic risk knobs in the UI or CLI while staying local-only and no-action.
+- Added feature-importance output to baseline training reports and rendered it
+  in both the static model eval dashboard and the in-app ML dashboard.
+- Updated docs and factory state for the current GitHub handoff reality:
+  `origin` is configured and push works; PR creation still needs `gh auth login`.
+
 ## 0.49.0 - 2026-05-05
 
 - Added `fraud-v2 mlops-report` and `/dashboard/ml` rendering for local PSI

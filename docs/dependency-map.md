@@ -23,6 +23,7 @@ api/cli
   +--> domain contracts
   +--> storage -------------> SQLite lite / Postgres full
   +--> decision ------------> rules + features + graph + models + policy
+  +--> simulation ----------> local-only scenario knobs
   +--> review --------------> replayable label events
   +--> compliance ----------> human-review-only drafts
   +--> operations ----------> doctor/readiness/runbook/backup/capacity
@@ -59,6 +60,7 @@ full Docker profile
 | `graph` | NetworkX, optional Neo4j adapter | UI framework |
 | `models` | sklearn, pandas/numpy, joblib | live route mutation |
 | `policy` | threshold schema, signatures | legal approval claims |
+| `simulation` | domain signals, threshold policy | storage mutation, real vendor calls, real actions |
 | `review` | domain, storage | direct model promotion |
 | `compliance` | domain decision evidence | real filing APIs |
 | `connectors` | mock vendor contracts | real external vendor calls |
@@ -90,6 +92,7 @@ full Docker profile
 | Redis | Full smoke catches adapter failure; lite mode does not require Redis. |
 | Neo4j | Graph adapter proof fails; decision engine can still use NetworkX/lite paths. |
 | Model artifact | Rules-only/degraded decision path remains available. |
+| Model/graph dependency | Simulation workbench can force degraded yellow/manual-review behavior for presentation and policy rehearsal. |
 | OpenAI/Azure | Synthetic LLM generation stops; fraud scoring unaffected. |
 | Grafana/Prometheus | Full smoke/readiness catches observability failure; API can still serve. |
 | GitHub auth/remote | Local product can be ready; push/PR remains blocked. |
