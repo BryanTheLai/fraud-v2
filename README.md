@@ -52,6 +52,8 @@ readiness, implemented capabilities, and hard production blockers.
 `fraud-v2 local-doctor` generates JSON and HTML checks for this laptop's lite
 mode, full-profile Docker mode, optional GPU visibility, and GitHub handoff
 blockers.
+`scripts\verify.ps1` is the single verification entry point, and
+`scripts\clean-local.ps1` removes ignored local smoke artifacts and caches.
 PaySim-style public fraud CSVs can be converted into canonical local events
 after you manually download a dataset you are allowed to use.
 Model training reports can be rendered into a local HTML eval dashboard.
@@ -196,6 +198,26 @@ uv run fraud-v2 audit-archive --db-path data/local/fraud_v2.sqlite --output-dir 
 uv run fraud-v2 sqlite-backup --db-path data/local/fraud_v2.sqlite --output-dir data/local/backups/sqlite
 uv run fraud-v2 sqlite-restore data/local/backups/sqlite/fraud_v2.sqlite.bak --restore-path data/local/fraud_v2-restored.sqlite
 powershell -ExecutionPolicy Bypass -File scripts\postgres-backup-rehearsal.ps1
+```
+
+## Verify And Clean
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
+powershell -ExecutionPolicy Bypass -File scripts\verify.ps1 -Full
+powershell -ExecutionPolicy Bypass -File scripts\clean-local.ps1
+```
+
+`verify.ps1` runs the local lint/type/test/report/capacity gate. `-Full` also
+validates the Docker full profile, builds the API image, and runs full smoke.
+`clean-local.ps1` removes ignored caches and generated smoke artifacts; it keeps
+`.venv` and `data\public` unless `-IncludeVenv` or `-IncludePublicData` is
+passed. Locked files are skipped by default; pass `-Strict` when cleanup should
+fail on any skipped path.
+
+Other local operations:
+
+```powershell
 uv run fraud-v2 compliance-draft <decision-id> --db-path data/local/fraud_v2.sqlite
 $env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
 uv run fraud-v2 evidence-export <decision-id> --db-path data/local/fraud_v2.sqlite --output-path data/local/evidence/decision-evidence.enc.json
@@ -224,9 +246,5 @@ OpenAI/Azure-backed synthetic scenario generation is available through
 ## Quality Gate
 
 ```powershell
-uv run ruff format --check .
-uv run ruff check .
-uv run fraud-v2 secrets-scan --root .
-uv run mypy src
-uv run pytest -q
+powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
 ```

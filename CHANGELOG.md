@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.47.0 - 2026-05-05
+
+- Added `scripts\verify.ps1` as the single local verification entry point for
+  lint, formatting, secrets scan, typecheck, tests, local doctor, readiness,
+  release runbook, capacity profile, and optional full Docker smoke.
+- Added `scripts\clean-local.ps1` to remove ignored local caches and generated
+  smoke artifacts with repo-bound path checks.
+- Moved completed task cards out of the active factory lane and compacted the
+  factory dashboard while keeping run records and receipts.
+
 ## 0.46.0 - 2026-05-05
 
 - Added `fraud-v2 local-doctor` to generate JSON and HTML runability checks for

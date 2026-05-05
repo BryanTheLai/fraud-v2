@@ -1,4 +1,2 @@
-uv run ruff format --check .
-uv run ruff check .
-uv run mypy src
-uv run pytest -q
+$verify = Join-Path $PSScriptRoot "verify.ps1"
+powershell -ExecutionPolicy Bypass -File $verify

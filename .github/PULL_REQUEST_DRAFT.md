@@ -83,6 +83,7 @@ Implemented:
   blockers.
 - Generated local doctor CLI for laptop runability, Docker/full-profile checks,
   optional GPU visibility, and GitHub handoff blockers.
+- Single-command verify and local cleanup scripts for lower-noise handoff.
 
 ## Test Plan
 
@@ -94,6 +95,7 @@ uv run fraud-v2 secrets-scan --root .
 uv run mypy src
 uv run pytest -q
 uv run pytest --collect-only -q
+powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
 powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1
 uv run fraud-v2 release-runbook --output-path data\local\release-runbook.md
 uv run fraud-v2 readiness-report --output-path data\local\readiness-report.json --dashboard-path data\local\readiness-report.html
@@ -102,27 +104,29 @@ uv run fraud-v2 capacity-profile --profile smoke --users 50 --score-users 5 --mi
 docker compose -f infra\docker-compose.yml --profile full config --quiet
 docker build -t fraud-v2:local .
 .\scripts\full-smoke.ps1 -TimeoutSeconds 240
+powershell -ExecutionPolicy Bypass -File scripts\clean-local.ps1
 ```
 
 Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Secrets scan: pass, 263 files scanned, zero findings
-- Pytest: pass, 120 collected tests
+- Secrets scan: pass, 268 files scanned, zero findings
+- Pytest: pass, 123 collected tests
 - GitHub handoff dry run: pass, reports missing `origin` remote and missing
   `gh auth status` as blockers
+- Verify script: pass for core and `-Full` modes
 - Release runbook smoke: pass, wrote a 2,356-byte Markdown runbook
-- Readiness report smoke: pass, wrote JSON/HTML, reported 8 checks, 19
+- Readiness report smoke: pass, wrote JSON/HTML, reported 8 checks, 20
   implemented capabilities, 7 production blockers, and blocked status from
   missing GitHub remote/auth
 - Local doctor smoke: pass, wrote JSON/HTML, reported `lite_ready: true`,
   `full_profile_ready: true`, `github_handoff_ready: false`, 16 checks, 14
   pass, 2 blocked, RTX 3050 Laptop GPU visible, 13.9 GiB RAM detected, and
-  41.2 GiB free disk
-- Capacity profile smoke: pass, 50 users, 316 events, 126.492 load events/sec,
-  60.788 score decisions/sec, JSON/HTML artifacts written
-- Docker build: pass, installed `fraud-v2==0.46.0`
+  41.3 GiB free disk
+- Capacity profile smoke: pass, 50 users, 316 events, 116.811 load events/sec,
+  62.168 score decisions/sec, JSON/HTML artifacts written
+- Docker build: pass, installed `fraud-v2==0.47.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Postgres backup rehearsal with source/restored
@@ -133,6 +137,9 @@ Latest local result:
   valid path, zero lag after valid consume, supervised stream ingest, stream
   health report with `status: healthy` and `health_score: 100`, local trace
   report proof, secrets scan proof, plus invalid-record DLQ topic proof
+- Clean local artifacts: pass, removed removable ignored caches and generated
+  smoke artifacts while keeping `.venv` and `data\public`; one generated
+  `data\local\fraud_v2.sqlite` file remained locked by Windows and was skipped
 
 ## Known Limits
 

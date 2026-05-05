@@ -65,6 +65,7 @@ It now runs locally in two modes:
 | Release runbook | Local-safe done | `release-runbook` generates one local operator handoff with run, verify, recovery, GitHub, and hard-limit steps. |
 | Readiness report | Local-safe done | `readiness-report` generates JSON/HTML snapshots of local checks, implemented capabilities, and hard production blockers. |
 | Local doctor | Local-safe done | `local-doctor` generates JSON/HTML laptop runability checks for lite mode, full-profile Docker mode, optional GPU visibility, and GitHub handoff blockers. |
+| Verification/cleanup scripts | Local-safe done | `scripts\verify.ps1` runs the gate from one command; `scripts\clean-local.ps1` removes ignored caches and smoke artifacts without touching tracked files. |
 
 ## Still Fake Or Local-Only
 
@@ -99,13 +100,7 @@ It now runs locally in two modes:
 ## Commands That Passed
 
 ```powershell
-uv run ruff format --check .
-uv run ruff check .
-uv run mypy src
-uv run pytest -q
-docker compose -f infra\docker-compose.yml --profile full config --quiet
-docker build -t fraud-v2:local .
-.\scripts\full-smoke.ps1 -TimeoutSeconds 240
+powershell -ExecutionPolicy Bypass -File scripts\verify.ps1 -Full
 ```
 
 ## Current Branch

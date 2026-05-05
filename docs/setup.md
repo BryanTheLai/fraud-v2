@@ -133,6 +133,28 @@ Full-profile smoke with cleanup:
 .\scripts\full-smoke.ps1
 ```
 
+Run the complete local verification gate:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
+powershell -ExecutionPolicy Bypass -File scripts\verify.ps1 -Full
+```
+
+`verify.ps1` runs format, lint, secrets scan, typecheck, tests, report
+generation, and the smoke capacity profile. `-Full` adds Docker Compose config,
+Docker image build, and `full-smoke.ps1`.
+
+Clean ignored local artifacts:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\clean-local.ps1
+```
+
+The cleanup script removes ignored caches and generated local data. It keeps
+`.venv` and `data\public` unless `-IncludeVenv` or `-IncludePublicData` is
+passed. Locked files are skipped by default; pass `-Strict` to fail on any
+skipped path.
+
 The smoke uses a separate Docker Compose project, `fraud-v2-smoke`, and high
 host ports by default so it does not collide with a local dev API on `8000`: API
 `18000`, Grafana `13000`, Prometheus `19090`, and Neo4j HTTP `17474`. Override
@@ -208,6 +230,8 @@ uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 stream-health --db-path data\local\fraud_v2.sqlite --lag-report-path data\local\stream-lag.json --supervision-report-path data\local\stream-supervisor.json --allow-critical
 powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -DryRun
 powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical
+powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
+powershell -ExecutionPolicy Bypass -File scripts\clean-local.ps1
 powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1
 uv run fraud-v2 release-runbook --output-path data\local\release-runbook.md
 uv run fraud-v2 readiness-report --output-path data\local\readiness-report.json --dashboard-path data\local\readiness-report.html
@@ -928,9 +952,12 @@ tests/unit/domain/test_events.py
 | Task | Command | Notes |
 |---|---|---|
 | Start infra | `docker compose -f infra\docker-compose.yml --profile full up -d` | Runs local dependencies. |
+| Verify local gate | `powershell -ExecutionPolicy Bypass -File scripts\verify.ps1` | Runs lint, format, secrets scan, typecheck, tests, local reports, and capacity smoke. |
+| Verify full gate | `powershell -ExecutionPolicy Bypass -File scripts\verify.ps1 -Full` | Adds Docker Compose config, image build, and full smoke. |
 | Full-profile smoke | `.\scripts\full-smoke.ps1` | Builds and starts full profile, scores data through the API, checks dashboard/metrics/Grafana/Prometheus/Neo4j, then stops it. |
 | Stop infra | `docker compose -f infra\docker-compose.yml --profile full down` | Does not delete volumes by default. |
 | Reset local data | `docker compose -f infra\docker-compose.yml --profile full down -v` | Destructive. Requires explicit approval in Code Factory runs. |
+| Clean local artifacts | `powershell -ExecutionPolicy Bypass -File scripts\clean-local.ps1` | Removes ignored caches and generated local smoke artifacts. |
 | Seed synthetic data | `uv run fraud-v2 generate --users 120 --output data\synthetic\tiny\events.jsonl` | No real PII. |
 | Start API | `uv run uvicorn fraud_v2.api.main:app --host 127.0.0.1 --port 8000` | API docs at `/docs`. |
 | Open dashboard | `uv run uvicorn fraud_v2.api.main:app --host 127.0.0.1 --port 8000` | Dashboard at `/dashboard`. |
