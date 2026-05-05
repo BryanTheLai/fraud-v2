@@ -22,6 +22,7 @@ from fraud_v2.domain.decisions import DecisionRequest
 from fraud_v2.domain.entities import EntityRef
 from fraud_v2.domain.enums import EntityType
 from fraud_v2.domain.retention import RetentionPolicy
+from fraud_v2.evaluation.capacity import resolve_capacity_profile, run_capacity_profile
 from fraud_v2.evaluation.load_benchmark import run_load_benchmark
 from fraud_v2.evaluation.reports import write_monitoring_report
 from fraud_v2.infrastructure.redpanda_dead_letter_publisher import RedpandaDeadLetterPublisher
@@ -229,6 +230,36 @@ def load_benchmark(
         overwrite=overwrite,
     )
     _print_json(report)
+
+
+@app.command()
+def capacity_profile(
+    profile: str = typer.Option("smoke", "--profile", help="One of: smoke, laptop, stress."),
+    users: int | None = typer.Option(None, min=10, max=100000),
+    score_users: int | None = typer.Option(None, min=1, max=10000),
+    min_load_events_per_second: float | None = typer.Option(None, min=0.0),
+    min_score_decisions_per_second: float | None = typer.Option(None, min=0.0),
+    output_dir: Path = Path("data/local/capacity"),
+    seed: int = 20260541,
+    overwrite: bool = typer.Option(False, "--overwrite"),
+    fail_on_target_miss: bool = typer.Option(False, "--fail-on-target-miss"),
+) -> None:
+    resolved_profile = resolve_capacity_profile(
+        profile,
+        users=users,
+        score_users=score_users,
+        min_load_events_per_second=min_load_events_per_second,
+        min_score_decisions_per_second=min_score_decisions_per_second,
+    )
+    report = run_capacity_profile(
+        profile=resolved_profile,
+        output_dir=output_dir,
+        seed=seed,
+        overwrite=overwrite,
+    )
+    _print_json(report)
+    if fail_on_target_miss and report["status"] != "pass":
+        raise typer.Exit(2)
 
 
 @app.command()

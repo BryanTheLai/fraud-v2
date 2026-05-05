@@ -41,6 +41,7 @@ It now runs locally in two modes:
 | Baseline ML | Done | sklearn random forest training report. |
 | Cost evaluation | Done | Profit threshold and recall under 1 percent FPR. |
 | Local load benchmark | Local-safe done | `load-benchmark` writes generation/load/scoring throughput receipts against deterministic synthetic data and SQLite. |
+| Capacity profile | Local-safe done | `capacity-profile` writes named synthetic capacity receipts with target checks plus JSON/HTML artifacts. |
 | Model registry | Done | JSON-backed artifact/report hashing and status controls. |
 | Shadow scoring | Done | Registered model probabilities logged without changing decisions. |
 | Model eval dashboard | Local-safe done | Static HTML eval dashboard renders baseline report metrics, threshold candidates, features, and optional shadow-score summary. |
@@ -58,7 +59,7 @@ It now runs locally in two modes:
 | Stream lag inspection | Local-safe done | `stream-lag` reports partition watermarks, committed offsets, and total consumer-group lag. Full smoke proves zero lag after consume. |
 | Stream health reporting | Local-safe done | `stream-health` writes JSON and static HTML operator artifacts from lag, supervisor, and stream dead-letter signals. |
 | Stream dead letters | Local-safe done | Invalid stream records, empty payloads, message errors, and idempotency conflicts persist to SQLite/Postgres for admin inspection. Optional Redpanda DLQ topic publishing is full-smoke verified. |
-| CI | Done | GitHub Actions for tests, Docker build, and API image smoke. |
+| CI | Done | GitHub Actions for tests, capacity-profile artifact upload, Docker build, and API image smoke. |
 
 ## Still Fake Or Local-Only
 
@@ -87,7 +88,7 @@ It now runs locally in two modes:
 | Vendor/legal approval | KYC, liveness, sanctions, SAR, credit decisions need contracts and counsel. | Keep mock adapters until approved. |
 | Data security | Real PII cannot live in this local repo casually. Encrypted local evidence export exists for synthetic/local decision bundles only. | Add external OIDC, field-level encryption, audit retention, secrets manager, DLP rules. |
 | Production deployment target | Architecture differs for VM, Kubernetes, managed cloud, or on-prem. | Pick target environment and SLOs. |
-| Production capacity plan | Local benchmark receipts exist, but no real traffic or SLO model. | Run larger synthetic benchmarks and then replay real redacted event distributions. |
+| Production capacity plan | Named local capacity receipts exist, but no real traffic or SLO model. | Run larger synthetic profiles and then replay real redacted event distributions. |
 | GitHub auth | Push/PR cannot happen from this machine yet. | Run `gh auth login`, then push branch and create PR. |
 
 ## Commands That Passed

@@ -26,6 +26,24 @@ jobs:
         run: uv run mypy src
       - name: Test
         run: uv run pytest -q
+      - name: Capacity profile smoke
+        run: >
+          uv run fraud-v2 capacity-profile
+          --profile smoke
+          --users 50
+          --score-users 5
+          --min-load-events-per-second 0.1
+          --min-score-decisions-per-second 0.1
+          --output-dir data/local/ci-capacity
+          --overwrite
+          --fail-on-target-miss
+      - name: Upload capacity profile artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fraud-v2-capacity-profile
+          path: data/local/ci-capacity/
+          if-no-files-found: error
 
   docker:
     runs-on: ubuntu-latest

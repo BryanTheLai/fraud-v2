@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.41.0 - 2026-05-05
+
+- Added `fraud-v2 capacity-profile` to run named synthetic capacity receipts
+  with local throughput targets.
+- Added JSON and HTML capacity reports that link the benchmark database,
+  benchmark report, checks, risk tiers, and safe non-production disclaimer.
+- Added unit coverage for passing, warning, and profile override behavior.
+
 ## 0.40.0 - 2026-05-05
 
 - Added `fraud-v2 sqlite-backup` to copy the lite-mode SQLite database and

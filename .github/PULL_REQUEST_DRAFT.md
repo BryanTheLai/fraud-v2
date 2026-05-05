@@ -26,6 +26,8 @@ Implemented:
 - Encrypted local decision evidence export CLI for human-review bundles.
 - Local synthetic load benchmark CLI that writes generation/load/scoring
   performance receipts.
+- Local capacity-profile CLI that writes JSON/HTML synthetic capacity receipts
+  with target checks.
 - Cost-weighted model threshold reporting.
 - Analyst dashboard with recent decisions and open review queue.
 - Graph evidence dashboard for local analyst review.
@@ -71,6 +73,7 @@ Implemented:
 - Windows local stream service runner wraps supervised consume, optional lag
   inspection, and stream health artifacts for Task Scheduler or manual loops.
 - GitHub Actions test, Docker build, and API image smoke workflow.
+- GitHub Actions capacity-profile smoke artifact upload.
 
 ## Test Plan
 
@@ -78,8 +81,10 @@ Implemented:
 uv sync --extra dev --extra infra --extra llm
 uv run ruff format --check .
 uv run ruff check .
+uv run fraud-v2 secrets-scan --root .
 uv run mypy src
 uv run pytest -q
+uv run fraud-v2 capacity-profile --profile smoke --users 50 --score-users 5 --min-load-events-per-second 0.1 --min-score-decisions-per-second 0.1 --output-dir data\local\ci-capacity --overwrite --fail-on-target-miss
 docker compose -f infra\docker-compose.yml --profile full config --quiet
 docker build -t fraud-v2:local .
 .\scripts\full-smoke.ps1 -TimeoutSeconds 240
@@ -89,9 +94,11 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Secrets scan: pass, 238 files scanned, zero findings
-- Pytest: pass, 104 collected tests
-- Docker build: pass, installed `fraud-v2==0.40.0`
+- Secrets scan: pass, 242 files scanned, zero findings
+- Pytest: pass, 107 collected tests
+- Capacity profile smoke: pass, 50 users, 316 events, 131.951 load events/sec,
+  61.006 score decisions/sec, JSON/HTML artifacts written
+- Docker build: pass, installed `fraud-v2==0.41.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, audit archive proof, Redis feature cache, Neo4j projection, and

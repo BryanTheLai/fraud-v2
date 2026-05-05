@@ -185,6 +185,7 @@ Reports and LLM scenario generation:
 uv run fraud-v2 replay --events-path data\synthetic\tiny\events.jsonl
 uv run fraud-v2 monitor --events-path data\synthetic\tiny\events.jsonl
 uv run fraud-v2 load-benchmark --users 1000 --score-users 50 --overwrite
+uv run fraud-v2 capacity-profile --profile smoke --overwrite
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run
 uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10
@@ -610,6 +611,22 @@ a local laptop receipt, not a production capacity plan. Increase `--users` and
 `--score-users` when you want a heavier run; keep `--overwrite` explicit so the
 benchmark does not silently mix old and new data.
 
+Run a named capacity profile with target checks and JSON/HTML receipts:
+
+```powershell
+uv run fraud-v2 capacity-profile `
+  --profile smoke `
+  --output-dir data\local\capacity `
+  --overwrite
+```
+
+Profiles are `smoke`, `laptop`, and `stress`. You can override `--users`,
+`--score-users`, `--min-load-events-per-second`, and
+`--min-score-decisions-per-second` for a custom local proof. Add
+`--fail-on-target-miss` in CI or release rehearsals when a missed target should
+return a non-zero exit code. The capacity report is still synthetic evidence,
+not a production SLO or real traffic capacity claim.
+
 ## Secrets Hygiene
 
 Run the local secrets scan before pushing or sharing logs:
@@ -826,6 +843,7 @@ tests/unit/domain/test_events.py
 | Train baseline | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | CPU default. |
 | Evaluate model | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` | Writes metrics, cost, and threshold report. |
 | Local load benchmark | `uv run fraud-v2 load-benchmark --users 1000 --score-users 50 --overwrite` | Writes a synthetic generation/load/scoring throughput receipt. |
+| Capacity profile | `uv run fraud-v2 capacity-profile --profile smoke --overwrite` | Writes JSON and HTML receipts with throughput target checks. |
 | Drain local outbox | `uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run` | Publishes through a dry-run publisher by default. |
 | Consume Redpanda stream | `uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10` | Bounded local consumer for canonical event envelopes. |
 | Supervise Redpanda stream | `uv run fraud-v2 stream-supervise --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --max-batches 3 --batch-size 100 --output-path data\local\stream-supervisor.json` | Repeated bounded consumes with backoff, idle accounting, and failure accounting. |

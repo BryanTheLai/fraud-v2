@@ -34,8 +34,8 @@ when `FRAUD_TRACE_EXPORT_PATH` is set.
 The CI and local CLI include a safe secrets scan for real-looking keys before
 code leaves the laptop.
 Threshold policies also have local signed approval commands for governance
-rehearsal before promotion. A local load benchmark CLI writes repeatable
-synthetic performance receipts for laptop validation. Decision evidence exports
+rehearsal before promotion. Local load benchmark and capacity-profile CLIs write
+repeatable synthetic performance receipts for laptop validation. Decision evidence exports
 can be encrypted locally for human review without creating a regulatory filing.
 Audit entries can be exported into a local JSONL archive plus manifest for
 custody review.
@@ -163,6 +163,7 @@ full stack.
 uv run fraud-v2 replay --events-path data/synthetic/tiny/events.jsonl
 uv run fraud-v2 monitor --events-path data/synthetic/tiny/events.jsonl
 uv run fraud-v2 load-benchmark --users 1000 --score-users 50 --overwrite
+uv run fraud-v2 capacity-profile --profile smoke --overwrite
 uv run fraud-v2 llm-stub
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data/local/fraud_v2.sqlite --dry-run
