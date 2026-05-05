@@ -126,7 +126,8 @@ host ports by default so it does not collide with a local dev API on `8000`: API
 with parameters such as `-ApiPort 18001` if needed. It resets only that isolated
 smoke project, then verifies Postgres-backed API state, review decisions,
 Postgres, Redis, Neo4j, Redpanda publish, and Redpanda consume-to-Postgres from
-inside the API container.
+inside the API container, then writes a local stream health report before the
+invalid-record DLQ smoke.
 
 Keep services running for manual inspection:
 
@@ -186,10 +187,11 @@ uv run fraud-v2 load-benchmark --users 1000 --score-users 50 --overwrite
 uv run fraud-v2 llm-generate --provider offline
 uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run
 uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10
-uv run fraud-v2 stream-supervise --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --max-batches 3 --batch-size 100
+uv run fraud-v2 stream-supervise --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --max-batches 3 --batch-size 100 --output-path data\local\stream-supervisor.json
 uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10 --publish-dead-letters --dead-letter-topic fraud.dead_letters --allow-errors
-uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local
+uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --output-path data\local\stream-lag.json
 uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite
+uv run fraud-v2 stream-health --db-path data\local\fraud_v2.sqlite --lag-report-path data\local\stream-lag.json --supervision-report-path data\local\stream-supervisor.json --allow-critical
 uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite
 $env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
 uv run fraud-v2 evidence-export <decision-id> --db-path data\local\fraud_v2.sqlite --output-path data\local\evidence\decision-evidence.enc.json
@@ -332,7 +334,8 @@ uv run fraud-v2 stream-supervise `
   --max-batches 3 `
   --batch-size 100 `
   --max-empty-polls 3 `
-  --restart-backoff-seconds 5
+  --restart-backoff-seconds 5 `
+  --output-path data\local\stream-supervisor.json
 ```
 
 The supervisor repeatedly runs bounded consume batches, reports aggregate
@@ -372,12 +375,31 @@ Inspect stream lag for a consumer group:
 uv run fraud-v2 stream-lag `
   --bootstrap-servers localhost:19092 `
   --topic fraud.events `
-  --group-id fraud-v2-local
+  --group-id fraud-v2-local `
+  --output-path data\local\stream-lag.json
 ```
 
 The report includes low/high watermarks, committed offsets, per-partition lag,
 and total lag. If a group has no committed offset yet, lag is reported as
 unknown for that partition instead of inventing precision.
+
+Write a local stream health report and dashboard:
+
+```powershell
+uv run fraud-v2 stream-health `
+  --db-path data\local\fraud_v2.sqlite `
+  --lag-report-path data\local\stream-lag.json `
+  --supervision-report-path data\local\stream-supervisor.json `
+  --output-path data\local\stream-health-report.json `
+  --dashboard-path data\local\stream-health-dashboard.html `
+  --allow-critical
+```
+
+The health report combines lag, recent supervisor counts, and stored stream dead
+letters into a simple `healthy`, `degraded`, or `critical` status. By default it
+does not require Redpanda; pass `--live-lag` to query Redpanda directly. This is
+a local operator artifact, not Alertmanager, PagerDuty, or managed stream
+monitoring.
 
 Show the active default threshold policy:
 
@@ -688,10 +710,11 @@ tests/unit/domain/test_events.py
 | Local load benchmark | `uv run fraud-v2 load-benchmark --users 1000 --score-users 50 --overwrite` | Writes a synthetic generation/load/scoring throughput receipt. |
 | Drain local outbox | `uv run fraud-v2 outbox-drain --db-path data\local\fraud_v2.sqlite --dry-run` | Publishes through a dry-run publisher by default. |
 | Consume Redpanda stream | `uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10` | Bounded local consumer for canonical event envelopes. |
-| Supervise Redpanda stream | `uv run fraud-v2 stream-supervise --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --max-batches 3 --batch-size 100` | Repeated bounded consumes with backoff, idle accounting, and failure accounting. |
+| Supervise Redpanda stream | `uv run fraud-v2 stream-supervise --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --max-batches 3 --batch-size 100 --output-path data\local\stream-supervisor.json` | Repeated bounded consumes with backoff, idle accounting, and failure accounting. |
 | Consume with Redpanda DLQ | `uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --publish-dead-letters --dead-letter-topic fraud.dead_letters --allow-errors` | Writes bad records to app-store dead letters and a Redpanda DLQ topic. |
-| Inspect stream lag | `uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local` | Reports partition watermarks, committed offsets, and total consumer lag. |
+| Inspect stream lag | `uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --output-path data\local\stream-lag.json` | Reports partition watermarks, committed offsets, and total consumer lag. |
 | Inspect stream dead letters | `uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite` | Shows invalid/conflicting stream records stored for admin inspection. |
+| Stream health report | `uv run fraud-v2 stream-health --db-path data\local\fraud_v2.sqlite --lag-report-path data\local\stream-lag.json --output-path data\local\stream-health-report.json --dashboard-path data\local\stream-health-dashboard.html --allow-critical` | Writes JSON and static HTML health artifacts from lag, supervisor, and dead-letter signals. |
 | Export compliance draft | `uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes a human-review-only local draft. |
 | Export encrypted evidence | `uv run fraud-v2 evidence-export <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes an AES-256-GCM encrypted local decision evidence bundle. |
 | Retention report | `uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite` | Counts expired records without deleting them. |

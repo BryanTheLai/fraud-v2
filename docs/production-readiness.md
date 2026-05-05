@@ -52,6 +52,7 @@ It now runs locally in two modes:
 | Stream ingestion | Local-safe done | Redpanda consumer CLI stores canonical events through SQLite/Postgres with idempotent duplicate handling. Full smoke proves publish-consume-Postgres round trip. |
 | Stream supervision | Local-safe done | `stream-supervise` runs repeated bounded consume batches with backoff, failure accounting, idle accounting, and full-smoke Postgres ingest proof. |
 | Stream lag inspection | Local-safe done | `stream-lag` reports partition watermarks, committed offsets, and total consumer-group lag. Full smoke proves zero lag after consume. |
+| Stream health reporting | Local-safe done | `stream-health` writes JSON and static HTML operator artifacts from lag, supervisor, and stream dead-letter signals. |
 | Stream dead letters | Local-safe done | Invalid stream records, empty payloads, message errors, and idempotency conflicts persist to SQLite/Postgres for admin inspection. Optional Redpanda DLQ topic publishing is full-smoke verified. |
 | CI | Done | GitHub Actions for tests, Docker build, and API image smoke. |
 
@@ -68,7 +69,7 @@ It now runs locally in two modes:
 | Retention enforcement | Explicit local prune exists for non-audit records. No schedules, legal holds, archive tiers, or WORM audit archival yet. |
 | Persistence | SQLite remains the lite default; Docker full mode uses Postgres for app state. |
 | Policy governance | JSON policy packs, local promotion registry, and local signed approvals exist. No external KMS/HSM, registry service, legal approval system, or enterprise change-management integration yet. |
-| Streaming | Redpanda publisher, bounded consumer, local supervisor CLI, lag CLI, app-store dead letters, and optional Redpanda DLQ topic publishing are smoke-tested locally. There is no OS service manager, lag dashboard, or Flink/managed-stream deployment yet. |
+| Streaming | Redpanda publisher, bounded consumer, local supervisor CLI, lag CLI, stream health report, app-store dead letters, and optional Redpanda DLQ topic publishing are smoke-tested locally. There is no OS service manager, Alertmanager/PagerDuty path, or Flink/managed-stream deployment yet. |
 | Graph DB | Neo4j projector is smoke-tested; decision engine still uses NetworkX fallback. |
 | Observability | Local metrics, dashboard, request logs, trace IDs, and Prometheus alerts exist; no distributed tracing backend yet. |
 | Deployment | Local Docker only. No cloud/IaC/production deploy. |

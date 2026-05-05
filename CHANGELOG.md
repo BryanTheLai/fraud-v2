@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.35.0 - 2026-05-05
+
+- Added `fraud-v2 stream-health` to write a local JSON and HTML stream
+  operations report from lag, supervisor, and dead-letter signals.
+- Added stream health thresholds for lag, stored dead letters, failed
+  supervisor batches, and DLQ publish failures.
+- Added optional report-file output for `stream-lag` and `stream-supervise` so
+  repeated stream reliability checks can feed later health reports.
+
 ## 0.34.0 - 2026-05-05
 
 - Added `fraud-v2 model-eval-dashboard` to render baseline model reports and

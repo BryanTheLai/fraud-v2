@@ -26,6 +26,7 @@ label events for replay/training. Full mode uses Postgres as the primary app
 store and includes Redis, Redpanda, Neo4j, Prometheus, and a provisioned Grafana
 dashboard. Stream ingestion now has bounded consume, supervised consume,
 dead-letter, DLQ publishing, and lag-inspection CLIs for local reliability work.
+Stream health can now be summarized into local JSON and HTML operator reports.
 Threshold policies also have local signed approval commands for governance
 rehearsal before promotion. A local load benchmark CLI writes repeatable
 synthetic performance receipts for laptop validation. Decision evidence exports
@@ -134,7 +135,8 @@ dashboard, verifies Prometheus metrics, checks graph evidence rendering, loads
 Grafana, verifies the Postgres adapter inside the Docker network, verifies
 Redis and Neo4j adapters, publishes a Redpanda event, consumes it back into
 Postgres through the stream worker, proves zero consumer lag, runs the
-supervised stream worker path, verifies invalid-record DLQ publishing, then
+supervised stream worker path, writes a stream health report, verifies
+invalid-record DLQ publishing, then
 shuts the stack down unless `-KeepRunning` is set.
 
 `full-smoke.ps1` uses high host ports by default, for example API `18000`,
@@ -155,8 +157,9 @@ uv run fraud-v2 outbox-drain --db-path data/local/fraud_v2.sqlite --dry-run
 uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10
 uv run fraud-v2 stream-supervise --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --max-batches 3 --batch-size 100
 uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud.events --max-messages 10 --publish-dead-letters --dead-letter-topic fraud.dead_letters --allow-errors
-uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local
+uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --output-path data/local/stream-lag.json
 uv run fraud-v2 stream-dead-letters --db-path data/local/fraud_v2.sqlite
+uv run fraud-v2 stream-health --db-path data/local/fraud_v2.sqlite --lag-report-path data/local/stream-lag.json --output-path data/local/stream-health-report.json --dashboard-path data/local/stream-health-dashboard.html --allow-critical
 uv run fraud-v2 compliance-draft <decision-id> --db-path data/local/fraud_v2.sqlite
 $env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
 uv run fraud-v2 evidence-export <decision-id> --db-path data/local/fraud_v2.sqlite --output-path data/local/evidence/decision-evidence.enc.json

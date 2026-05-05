@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-034 - Add Model Eval Dashboard](tasks/active/TC-20260505-034-add-model-eval-dashboard.md)
+- [TC-20260505-035 - Add Stream Health Report](tasks/active/TC-20260505-035-add-stream-health-report.md)
 
 ## Runs Waiting For Bryan
 
@@ -42,6 +42,7 @@ Updated: 2026-05-05
 - [RR-20260505-032](runs/RR-20260505-032.md)
 - [RR-20260505-033](runs/RR-20260505-033.md)
 - [RR-20260505-034](runs/RR-20260505-034.md)
+- [RR-20260505-035](runs/RR-20260505-035.md)
 
 ## Blocked Work
 
@@ -97,6 +98,8 @@ Updated: 2026-05-05
 - Added encrypted local decision-evidence exports.
 - Added PaySim public dataset conversion into canonical local events.
 - Added a static local model eval dashboard artifact.
+- Added a local stream health report and dashboard for lag, supervisor, and
+  dead-letter signals.
 
 ## Lessons Added
 
@@ -108,6 +111,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M34 model eval dashboard. Next implementation task
-should add lag/dashboard alerting or service-manager docs if Bryan chooses to
-go deeper.
+Review local MVP through M35 stream health reporting. Next implementation task
+should add Windows service-manager docs/scripts or distributed tracing if Bryan
+chooses to go deeper.

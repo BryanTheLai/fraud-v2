@@ -31,6 +31,13 @@ from fraud_v2.models.eval_dashboard import write_model_eval_dashboard
 from fraud_v2.models.registry import JsonModelRegistry, ModelStatus
 from fraud_v2.models.shadow import write_shadow_scores
 from fraud_v2.models.train import train_baseline
+from fraud_v2.observability.stream_health import (
+    StreamHealthStatus,
+    StreamHealthThresholds,
+    build_stream_health_report,
+    load_json_mapping,
+    write_stream_health_artifacts,
+)
 from fraud_v2.policy.approvals import (
     JsonPolicyApprovalStore,
     create_policy_approval,
@@ -83,6 +90,16 @@ SCENARIO_SCHEMA: dict[str, Any] = {
 
 def _print_json(payload: Any) -> None:
     typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+
+
+def _write_json_payload(payload: Any, output_path: Path | None) -> None:
+    if output_path is None:
+        return
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True, default=str),
+        encoding="utf-8",
+    )
 
 
 @app.command()
@@ -477,6 +494,7 @@ def stream_supervise(
     ),
     dead_letter_topic: str = "fraud.dead_letters",
     fail_on_unhealthy: bool = typer.Option(True, "--fail-on-unhealthy/--allow-unhealthy"),
+    output_path: Path | None = None,
 ) -> None:
     store = _store_from_cli(
         store_backend=store_backend,
@@ -504,7 +522,9 @@ def stream_supervise(
         ),
         dead_letter_topic=dead_letter_topic,
     ).run(max_batches=max_batches)
-    _print_json(report.__dict__)
+    payload = report.__dict__
+    _write_json_payload(payload, output_path)
+    _print_json(payload)
     if report.status == "failed" and fail_on_unhealthy:
         raise typer.Exit(code=2)
 
@@ -537,13 +557,97 @@ def stream_lag(
     topic: str = "fraud.events",
     group_id: str = "fraud-v2-local",
     timeout_seconds: float = typer.Option(10.0, min=1.0, max=60.0),
+    output_path: Path | None = None,
 ) -> None:
     report = RedpandaLagProbe(bootstrap_servers=bootstrap_servers).report(
         topic=topic,
         group_id=group_id,
         timeout_seconds=timeout_seconds,
     )
-    _print_json(asdict(report))
+    payload = asdict(report)
+    _write_json_payload(payload, output_path)
+    _print_json(payload)
+
+
+@app.command()
+def stream_health(
+    bootstrap_servers: str = "localhost:19092",
+    topic: str = "fraud.events",
+    group_id: str = "fraud-v2-local",
+    live_lag: bool = typer.Option(False, "--live-lag/--skip-live-lag"),
+    lag_report_path: Path | None = None,
+    supervision_report_path: Path | None = None,
+    store_backend: str = typer.Option("sqlite", "--store-backend"),
+    db_path: Path = Path("data/local/fraud_v2.sqlite"),
+    postgres_dsn: str = "postgresql://fraud:fraud@localhost:5432/fraud_v2",
+    dead_letter_limit: int = typer.Option(100, min=1, max=1000),
+    warning_lag: int = typer.Option(100, min=1),
+    critical_lag: int = typer.Option(1000, min=1),
+    warning_dead_letters: int = typer.Option(1, min=1),
+    critical_dead_letters: int = typer.Option(10, min=1),
+    warning_failed_batches: int = typer.Option(1, min=1),
+    critical_failed_batches: int = typer.Option(3, min=1),
+    output_path: Path = Path("data/local/stream-health-report.json"),
+    dashboard_path: Path = Path("data/local/stream-health-dashboard.html"),
+    fail_on_critical: bool = typer.Option(True, "--fail-on-critical/--allow-critical"),
+) -> None:
+    store = _store_from_cli(
+        store_backend=store_backend,
+        db_path=db_path,
+        postgres_dsn=postgres_dsn,
+    )
+    lag_payload: dict[str, Any] | None = None
+    lag_source = "not_checked"
+    lag_error: str | None = None
+    if lag_report_path is not None:
+        lag_payload = dict(load_json_mapping(lag_report_path))
+        lag_source = str(lag_report_path)
+    elif live_lag:
+        lag_source = "live"
+        try:
+            lag_payload = asdict(
+                RedpandaLagProbe(bootstrap_servers=bootstrap_servers).report(
+                    topic=topic,
+                    group_id=group_id,
+                )
+            )
+        except RuntimeError as exc:
+            lag_error = f"{type(exc).__name__}: {exc}"[:500]
+
+    supervision_payload = (
+        dict(load_json_mapping(supervision_report_path))
+        if supervision_report_path is not None
+        else None
+    )
+    report = build_stream_health_report(
+        topic=topic,
+        group_id=group_id,
+        dead_letters=store.list_stream_dead_letters(limit=dead_letter_limit),
+        dead_letter_limit=dead_letter_limit,
+        lag_payload=lag_payload,
+        lag_source=lag_source,
+        lag_error=lag_error,
+        supervision_payload=supervision_payload,
+        supervision_source=str(supervision_report_path)
+        if supervision_report_path
+        else "not_loaded",
+        thresholds=StreamHealthThresholds(
+            warning_lag=warning_lag,
+            critical_lag=critical_lag,
+            warning_dead_letters=warning_dead_letters,
+            critical_dead_letters=critical_dead_letters,
+            warning_failed_batches=warning_failed_batches,
+            critical_failed_batches=critical_failed_batches,
+        ),
+    )
+    report = write_stream_health_artifacts(
+        report,
+        output_path=output_path,
+        dashboard_path=dashboard_path,
+    )
+    _print_json(report.model_dump(mode="json"))
+    if report.status == StreamHealthStatus.CRITICAL and fail_on_critical:
+        raise typer.Exit(code=2)
 
 
 @app.command()

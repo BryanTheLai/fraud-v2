@@ -369,7 +369,8 @@ print(f"redpanda_publish={event.idempotency_key}")
     exec -T api uv run --no-sync fraud-v2 stream-lag `
       --bootstrap-servers redpanda:9092 `
       --topic fraud.events.smoke `
-      --group-id $redpandaConsumerGroup 2>&1
+      --group-id $redpandaConsumerGroup `
+      --output-path data/local/full-smoke-stream-lag.json 2>&1
   Assert-FraudCondition ($LASTEXITCODE -eq 0) "Redpanda stream lag smoke failed: $redpandaLagResult"
   Write-Host ($redpandaLagResult -join "`n")
   Assert-FraudCondition (($redpandaLagResult -join "`n") -like '*"total_lag": 0*') "Redpanda stream lag should be zero after consuming the smoke event."
@@ -414,12 +415,31 @@ print(f"redpanda_supervised_publish={event.idempotency_key}")
       --postgres-dsn postgresql://fraud:fraud@postgres:5432/fraud_v2 `
       --batch-size 1 `
       --max-batches 1 `
-      --max-empty-polls 20 2>&1
+      --max-empty-polls 20 `
+      --output-path data/local/full-smoke-stream-supervisor.json 2>&1
   Assert-FraudCondition ($LASTEXITCODE -eq 0) "Redpanda stream supervisor smoke failed: $redpandaSupervisorResult"
   Write-Host ($redpandaSupervisorResult -join "`n")
   Assert-FraudCondition (($redpandaSupervisorResult -join "`n") -like '*"status": "completed"*') "Redpanda stream supervisor did not complete."
   Assert-FraudCondition (($redpandaSupervisorResult -join "`n") -like '*"completed_batches": 1*') "Redpanda stream supervisor did not complete one batch."
   Assert-FraudCondition (($redpandaSupervisorResult -join "`n") -like '*"ingested": 1*') "Redpanda stream supervisor did not ingest the supervised smoke event."
+
+  $streamHealthResult = docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync fraud-v2 stream-health `
+      --topic fraud.events.smoke `
+      --group-id $redpandaConsumerGroup `
+      --store-backend postgres `
+      --postgres-dsn postgresql://fraud:fraud@postgres:5432/fraud_v2 `
+      --lag-report-path data/local/full-smoke-stream-lag.json `
+      --supervision-report-path data/local/full-smoke-stream-supervisor.json `
+      --output-path data/local/full-smoke-stream-health.json `
+      --dashboard-path data/local/full-smoke-stream-health.html 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Stream health smoke failed: $streamHealthResult"
+  Write-Host ($streamHealthResult -join "`n")
+  Assert-FraudCondition (($streamHealthResult -join "`n") -like '*"status": "healthy"*') "Stream health report should be healthy before invalid DLQ smoke."
+  Assert-FraudCondition (($streamHealthResult -join "`n") -like '*"health_score": 100*') "Stream health score should be 100 before invalid DLQ smoke."
 
   $redpandaProof = @"
 from fraud_v2.storage.postgres_store import PostgresStore
