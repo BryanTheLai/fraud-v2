@@ -21,4 +21,6 @@ def test_github_handoff_reports_blockers_as_json() -> None:
     assert "remote_configured" in script
     assert "gh_authenticated" in script
     assert "worktree_clean" in script
+    assert "blockers" in script
     assert "next_commands" in script
+    assert '$nextCommands += "git remote add $RemoteName <repo-url>"' in script

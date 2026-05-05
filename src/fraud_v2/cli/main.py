@@ -17,6 +17,7 @@ from fraud_v2.compliance.evidence import (
     EVIDENCE_PASSPHRASE_ENV,
     write_encrypted_decision_evidence,
 )
+from fraud_v2.connectors.signal_lab import LocalCameraMetadataAnalyzer, LocalPublicKybConnector
 from fraud_v2.decision.engine import DecisionEngine
 from fraud_v2.domain.decisions import DecisionRequest
 from fraud_v2.domain.entities import EntityRef
@@ -24,6 +25,7 @@ from fraud_v2.domain.enums import EntityType
 from fraud_v2.domain.retention import RetentionPolicy
 from fraud_v2.evaluation.capacity import resolve_capacity_profile, run_capacity_profile
 from fraud_v2.evaluation.load_benchmark import run_load_benchmark
+from fraud_v2.evaluation.mlops import write_mlops_report
 from fraud_v2.evaluation.reports import write_monitoring_report
 from fraud_v2.infrastructure.redpanda_dead_letter_publisher import RedpandaDeadLetterPublisher
 from fraud_v2.infrastructure.redpanda_lag import RedpandaLagProbe
@@ -224,6 +226,55 @@ def monitor(
 ) -> None:
     report = write_monitoring_report(events_path, db_path, output_path)
     _print_json(report)
+
+
+@app.command()
+def mlops_report(
+    events_path: Path = Path("data/synthetic/tiny/events.jsonl"),
+    db_path: Path = Path("data/local/mlops.sqlite"),
+    output_path: Path = Path("data/local/mlops-report.json"),
+    simulate_score_shift_points: int = typer.Option(12, min=-100, max=100),
+) -> None:
+    report = write_mlops_report(
+        events_path=events_path,
+        db_path=db_path,
+        output_path=output_path,
+        simulate_score_shift_points=simulate_score_shift_points,
+    )
+    _print_json(report)
+
+
+@app.command()
+def signal_lab(
+    camera_make: str | None = "Canon",
+    camera_model: str | None = None,
+    software_tag: str | None = "OBS Virtual Camera",
+    business_name: str = "Bryan Lab Holdings",
+    jurisdiction: str = "US",
+    registry_status: str = "active",
+    lei_status: str = "missing",
+    sanctions_hit: bool = False,
+    company_age_days: int = typer.Option(14, min=0, max=50000),
+) -> None:
+    camera = LocalCameraMetadataAnalyzer().inspect(
+        camera_make=camera_make,
+        camera_model=camera_model,
+        software_tag=software_tag,
+    )
+    kyb = LocalPublicKybConnector().lookup(
+        business_name=business_name,
+        jurisdiction=jurisdiction,
+        registry_status=registry_status,
+        lei_status=lei_status,
+        sanctions_hit=sanctions_hit,
+        company_age_days=company_age_days,
+    )
+    _print_json(
+        {
+            "camera_metadata": camera.model_dump(mode="json"),
+            "public_kyb": kyb.model_dump(mode="json"),
+        }
+    )
 
 
 @app.command()

@@ -5,6 +5,7 @@ from fraud_v2.connectors.mock_vendors import (
     MockDeviceIntelConnector,
     MockKycConnector,
 )
+from fraud_v2.connectors.signal_lab import LocalCameraMetadataAnalyzer, LocalPublicKybConnector
 from fraud_v2.converters.raw_events import RawConversionError, RawEventConverter
 from fraud_v2.domain.enums import EventType, PaymentRail
 
@@ -67,3 +68,25 @@ def test_mock_connectors_emit_safe_synthetic_signals() -> None:
     assert device.signals["emulator_hint"] is True
     assert consortium.signals["known_bad_identifier"] is True
     assert "Mock" in kyc.safe_reason
+
+
+def test_signal_lab_connectors_are_local_and_review_oriented() -> None:
+    camera = LocalCameraMetadataAnalyzer().inspect(
+        camera_make="Canon",
+        camera_model=None,
+        software_tag="OBS Virtual Camera",
+    )
+    kyb = LocalPublicKybConnector().lookup(
+        business_name="Bryan Lab Holdings",
+        jurisdiction="US",
+        registry_status="active",
+        lei_status="missing",
+        sanctions_hit=False,
+        company_age_days=14,
+    )
+
+    assert camera.status == "REVIEW"
+    assert camera.signals["virtual_camera_software"] is True
+    assert kyb.status == "REVIEW"
+    assert kyb.signals["public_data_only"] is True
+    assert "not a real KYC/KYB vendor" in kyb.safe_reason

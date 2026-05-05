@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.49.0 - 2026-05-05
+
+- Added `fraud-v2 mlops-report` and `/dashboard/ml` rendering for local PSI
+  score drift, red-threshold confusion proxy, and simulated analyst Kappa.
+- Added `/dashboard/signals` and `fraud-v2 signal-lab` for local camera
+  metadata and public-KYB-style checks with no external vendor calls.
+- Added Break-the-Spell draft previews to yellow case rails so APP/BEC-style
+  interventions are visible without sending real customer messages.
+
 ## 0.48.0 - 2026-05-05
 
 - Added the `/demo` cockpit with seeded scenario buttons, custom local scoring

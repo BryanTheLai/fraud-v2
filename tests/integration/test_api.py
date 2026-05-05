@@ -73,6 +73,12 @@ def test_api_generate_and_score(tmp_path) -> None:  # type: ignore[no-untyped-de
     assert ml.status_code == 200
     assert "ML Dashboard" in ml.text
 
+    signals = client.get("/dashboard/signals")
+    assert signals.status_code == 200
+    assert "Signal Lab" in signals.text
+    assert "Public KYB" in signals.text
+    assert "No external calls" in signals.text
+
     reset = client.post("/demo/reset", follow_redirects=False)
     assert reset.status_code == 303
 

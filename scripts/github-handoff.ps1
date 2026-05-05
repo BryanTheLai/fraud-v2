@@ -63,6 +63,26 @@ $ready = $remoteConfigured -and $ghAuthenticated -and $bodyExists -and $worktree
 
 $pushCommand = "git push -u $RemoteName $branch"
 $prCommand = "gh pr create --base $Base --title `"$Title`" --body-file $BodyFile"
+$blockers = @()
+$nextCommands = @()
+if (-not $ghAuthenticated) {
+  $blockers += "github_auth"
+  $nextCommands += "gh auth login"
+}
+if (-not $remoteConfigured) {
+  $blockers += "origin_remote"
+  $nextCommands += "git remote add $RemoteName <repo-url>"
+}
+if (-not $bodyExists) {
+  $blockers += "pr_body_file"
+  $nextCommands += "create $BodyFile"
+}
+if (-not $worktreeClean) {
+  $blockers += "worktree_clean"
+  $nextCommands += "git status --short"
+}
+$nextCommands += $pushCommand
+$nextCommands += $prCommand
 $report = [ordered]@{
   schema_version = "github-handoff-v1"
   branch = $branch
@@ -75,12 +95,8 @@ $report = [ordered]@{
   worktree_clean = $worktreeClean
   execute = $Execute.IsPresent
   ready = $ready
-  next_commands = @(
-    "gh auth login",
-    "git remote add $RemoteName <repo-url>",
-    $pushCommand,
-    $prCommand
-  )
+  blockers = $blockers
+  next_commands = $nextCommands
 }
 
 if (-not $Execute) {

@@ -30,6 +30,12 @@ Implementation update:
 - `/dashboard/ops` exists as a human-readable metrics page; raw Prometheus
   remains at `/metrics`.
 - `/dashboard/ml` exists and reads `data/models/baseline/baseline-report.json`.
+- `fraud-v2 mlops-report` writes a local PSI/Kappa report and `/dashboard/ml`
+  renders it when `data/local/mlops-report.json` exists.
+- `/dashboard/signals` and `fraud-v2 signal-lab` show local camera metadata and
+  public-KYB-style checks without external vendor calls.
+- Yellow case rails can render a Break-the-Spell draft checklist; no real
+  customer message is sent.
 - Graph SVG now has a legend, node type markers, confirmed-fraud styling, and
   highlighted target/fraud edges.
 - Feature vectors now include `declared_income_leading_digit` and
@@ -50,16 +56,16 @@ Implementation update:
 | ML dashboard | Model pieces exist but are not prominent. | Static report only; in-app ML dashboard; notebook. | In-app dashboard makes the ML project visible. Notebook is less demoable. | Continue: build ML dashboard. |
 | Tabular ML | Current sklearn baseline exists. | Keep sklearn; add XGBoost/LightGBM optional; deep models. | XGBoost/LightGBM likely best practical next step; deep models need more data. | Continue: optional XGBoost/LightGBM; pause deep model as default. |
 | Calibration and profit | Evaluations exist but not front-and-center. | Leave report; add charts; add threshold tuner. | Charts/tuner make the fraud economics real. | Continue. |
-| Drift and PSI | Concept exists, UI surface weak. | Static metric; drift simulator; ops alert. | Simulator is cheap and demoable. | Continue. |
-| Cohen's Kappa / IRR | Needs multiple reviewers or simulated reviewers. | Ignore; simulate second reviewer; real analysts. | Real analysts unavailable. Simulation proves math. | Continue: simulated reviewers. |
+| Drift and PSI | Real production drift needs real reference/current data. | Static metric; drift simulator; ops alert. | Simulator is useful for demo but not a production monitoring claim. | Implemented local simulator/report; keep real production drift paused until real traffic. |
+| Cohen's Kappa / IRR | Real IRR needs multiple analysts. | Ignore; simulate second reviewer; real analysts. | Real analysts unavailable. Simulation proves math only. | Implemented simulated reviewers; pause real analyst QA until real reviewers exist. |
 | KYC/KYB | Real production access is not available in repo. | Mocks; sandbox adapters; public registries; real vendors. | Real vendors need accounts, billing, secrets, legal/privacy review. Public data is safe but incomplete. | Continue mocks/public/sandbox; pause production KYC/KYB. |
-| Public KYB-like data | Which public sources to use is still open. | Companies House; GLEIF; OFAC/OpenSanctions-style datasets. | Public data helps demo but is not a full vendor replacement. | Continue: add safe public adapters. |
-| Liveness/deepfake | No real vendor or real biometric pipeline. | Metadata only; EXIF upload; sandbox liveness; ML deepfake detector. | EXIF is cheap and visible but weak. Real liveness is vendor/legal heavy. | Continue: EXIF demo; pause real liveness. |
+| Public KYB-like data | Live source choice and terms remain production questions. | Companies House; GLEIF; OFAC/OpenSanctions-style datasets. | Public data helps demo but is not a full vendor replacement. | Implemented local public-KYB-shaped demo; pause live calls. |
+| Liveness/deepfake | No real vendor or real biometric pipeline. | Metadata only; EXIF upload; sandbox liveness; ML deepfake detector. | Metadata is cheap and visible but weak. Real liveness is vendor/legal heavy. | Implemented local metadata demo; pause real liveness. |
 | Behavioral biometrics | Real client telemetry is privacy-sensitive. | Synthetic only; browser demo telemetry; real capture. | Browser demo is useful but must be clearly synthetic/local. | Continue synthetic + UI knobs; pause real capture. |
 | Consortium data | Real shared fraud intel is enterprise/contractual. | Mock list; public sanctions/entity data; real consortium. | Public data is not consortium fraud intelligence. | Continue mock/public; pause real consortium. |
 | Instant Cash story | Current app is broad; story needs a clear wedge. | ATO; instant cash; card testing; all-at-once. | Instant cash best matches blog's first-party fraud/economics. | Continue: make Instant Cash primary. |
 | Benford's Law | Blog names it; app does not visibly show it. | Ignore; add synthetic income signal; add chart/test. | Easy and aligned with blog. | Continue. |
-| Break-the-Spell | Blog names APP/BEC intervention. | Ignore; simulated prompt; real messaging. | Real messaging is external action; simulated prompt is safe. | Continue simulated only. |
+| Break-the-Spell | Blog names APP/BEC intervention. | Ignore; simulated prompt; real messaging. | Real messaging is external action; simulated prompt is safe. | Implemented simulated draft only; pause real messaging. |
 | Compliance drafts | Drafts exist but UI not visible enough. | Keep CLI; add case export; real filing. | Real filing forbidden. UI export proves boundary. | Continue draft/export; pause real filing. |
 | SAR/adverse action | Legal scope still blocked. | Draft-only; counsel-reviewed pilot; real filing. | Real filing requires legal authority. | Pause production; continue draft-only. |
 | Real PII | Explicitly blocked. | Synthetic; redacted sample; real PII. | Real PII changes security/legal obligations. | Pause real PII; continue synthetic/redacted-only design. |
@@ -213,7 +219,7 @@ Build now:
 - precision/recall and Recall@1% FPR
 - calibration/Brier chart
 - profit curve and threshold selector
-- score distribution and PSI drift
+- score distribution, PSI drift, and simulated analyst Kappa
 - feature importance
 - graph-feature baseline
 - shadow model comparison
@@ -239,9 +245,11 @@ Research lane:
 2. Case detail page using TNG-style timeline, facts, missing data, decision rail.
 3. Graph visual upgrade: legend, highlight path, grouped relationship table.
 4. `/dashboard/ops` human metrics page, keep raw `/metrics`.
-5. ML dashboard: training report, calibration, PSI, profit curve, Recall@1% FPR.
+5. ML dashboard: training report, calibration, PSI, Kappa, profit curve, Recall@1% FPR.
 6. Instant Cash expansion: Benford, repayment/default timeline, chargeback ratio,
    idempotency proof, Break-the-Spell simulated prompt.
-7. Public-data adapters: OFAC/GLEIF/Companies House as safe KYB-like connectors.
+7. Public-data adapters: local public-KYB-shaped connector exists; live
+   OFAC/GLEIF/Companies House calls stay paused until terms, rate limits, and
+   secrets/access are decided.
 8. Optional sandbox adapters for Stripe Identity or Persona only if credentials
    are available and the integration is clearly marked as sandbox.

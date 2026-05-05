@@ -109,6 +109,15 @@ uv run fraud-v2 train `
   --output-dir data\models\baseline
 ```
 
+Generate the local MLOps report used by the ML dashboard:
+
+```powershell
+uv run fraud-v2 mlops-report `
+  --events-path data\synthetic\tiny\events.jsonl `
+  --output-path data\local\mlops-report.json `
+  --simulate-score-shift-points 12
+```
+
 Start the API:
 
 ```powershell
@@ -124,6 +133,7 @@ Open:
 | Graph evidence | `http://127.0.0.1:8000/dashboard/graph?entity_id=user_00000` |
 | Human ops metrics | `http://127.0.0.1:8000/dashboard/ops` |
 | ML dashboard | `http://127.0.0.1:8000/dashboard/ml` |
+| Signal lab | `http://127.0.0.1:8000/dashboard/signals` |
 | API docs | `http://127.0.0.1:8000/docs` |
 | Raw Prometheus metrics | `http://127.0.0.1:8000/metrics` |
 

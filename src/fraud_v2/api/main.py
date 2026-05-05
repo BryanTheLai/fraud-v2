@@ -18,8 +18,11 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from fraud_v2 import __version__
+from fraud_v2.compliance.interventions import build_break_spell_draft
 from fraud_v2.compliance.reasons import adverse_action_style_reasons
 from fraud_v2.config.settings import Settings, get_settings
+from fraud_v2.connectors.mock_vendors import ConnectorResult
+from fraud_v2.connectors.signal_lab import LocalCameraMetadataAnalyzer, LocalPublicKybConnector
 from fraud_v2.decision.engine import DecisionEngine
 from fraud_v2.domain.audit import AuditEntry, AuditVerificationReport
 from fraud_v2.domain.decisions import DecisionRequest, DecisionResponse
@@ -483,7 +486,9 @@ def ops_dashboard(db: FraudStore = Depends(store)) -> str:
 @app.get("/dashboard/ml", response_class=HTMLResponse)
 def ml_dashboard() -> str:
     report_path = Path("data/models/baseline/baseline-report.json")
+    mlops_path = Path("data/local/mlops-report.json")
     report = _load_model_report(report_path)
+    mlops = _load_model_report(mlops_path)
     return f"""<!doctype html>
 <html lang="en">
   <head>
@@ -496,6 +501,73 @@ def ml_dashboard() -> str:
     <main class="shell single">
       <section class="main">
         {_ml_report_panel(report, report_path)}
+        {_mlops_report_panel(mlops, mlops_path)}
+      </section>
+    </main>
+  </body>
+</html>"""
+
+
+@app.get("/dashboard/signals", response_class=HTMLResponse)
+def signal_lab_dashboard(
+    camera_make: str | None = "Canon",
+    camera_model: str | None = "",
+    software_tag: str | None = "OBS Virtual Camera",
+    business_name: str = "Bryan Lab Holdings",
+    jurisdiction: str = "US",
+    registry_status: str = "active",
+    lei_status: str = "missing",
+    sanctions_hit: bool = False,
+    company_age_days: int = Query(default=14, ge=0, le=50000),
+) -> str:
+    camera = LocalCameraMetadataAnalyzer().inspect(
+        camera_make=camera_make,
+        camera_model=camera_model,
+        software_tag=software_tag,
+    )
+    kyb = LocalPublicKybConnector().lookup(
+        business_name=business_name,
+        jurisdiction=jurisdiction,
+        registry_status=registry_status,
+        lei_status=lei_status,
+        sanctions_hit=sanctions_hit,
+        company_age_days=company_age_days,
+    )
+    checked = "checked" if sanctions_hit else ""
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>fraud-v2 signal lab</title>
+    {_base_style()}
+  </head>
+  <body>
+    {_top_nav("Signal Lab", "Local metadata and public-KYB style checks. No external calls.")}
+    <main class="shell single">
+      <section class="main">
+        <div class="split">
+          <section class="panel">
+            <h2>Camera metadata</h2>
+            <form method="get" action="/dashboard/signals" class="custom-grid">
+              <label>Camera make<input name="camera_make" value="{escape(camera_make or "")}"></label>
+              <label>Camera model<input name="camera_model" value="{escape(camera_model or "")}"></label>
+              <label>Software tag<input name="software_tag" value="{escape(software_tag or "")}"></label>
+              <label>Business<input name="business_name" value="{escape(business_name)}"></label>
+              <label>Jurisdiction<input name="jurisdiction" value="{escape(jurisdiction)}"></label>
+              <label>Registry status<input name="registry_status" value="{escape(registry_status)}"></label>
+              <label>LEI status<input name="lei_status" value="{escape(lei_status)}"></label>
+              <label>Company age days<input name="company_age_days" type="number" min="0" value="{company_age_days}"></label>
+              <label>Sanctions hit<input name="sanctions_hit" type="checkbox" value="true" {checked}></label>
+              <button class="button" type="submit">Run local checks</button>
+            </form>
+          </section>
+          <section class="panel">
+            <h2>Results</h2>
+            {_connector_result_panel("Camera", camera)}
+            {_connector_result_panel("Public KYB", kyb)}
+            <p>These checks are weak signals. They can route to review; they cannot prove identity, liveness, sanctions status, or fraud by themselves.</p>
+          </section>
+        </div>
       </section>
     </main>
   </body>
@@ -635,6 +707,7 @@ def _top_nav(title: str, subtitle: str) -> str:
         <a href="/dashboard">Analyst dashboard</a>
         <a href="/dashboard/ops">Ops metrics</a>
         <a href="/dashboard/ml">ML dashboard</a>
+        <a href="/dashboard/signals">Signal lab</a>
         <a href="/dashboard/graph?entity_id=user_00000">Graph</a>
         <a href="/docs">API docs</a>
         <a href="/metrics">Raw metrics</a>
@@ -772,7 +845,7 @@ def _coverage_map() -> str:
         ("Streaming", "implemented", "Outbox, Redpanda profile, lag/DLQ tools"),
         ("Decision", "implemented", "Rules, graph features, safe reasons"),
         ("Ops", "implemented", "Review queue, drafts, audit, metrics"),
-        ("MLOps", "partial", "Training/eval exists; dashboard is the next visible layer"),
+        ("MLOps", "implemented", "Training/eval, PSI drift, and simulated Kappa reports"),
     ]
     return (
         '<section class="panel"><h2>Blog layer coverage</h2><table><tbody>'
@@ -910,6 +983,11 @@ def _decision_rail(case: ReviewCase, decision: DecisionResponse) -> str:
           <form method="post" action="/demo/review/{case.case_id}?outcome=ESCALATED">
             <button class="button secondary" type="submit">Escalate</button>
           </form>"""
+    intervention = (
+        _break_spell_panel(decision)
+        if decision.risk_tier.value == "YELLOW" or decision.action.value == "BREAK_THE_SPELL"
+        else ""
+    )
     return f"""<section class="panel">
       <h2>Decision rail</h2>
       <div class="tile score-tile">
@@ -920,7 +998,21 @@ def _decision_rail(case: ReviewCase, decision: DecisionResponse) -> str:
       <p><span class="badge {action_class}">{escape(decision.risk_tier.value)}</span></p>
       {review_buttons}
       <p>Compliance exports stay draft-only. No real SAR, account freeze, payout hold, or customer message is sent.</p>
+      {intervention}
     </section>"""
+
+
+def _break_spell_panel(decision: DecisionResponse) -> str:
+    draft = build_break_spell_draft(decision)
+    return f"""<div class="tile">
+      <div class="label">{escape(draft.title)}</div>
+      <p>{escape(draft.message)}</p>
+      <h3>Customer confirmation checklist</h3>
+      <ul class="clean">{"".join(f"<li>{escape(item)}</li>" for item in draft.checklist)}</ul>
+      <h3>Why shown</h3>
+      <ul class="clean">{"".join(f"<li>{escape(reason)}</li>" for reason in draft.risk_reasons)}</ul>
+      <p><span class="badge neutral">demo only</span> No real message sent.</p>
+    </div>"""
 
 
 def _ops_row(name: str, state: str, detail: str) -> str:
@@ -1000,6 +1092,80 @@ def _ml_report_panel(report: dict[str, Any] | None, report_path: Path) -> str:
         {"".join(_threshold_candidate_row(candidate) for candidate in candidates)}
       </tbody></table>
     </div>"""
+
+
+def _mlops_report_panel(report: dict[str, Any] | None, report_path: Path) -> str:
+    if report is None:
+        return f"""<div class="panel">
+          <h2>MLOps drift and analyst consistency</h2>
+          <p>Run this first:</p>
+          <pre>uv run fraud-v2 mlops-report --events-path data\\synthetic\\tiny\\events.jsonl --output-path data\\local\\mlops-report.json --simulate-score-shift-points 12</pre>
+          <p>Then refresh this page. Expected report path: {escape(str(report_path))}</p>
+        </div>"""
+    score_drift = _dict_value(report.get("score_drift"))
+    consistency = _dict_value(report.get("analyst_consistency"))
+    confusion = _dict_value(report.get("confusion_at_red"))
+    return f"""<div class="panel">
+      <div class="panel-head">
+        <div><h2>MLOps drift and analyst consistency</h2><p>{escape(str(report.get("rows", 0)))} scored synthetic users</p></div>
+        <span class="badge neutral">local simulation</span>
+      </div>
+      <div class="hero-row">
+        {_plain_tile("Score PSI", _fmt(score_drift.get("psi")), f"Status: {score_drift.get('status', 'n/a')}")}
+        {_plain_tile("Analyst Kappa", _fmt(consistency.get("cohens_kappa")), f"Status: {consistency.get('status', 'n/a')}")}
+        {_plain_tile("True positives", str(confusion.get("tp", "n/a")), "Red threshold proxy")}
+        {_plain_tile("False positives", str(confusion.get("fp", "n/a")), "Red threshold proxy")}
+      </div>
+      <div class="split">
+        <section>
+          <h3>Score drift bands</h3>
+          {_mapping_table(_dict_value(score_drift.get("reference_distribution")), _dict_value(score_drift.get("current_distribution")))}
+        </section>
+        <section>
+          <h3>Reviewer distributions</h3>
+          {_mapping_table(_dict_value(consistency.get("reviewer_a_distribution")), _dict_value(consistency.get("reviewer_b_distribution")))}
+        </section>
+      </div>
+      <p>{escape(str(consistency.get("note", "")))}</p>
+    </div>"""
+
+
+def _dict_value(raw_value: object) -> dict[str, Any]:
+    return raw_value if isinstance(raw_value, dict) else {}
+
+
+def _mapping_table(left: dict[str, Any], right: dict[str, Any]) -> str:
+    keys = sorted(set(left) | set(right))
+    rows = "".join(
+        "<tr>"
+        f"<td>{escape(key)}</td>"
+        f"<td>{escape(str(left.get(key, 0)))}</td>"
+        f"<td>{escape(str(right.get(key, 0)))}</td>"
+        "</tr>"
+        for key in keys
+    )
+    return (
+        "<table><thead><tr><th>Bucket</th><th>Reference/A</th><th>Current/B</th></tr></thead>"
+        f"<tbody>{rows}</tbody></table>"
+    )
+
+
+def _connector_result_panel(title: str, result: ConnectorResult) -> str:
+    css_class = "green" if result.status == "OK" else "yellow"
+    return f"""<div class="tile">
+      <div class="label">{escape(title)}</div>
+      <h2><span class="badge {css_class}">{escape(result.status)}</span></h2>
+      <p>{escape(result.safe_reason)}</p>
+      {_signal_table(result.signals)}
+    </div>"""
+
+
+def _signal_table(signals: dict[str, str | int | float | bool]) -> str:
+    rows = "".join(
+        f"<tr><td>{escape(key)}</td><td>{escape(str(value))}</td></tr>"
+        for key, value in signals.items()
+    )
+    return f"<table><tbody>{rows}</tbody></table>"
 
 
 def _threshold_label(raw_value: object) -> str:

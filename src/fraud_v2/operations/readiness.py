@@ -28,6 +28,9 @@ IMPLEMENTED_CAPABILITIES = [
     "compliance drafts",
     "encrypted evidence export",
     "model registry and shadow scoring",
+    "MLOps drift and analyst Kappa report",
+    "signal lab for metadata and public-KYB-style checks",
+    "Break-the-Spell intervention drafts",
     "capacity profile receipts",
     "stream ingestion and supervision",
     "stream health and DLQ proof",
@@ -46,7 +49,7 @@ PRODUCTION_BLOCKERS = [
     "real PII security design",
     "production deployment target",
     "real traffic SLO and capacity model",
-    "GitHub auth and remote configuration",
+    "GitHub CLI authentication",
 ]
 
 

@@ -48,6 +48,9 @@ It now runs locally in two modes:
 | Shadow scoring | Done | Registered model probabilities logged without changing decisions. |
 | Model eval dashboard | Local-safe done | Static HTML eval dashboard renders baseline report metrics, threshold candidates, features, and optional shadow-score summary. |
 | In-app ML dashboard | Local-safe done | `/dashboard/ml` surfaces calibration, Brier score, Recall at 1 percent FPR, profit thresholds, and Benford-derived features from the baseline report. |
+| MLOps drift and IRR | Local-safe done | `mlops-report` writes PSI score drift, red-threshold confusion proxy, and simulated analyst Cohen's Kappa; `/dashboard/ml` renders it when present. |
+| Signal lab | Local-safe done | `/dashboard/signals` and `signal-lab` run local camera-metadata and public-KYB-style checks without external vendor calls. |
+| Break-the-Spell | Local-safe done | Yellow case rails can render a draft customer intervention checklist; no real customer message is sent. |
 | LLM synthetic lab | Local-safe done | Offline default plus OpenAI/Azure provider boundary. |
 | Full Docker profile | Done | Full profile smoke passed locally with API app state on Postgres, review-decision submission, and adapter checks for Redis, Neo4j, and Redpanda. |
 | Grafana observability | Local-safe done | Provisioned dashboard for decisions, latency, ingested events, and API target health. |
@@ -74,7 +77,7 @@ It now runs locally in two modes:
 
 | Area | Reality |
 |---|---|
-| KYC/device/consortium | Mock connectors only. No real vendors. |
+| KYC/device/consortium/KYB | Mock and public-shape local connectors only. No real vendors and no live sanctions/KYB calls. |
 | SAR/adverse action | Drafts only. No filing. No legal compliance claim. |
 | Data | Synthetic by default. PaySim-style public CSV conversion exists after manual dataset download and terms review. |
 | Auth | Local role-token, HS256 JWT, and JWKS/OIDC-shaped JWT verification exist. No real user lifecycle or sessions. |
@@ -98,12 +101,14 @@ It now runs locally in two modes:
 | Data security | Real PII cannot live in this local repo casually. Encrypted local evidence export exists for synthetic/local decision bundles only. | Add external OIDC, field-level encryption, audit retention, secrets manager, DLP rules. |
 | Production deployment target | Architecture differs for VM, Kubernetes, managed cloud, or on-prem. | Pick target environment and SLOs. |
 | Production capacity plan | Named local capacity receipts exist, but no real traffic or SLO model. | Run larger synthetic profiles and then replay real redacted event distributions. |
-| GitHub auth | Push/PR cannot happen from this machine yet. | Run `gh auth login`, configure `origin`, then run `scripts\github-handoff.ps1 -Execute`. |
+| GitHub auth | Push/PR requires this machine to be authenticated with GitHub CLI. | Run `gh auth login`, then run `scripts\github-handoff.ps1 -Execute`. |
 
 ## Commands That Passed
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\verify.ps1 -Full
+uv run fraud-v2 mlops-report --events-path data\synthetic\tiny\events.jsonl --output-path data\local\mlops-report.json --simulate-score-shift-points 12
+uv run fraud-v2 signal-lab
 ```
 
 ## Current Branch
@@ -114,7 +119,6 @@ feature/full-profile-adapters
 
 ## GitHub Blocker
 
-`gh auth status` reports no logged-in GitHub host. No remote is configured.
-Local commits are complete; push and PR creation require GitHub authentication.
-Run `powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1` for a
-JSON blocker report and exact commands.
+Push and PR creation require GitHub CLI authentication. Run
+`powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1` for a JSON
+blocker report and exact commands.

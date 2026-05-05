@@ -18,7 +18,7 @@ money movement.
 | Full | Docker API, Postgres, Redis, Redpanda, Neo4j, Prometheus, Grafana | Production-shaped local smoke proof. |
 | ML | Local sklearn training/eval artifacts | Baseline model and threshold experiments. |
 
-Latest verified version: `0.48.0`.
+Latest verified version: `0.49.0`.
 
 ## System Map
 
@@ -63,6 +63,7 @@ Reset the local demo database, train the baseline, score one user:
 ```powershell
 uv run fraud-v2 demo-reset --users 120 --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline
+uv run fraud-v2 mlops-report --events-path data\synthetic\tiny\events.jsonl --output-path data\local\mlops-report.json
 uv run fraud-v2 score user_00000 --db-path data\local\fraud_v2.sqlite
 ```
 
@@ -79,6 +80,7 @@ Open:
 - Graph evidence: `http://127.0.0.1:8000/dashboard/graph?entity_id=user_00000`
 - Human ops metrics: `http://127.0.0.1:8000/dashboard/ops`
 - ML dashboard: `http://127.0.0.1:8000/dashboard/ml`
+- Signal lab: `http://127.0.0.1:8000/dashboard/signals`
 - API docs: `http://127.0.0.1:8000/docs`
 - Raw Prometheus metrics: `http://127.0.0.1:8000/metrics`
 
@@ -159,10 +161,11 @@ src/fraud_v2/
   features/        Local feature assembly.
   graph/           NetworkX lite graph and Neo4j adapter paths.
   models/          sklearn baseline training, registry, shadow scoring.
+  evaluation/      Monitoring, PSI drift, analyst Kappa, capacity receipts.
   policy/          Threshold policy packs, registry, signed approvals.
   review/          Analyst review and replayable label events.
-  compliance/      Human-review-only compliance drafts.
-  connectors/      Mock KYC/device/consortium boundaries.
+  compliance/      Human-review-only compliance drafts and intervention previews.
+  connectors/      Mock KYC/device/consortium plus local signal-lab checks.
   converters/      Raw payload to canonical event converters.
   workers/         Outbox and Redpanda stream workers.
   observability/   Metrics, request logs, trace artifact support.
@@ -206,6 +209,8 @@ Expand-Archive -LiteralPath factory\archive\code-factory-receipts-20260504-20260
 | Load events | `uv run fraud-v2 load data\synthetic\tiny\events.jsonl --db-path data\local\fraud_v2.sqlite` |
 | Score one user | `uv run fraud-v2 score user_00000 --db-path data\local\fraud_v2.sqlite` |
 | Train baseline | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` |
+| MLOps drift/Kappa report | `uv run fraud-v2 mlops-report --events-path data\synthetic\tiny\events.jsonl --output-path data\local\mlops-report.json` |
+| Local signal lab CLI | `uv run fraud-v2 signal-lab` |
 | Replay decisions | `uv run fraud-v2 replay --events-path data\synthetic\tiny\events.jsonl` |
 | Capacity receipt | `uv run fraud-v2 capacity-profile --profile smoke --overwrite` |
 | Readiness report | `uv run fraud-v2 readiness-report --output-path data\local\readiness-report.json --dashboard-path data\local\readiness-report.html` |
@@ -245,6 +250,6 @@ Run `uv run fraud-v2 --help` for the full CLI list.
 
 ## Current Blockers
 
-- GitHub push/PR needs `gh auth login` and `git remote add origin <repo-url>`.
+- GitHub push/PR needs `gh auth login` if this machine is not authenticated.
 - Real production needs a chosen fraud wedge, verified labels, legal/vendor
   approval, PII security design, deployment target, SLOs, and incident process.

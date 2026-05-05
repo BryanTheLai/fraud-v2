@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from fraud_v2.evaluation.mlops import cohen_kappa, population_stability_index, write_mlops_report
 from fraud_v2.evaluation.reports import write_monitoring_report
 from fraud_v2.replay.runner import run_replay
 from fraud_v2.synthetic.generator import SyntheticFraudGenerator
@@ -31,3 +32,28 @@ def test_monitoring_report(tmp_path: Path) -> None:
     assert report["rows"] == 30
     assert "psi_first_half_vs_second_half" in report
     assert "fairness_proxy" in report
+
+
+def test_mlops_report_includes_drift_and_kappa(tmp_path: Path) -> None:
+    events_path = tmp_path / "events.jsonl"
+    SyntheticFraudGenerator(seed=7).generate(users=30).write_jsonl(events_path)
+
+    report = write_mlops_report(
+        events_path=events_path,
+        db_path=tmp_path / "mlops.sqlite",
+        output_path=tmp_path / "mlops.json",
+        simulate_score_shift_points=12,
+    )
+
+    assert report["rows"] == 30
+    assert "score_drift" in report
+    assert "analyst_consistency" in report
+    assert report["simulation"] == {
+        "current_score_shift_points": 12,
+        "note": "Current population shift is synthetic and local-only.",
+    }
+
+
+def test_mlops_math_helpers() -> None:
+    assert population_stability_index([1, 2, 90], [1, 2, 90]) == 0.0
+    assert cohen_kappa(["fraud", "legit", "review"], ["fraud", "legit", "review"]) == 1.0

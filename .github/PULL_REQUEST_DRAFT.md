@@ -38,6 +38,12 @@ Implemented:
   Prometheus/Grafana links.
 - In-app ML dashboard for baseline model calibration, Recall at 1 percent FPR,
   profit threshold, and feature review.
+- Local MLOps report and in-app rendering for PSI drift, red-threshold
+  confusion proxy, and simulated analyst Cohen's Kappa.
+- Local signal lab dashboard and CLI for camera metadata plus public-KYB-style
+  checks without external vendor calls.
+- Break-the-Spell draft preview on yellow case rails, with no real customer
+  messaging.
 - Benford-derived declared-income features for the Instant Cash fraud lane.
 - Docker Compose full profile and `scripts/full-smoke.ps1`.
 - Provisioned Grafana dashboard for full-profile observability.
@@ -108,6 +114,8 @@ powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1
 uv run fraud-v2 release-runbook --output-path data\local\release-runbook.md
 uv run fraud-v2 readiness-report --output-path data\local\readiness-report.json --dashboard-path data\local\readiness-report.html
 uv run fraud-v2 local-doctor --output-path data\local\local-doctor.json --dashboard-path data\local\local-doctor.html
+uv run fraud-v2 mlops-report --events-path data\synthetic\tiny\events.jsonl --output-path data\local\mlops-report.json --simulate-score-shift-points 12
+uv run fraud-v2 signal-lab
 uv run fraud-v2 capacity-profile --profile smoke --users 50 --score-users 5 --min-load-events-per-second 0.1 --min-score-decisions-per-second 0.1 --output-dir data\local\ci-capacity --overwrite --fail-on-target-miss
 docker compose -f infra\docker-compose.yml --profile full config --quiet
 docker build -t fraud-v2:local .
@@ -118,23 +126,26 @@ powershell -ExecutionPolicy Bypass -File scripts\clean-local.ps1
 Latest local result:
 
 - Ruff format/check: pass
-- Mypy: pass, 91 source files checked
-- Secrets scan: pass, 172 files scanned, zero findings
-- Pytest: pass, 123 collected tests
-- GitHub handoff dry run: pass, reports missing `origin` remote and missing
-  `gh auth status` as blockers
+- Mypy: pass, 94 source files checked
+- Secrets scan: pass, 176 files scanned, zero findings
+- Pytest: pass, 127 collected tests
+- GitHub handoff dry run: pass, reports configured `origin` remote and missing
+  `gh auth status` as the blocker
 - Verify script: pass for core and `-Full` modes
 - Release runbook smoke: pass, wrote a 2,356-byte Markdown runbook
-- Readiness report smoke: pass, wrote JSON/HTML, reported 8 checks, 20
+- Readiness report smoke: pass, wrote JSON/HTML, reported 8 checks, 23
   implemented capabilities, 7 production blockers, and blocked status from
-  missing GitHub remote/auth
+  missing GitHub auth
 - Local doctor smoke: pass, wrote JSON/HTML, reported `lite_ready: true`,
-  `full_profile_ready: true`, `github_handoff_ready: false`, 16 checks, 14
-  pass, 2 blocked, RTX 3050 Laptop GPU visible, 13.9 GiB RAM detected, and
-  41.3 GiB free disk
-- Capacity profile smoke: pass, 50 users, 316 events, 116.811 load events/sec,
-  62.168 score decisions/sec, JSON/HTML artifacts written
-- Docker build: pass, installed `fraud-v2==0.48.0`
+  `full_profile_ready: true`, `github_handoff_ready: false`, 16 checks, 15
+  pass, 1 blocked, RTX 3050 Laptop GPU visible, 13.9 GiB RAM detected, and
+  41.0 GiB free disk
+- MLOps report smoke: pass, 120 scored users, PSI `1.343972`, Kappa `0.890177`
+- Signal lab smoke: pass, local camera metadata and public-KYB checks returned
+  `REVIEW` without external calls
+- Capacity profile smoke: pass, 50 users, 316 events, 102.728 load events/sec,
+  37.509 score decisions/sec, JSON/HTML artifacts written
+- Docker build: pass, installed `fraud-v2==0.49.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Postgres backup rehearsal with source/restored
@@ -154,6 +165,8 @@ Latest local result:
 - Synthetic data only.
 - Public dataset conversion requires manual dataset download and terms review.
 - Mock vendors only.
+- Signal lab checks are local signal demos only; no live KYB, sanctions, or
+  liveness vendors.
 - Compliance drafts only; no filings.
 - Local bearer-token/JWT auth only; no external user lifecycle or sessions yet.
 - Stream supervisor, stream health reports, trace reports, and Windows service loop are local
@@ -167,6 +180,5 @@ Latest local result:
   no external KMS/HSM, legal approval workflow, or production policy registry
   yet.
 - No real production deployment target yet.
-- GitHub push/PR creation is blocked locally until `gh auth login` succeeds
-  and a remote is configured. `scripts\github-handoff.ps1` reports the blocker
-  and can execute the push/PR once configured.
+- GitHub push/PR creation requires `gh auth login`. `scripts\github-handoff.ps1`
+  reports blockers and can execute the push/PR once authenticated.
