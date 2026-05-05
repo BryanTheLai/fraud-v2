@@ -62,6 +62,7 @@ It now runs locally in two modes:
 | Stream dead letters | Local-safe done | Invalid stream records, empty payloads, message errors, and idempotency conflicts persist to SQLite/Postgres for admin inspection. Optional Redpanda DLQ topic publishing is full-smoke verified. |
 | CI | Done | GitHub Actions for tests, capacity-profile artifact upload, Docker build, and API image smoke. |
 | GitHub handoff | Local-safe done | `scripts/github-handoff.ps1` reports remote/auth/worktree blockers and can push/create the PR once configured. |
+| Release runbook | Local-safe done | `release-runbook` generates one local operator handoff with run, verify, recovery, GitHub, and hard-limit steps. |
 
 ## Still Fake Or Local-Only
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.44.0 - 2026-05-05
+
+- Added `fraud-v2 release-runbook` to generate a local Markdown operator
+  handoff with lite/full-mode commands, verification gates, recovery rehearsals,
+  GitHub handoff steps, and hard limits.
+- Added unit coverage for release-runbook rendering and file writing.
+- Updated docs, PR draft, and factory receipts for the generated runbook path.
+
 ## 0.43.0 - 2026-05-05
 
 - Added `scripts/github-handoff.ps1` to report GitHub push/PR blockers as JSON

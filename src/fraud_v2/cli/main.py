@@ -41,6 +41,7 @@ from fraud_v2.observability.stream_health import (
     write_stream_health_artifacts,
 )
 from fraud_v2.observability.traces import summarize_local_traces
+from fraud_v2.operations.release_runbook import write_release_runbook
 from fraud_v2.policy.approvals import (
     JsonPolicyApprovalStore,
     create_policy_approval,
@@ -260,6 +261,14 @@ def capacity_profile(
     _print_json(report)
     if fail_on_target_miss and report["status"] != "pass":
         raise typer.Exit(2)
+
+
+@app.command()
+def release_runbook(
+    output_path: Path = Path("data/local/release-runbook.md"),
+) -> None:
+    runbook = write_release_runbook(output_path=output_path)
+    _print_json({"output_path": str(output_path), "bytes": len(runbook.encode("utf-8"))})
 
 
 @app.command()

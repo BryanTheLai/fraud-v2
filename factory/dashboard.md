@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-043 - Add GitHub Handoff](tasks/active/TC-20260505-043-add-github-handoff.md)
+- [TC-20260505-044 - Add Release Runbook](tasks/active/TC-20260505-044-add-release-runbook.md)
 
 ## Runs Waiting For Bryan
 
@@ -51,6 +51,7 @@ Updated: 2026-05-05
 - [RR-20260505-041](runs/RR-20260505-041.md)
 - [RR-20260505-042](runs/RR-20260505-042.md)
 - [RR-20260505-043](runs/RR-20260505-043.md)
+- [RR-20260505-044](runs/RR-20260505-044.md)
 
 ## Blocked Work
 
@@ -117,6 +118,7 @@ Updated: 2026-05-05
 - Added local capacity-profile receipts with throughput target checks.
 - Added full-profile Postgres backup rehearsal with scratch restore proof.
 - Added dry-run-safe GitHub handoff automation for push/PR blockers.
+- Added generated release runbook for local operator handoff.
 
 ## Lessons Added
 
@@ -128,5 +130,5 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M43 GitHub handoff. Next implementation task should
-add generated release/runbook packaging if Bryan chooses to go deeper.
+Review local MVP through M44 release runbook. Remaining gaps are real-production
+blockers that need Bryan/legal/vendor/cloud decisions.
