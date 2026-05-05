@@ -51,7 +51,6 @@ PRODUCTION_BLOCKERS = [
     "real PII security design",
     "production deployment target",
     "real traffic SLO and capacity model",
-    "GitHub CLI authentication",
 ]
 
 

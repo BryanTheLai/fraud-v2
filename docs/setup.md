@@ -379,8 +379,9 @@ Run GitHub handoff dry-run:
 powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1
 ```
 
-The `origin` remote is configured on the current branch. PR creation remains
-blocked until `gh auth login` has been run on this machine.
+The `origin` remote is configured on the current branch and `gh auth status`
+passes on this machine. Use `-Execute` when you want the script to push and
+create or update the PR.
 
 ## Environment Variables
 

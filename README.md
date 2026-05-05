@@ -254,6 +254,5 @@ Run `uv run fraud-v2 --help` for the full CLI list.
 
 ## Current Blockers
 
-- GitHub push/PR needs `gh auth login` if this machine is not authenticated.
 - Real production needs a chosen fraud wedge, verified labels, legal/vendor
   approval, PII security design, deployment target, SLOs, and incident process.

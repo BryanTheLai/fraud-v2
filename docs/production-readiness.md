@@ -68,7 +68,7 @@ It now runs locally in two modes:
 | Stream health reporting | Local-safe done | `stream-health` writes JSON and static HTML operator artifacts from lag, supervisor, and stream dead-letter signals. |
 | Stream dead letters | Local-safe done | Invalid stream records, empty payloads, message errors, and idempotency conflicts persist to SQLite/Postgres for admin inspection. Optional Redpanda DLQ topic publishing is full-smoke verified. |
 | CI | Done | GitHub Actions for tests, capacity-profile artifact upload, Docker build, and API image smoke. |
-| GitHub handoff | Local-safe done | `scripts/github-handoff.ps1` reports remote/auth/worktree blockers and can push/create the PR once configured. |
+| GitHub handoff | Local-safe done | `scripts/github-handoff.ps1` reports remote/auth/worktree blockers and can push/create the PR; current local auth is available. |
 | Release runbook | Local-safe done | `release-runbook` generates one local operator handoff with run, verify, recovery, GitHub, and hard-limit steps. |
 | Readiness report | Local-safe done | `readiness-report` generates JSON/HTML snapshots of local checks, implemented capabilities, and hard production blockers. |
 | Local doctor | Local-safe done | `local-doctor` generates JSON/HTML laptop runability checks for lite mode, full-profile Docker mode, optional GPU visibility, and GitHub handoff blockers. |
@@ -103,8 +103,6 @@ It now runs locally in two modes:
 | Data security | Real PII cannot live in this local repo casually. Encrypted local evidence export exists for synthetic/local decision bundles only. | Add external OIDC, field-level encryption, audit retention, secrets manager, DLP rules. |
 | Production deployment target | Architecture differs for VM, Kubernetes, managed cloud, or on-prem. | Pick target environment and SLOs. |
 | Production capacity plan | Named local capacity receipts exist, but no real traffic or SLO model. | Run larger synthetic profiles and then replay real redacted event distributions. |
-| GitHub auth | Push works after normal git auth; PR creation requires this machine to be authenticated with GitHub CLI. | Run `gh auth login`, then run `scripts\github-handoff.ps1 -Execute`. |
-
 ## Commands That Passed
 
 ```powershell
@@ -119,8 +117,8 @@ uv run fraud-v2 signal-lab
 feature/full-profile-adapters
 ```
 
-## GitHub Blocker
+## GitHub Handoff
 
-Push and PR creation require GitHub CLI authentication. Run
-`powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1` for a JSON
-blocker report and exact commands.
+GitHub CLI authentication is available on this machine. Run
+`powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1 -Execute`
+to push and create or update the PR.

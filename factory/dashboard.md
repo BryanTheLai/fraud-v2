@@ -5,7 +5,7 @@ Updated: 2026-05-05
 ## Active Task
 
 - None. Simulation workbench and ML feature-importance release is implemented
-  and verified; final GitHub handoff is blocked only by GitHub CLI auth.
+  and verified; GitHub handoff is ready.
 
 ## Waiting For Bryan
 
@@ -29,8 +29,8 @@ Updated: 2026-05-05
 
 ## Current Blockers
 
-- GitHub PR creation still needs `gh auth login`. The `origin` remote exists
-  and branch push works.
+- No local GitHub handoff blocker remains. `origin` exists and `gh auth status`
+  passes on this machine.
 - Regulated production still needs a real fraud wedge, real labels, legal/vendor
   approval, real PII security design, deployment target, and production SLOs.
 

@@ -132,17 +132,17 @@ Latest local result:
 - Mypy: pass, 96 source files checked
 - Secrets scan: pass, 179 files scanned, zero findings
 - Pytest: pass, 132 collected tests
-- GitHub handoff dry run: pass, reports configured `origin` remote and missing
-  `gh auth status` as the blocker
+- GitHub handoff dry run: pass, reports configured `origin` remote, clean
+  worktree, GitHub CLI auth, and no blockers
 - Verify script: pass for core and `-Full` modes
 - Release runbook smoke: pass, wrote a 2,356-byte Markdown runbook
 - Readiness report smoke: pass, wrote JSON/HTML, reported 8 checks, 25
-  implemented capabilities, 7 production blockers, and blocked status from
-  missing GitHub auth
+  implemented capabilities, 6 production blockers, and ready status once the
+  worktree is clean
 - Local doctor smoke: pass, wrote JSON/HTML, reported `lite_ready: true`,
-  `full_profile_ready: true`, `github_handoff_ready: false`, 16 checks, 15
-  pass, 1 blocked, RTX 3050 Laptop GPU visible, 13.9 GiB RAM detected, and
-  41.0 GiB free disk
+  `full_profile_ready: true`, `github_handoff_ready: true`, 16 checks, 16
+  pass, RTX 3050 Laptop GPU visible, 13.9 GiB RAM detected, and 40.3 GiB free
+  disk
 - MLOps report smoke: pass, 120 scored users, PSI `1.343972`, Kappa `0.890177`
 - Signal lab smoke: pass, local camera metadata and public-KYB checks returned
   `REVIEW` without external calls
@@ -187,6 +187,5 @@ Latest local result:
   no external KMS/HSM, legal approval workflow, or production policy registry
   yet.
 - No real production deployment target yet.
-- GitHub PR creation requires `gh auth login`. The `origin` remote is
-  configured and normal branch push works; `scripts\github-handoff.ps1` reports
-  blockers and can create the PR once authenticated.
+- GitHub handoff is ready on this machine: `origin` is configured and
+  `gh auth status` passes.
