@@ -201,6 +201,7 @@ uv run fraud-v2 secrets-scan --root .
 uv run fraud-v2 audit-archive --db-path data\local\fraud_v2.sqlite --output-dir data\local\audit-archive
 uv run fraud-v2 sqlite-backup --db-path data\local\fraud_v2.sqlite --output-dir data\local\backups\sqlite
 uv run fraud-v2 sqlite-restore data\local\backups\sqlite\fraud_v2.sqlite.bak --restore-path data\local\fraud_v2-restored.sqlite
+powershell -ExecutionPolicy Bypass -File scripts\postgres-backup-rehearsal.ps1
 uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite
 $env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
 uv run fraud-v2 evidence-export <decision-id> --db-path data\local\fraud_v2.sqlite --output-path data\local\evidence\decision-evidence.enc.json
@@ -322,6 +323,22 @@ Restore refuses to overwrite an existing file unless `--overwrite` is passed.
 The backup and restore reports include SHA-256 hashes and `verified: true` when
 the copied bytes match. This is local recovery rehearsal, not cloud backup or
 managed disaster recovery.
+
+Rehearse full-profile Postgres backup and restore while Docker full mode is
+running:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\postgres-backup-rehearsal.ps1 `
+  -ComposeProject fraud-v2 `
+  -BackupDir data\local\postgres-backups
+```
+
+The script runs `pg_dump -Fc` inside the Postgres container, copies the dump to
+the laptop, computes SHA-256, restores into a scratch database, compares source
+and restored event counts, writes a manifest, and drops the scratch database by
+default. Use `-KeepRestoreDatabase` only when you want to inspect the scratch
+restore. This is a local recovery rehearsal, not managed backups, PITR, WORM
+storage, or a cloud disaster-recovery plan.
 
 Dry-run retention report:
 
@@ -857,6 +874,7 @@ tests/unit/domain/test_events.py
 | Audit archive | `uv run fraud-v2 audit-archive --db-path data\local\fraud_v2.sqlite --output-dir data\local\audit-archive` | Exports audit entries and a manifest with archive hash and chain verification. |
 | SQLite backup | `uv run fraud-v2 sqlite-backup --db-path data\local\fraud_v2.sqlite --output-dir data\local\backups\sqlite` | Copies the lite SQLite database and writes a verified backup manifest. |
 | SQLite restore | `uv run fraud-v2 sqlite-restore data\local\backups\sqlite\fraud_v2.sqlite.bak --restore-path data\local\fraud_v2-restored.sqlite` | Restores a local SQLite backup without overwriting unless requested. |
+| Postgres backup rehearsal | `powershell -ExecutionPolicy Bypass -File scripts\postgres-backup-rehearsal.ps1` | Runs full-profile `pg_dump`, scratch restore, event-count verification, and manifest writing. |
 | Export compliance draft | `uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes a human-review-only local draft. |
 | Export encrypted evidence | `uv run fraud-v2 evidence-export <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes an AES-256-GCM encrypted local decision evidence bundle. |
 | Retention report | `uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite` | Counts expired records without deleting them. |

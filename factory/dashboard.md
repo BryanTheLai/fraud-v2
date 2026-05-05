@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-041 - Add Capacity Profile](tasks/active/TC-20260505-041-add-capacity-profile.md)
+- [TC-20260505-042 - Add Postgres Backup Rehearsal](tasks/active/TC-20260505-042-add-postgres-backup-rehearsal.md)
 
 ## Runs Waiting For Bryan
 
@@ -49,6 +49,7 @@ Updated: 2026-05-05
 - [RR-20260505-039](runs/RR-20260505-039.md)
 - [RR-20260505-040](runs/RR-20260505-040.md)
 - [RR-20260505-041](runs/RR-20260505-041.md)
+- [RR-20260505-042](runs/RR-20260505-042.md)
 
 ## Blocked Work
 
@@ -113,6 +114,7 @@ Updated: 2026-05-05
 - Added local audit archive export with manifest hash and chain proof.
 - Added local SQLite backup and restore rehearsal with SHA-256 verification.
 - Added local capacity-profile receipts with throughput target checks.
+- Added full-profile Postgres backup rehearsal with scratch restore proof.
 
 ## Lessons Added
 
@@ -124,6 +126,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M41 capacity-profile receipts. Next implementation
-task should add full-profile Postgres backup rehearsal if Bryan chooses to go
+Review local MVP through M42 Postgres backup rehearsal. Next implementation
+task should add generated release/runbook packaging if Bryan chooses to go
 deeper.

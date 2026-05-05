@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.42.0 - 2026-05-05
+
+- Added `scripts/postgres-backup-rehearsal.ps1` to create a local full-profile
+  Postgres `pg_dump` artifact, restore it into a scratch database, compare event
+  counts, and write a SHA-256 manifest.
+- Expanded `scripts/full-smoke.ps1` to verify the Postgres backup rehearsal
+  during Docker-backed smoke runs.
+- Added unit coverage for the backup script and full-smoke wiring.
+
 ## 0.41.0 - 2026-05-05
 
 - Added `fraud-v2 capacity-profile` to run named synthetic capacity receipts

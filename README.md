@@ -41,6 +41,8 @@ Audit entries can be exported into a local JSONL archive plus manifest for
 custody review.
 Lite-mode SQLite databases can be backed up and restored locally with SHA-256
 verification.
+Docker full mode can rehearse Postgres `pg_dump` backup and scratch restore with
+a local manifest.
 PaySim-style public fraud CSVs can be converted into canonical local events
 after you manually download a dataset you are allowed to use.
 Model training reports can be rendered into a local HTML eval dashboard.
@@ -180,6 +182,7 @@ uv run fraud-v2 secrets-scan --root .
 uv run fraud-v2 audit-archive --db-path data/local/fraud_v2.sqlite --output-dir data/local/audit-archive
 uv run fraud-v2 sqlite-backup --db-path data/local/fraud_v2.sqlite --output-dir data/local/backups/sqlite
 uv run fraud-v2 sqlite-restore data/local/backups/sqlite/fraud_v2.sqlite.bak --restore-path data/local/fraud_v2-restored.sqlite
+powershell -ExecutionPolicy Bypass -File scripts\postgres-backup-rehearsal.ps1
 uv run fraud-v2 compliance-draft <decision-id> --db-path data/local/fraud_v2.sqlite
 $env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
 uv run fraud-v2 evidence-export <decision-id> --db-path data/local/fraud_v2.sqlite --output-path data/local/evidence/decision-evidence.enc.json

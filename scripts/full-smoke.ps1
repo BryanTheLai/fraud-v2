@@ -278,6 +278,29 @@ print(f"postgres_events={len(events)}")
   Write-Host ($postgresResult -join "`n")
   Assert-FraudCondition (($postgresResult -join "`n") -like "*postgres_events=*") "Postgres adapter smoke did not print event count."
 
+  $postgresRestoreSuffix = ([guid]::NewGuid()).ToString("N")
+  $postgresRestoreDatabase = "fraud_v2_restore_smoke_$postgresRestoreSuffix"
+  $postgresBackupResult = & "$PSScriptRoot\postgres-backup-rehearsal.ps1" `
+    -ComposeProject $ComposeProject `
+    -BackupDir data\local\full-smoke-postgres-backup `
+    -RestoreDatabase $postgresRestoreDatabase 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Postgres backup rehearsal failed: $postgresBackupResult"
+  $postgresBackupText = $postgresBackupResult -join "`n"
+  Write-Host $postgresBackupText
+  $postgresBackupJsonStart = $postgresBackupText.IndexOf("{")
+  $postgresBackupJsonEnd = $postgresBackupText.LastIndexOf("}")
+  Assert-FraudCondition `
+    ($postgresBackupJsonStart -ge 0 -and $postgresBackupJsonEnd -gt $postgresBackupJsonStart) `
+    "Postgres backup rehearsal did not print a JSON manifest."
+  $postgresBackupJson = $postgresBackupText.Substring(
+    $postgresBackupJsonStart,
+    $postgresBackupJsonEnd - $postgresBackupJsonStart + 1
+  )
+  $postgresBackupManifest = $postgresBackupJson | ConvertFrom-Json
+  Assert-FraudCondition ($postgresBackupManifest.backup_format -eq "pg_dump_custom") "Postgres backup rehearsal did not use custom pg_dump format."
+  Assert-FraudCondition ($postgresBackupManifest.verified -eq $true) "Postgres backup rehearsal did not verify restore."
+  Assert-FraudCondition ($postgresBackupManifest.restore.verified -eq $true) "Postgres backup restore event counts did not match."
+
   $redisSmoke = @'
 from fraud_v2.domain.entities import EntityRef
 from fraud_v2.domain.enums import EntityType
