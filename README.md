@@ -27,6 +27,8 @@ store and includes Redis, Redpanda, Neo4j, Prometheus, and a provisioned Grafana
 dashboard. Stream ingestion now has bounded consume, supervised consume,
 dead-letter, DLQ publishing, and lag-inspection CLIs for local reliability work.
 Stream health can now be summarized into local JSON and HTML operator reports.
+`scripts/local-stream-service.ps1` wraps supervised stream consume and stream
+health into a repeatable Windows laptop runner.
 Threshold policies also have local signed approval commands for governance
 rehearsal before promotion. A local load benchmark CLI writes repeatable
 synthetic performance receipts for laptop validation. Decision evidence exports
@@ -160,6 +162,8 @@ uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud
 uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --output-path data/local/stream-lag.json
 uv run fraud-v2 stream-dead-letters --db-path data/local/fraud_v2.sqlite
 uv run fraud-v2 stream-health --db-path data/local/fraud_v2.sqlite --lag-report-path data/local/stream-lag.json --output-path data/local/stream-health-report.json --dashboard-path data/local/stream-health-dashboard.html --allow-critical
+powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -DryRun
+powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical
 uv run fraud-v2 compliance-draft <decision-id> --db-path data/local/fraud_v2.sqlite
 $env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
 uv run fraud-v2 evidence-export <decision-id> --db-path data/local/fraud_v2.sqlite --output-path data/local/evidence/decision-evidence.enc.json

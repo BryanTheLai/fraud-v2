@@ -192,6 +192,8 @@ uv run fraud-v2 stream-consume --bootstrap-servers localhost:19092 --topic fraud
 uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --output-path data\local\stream-lag.json
 uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 stream-health --db-path data\local\fraud_v2.sqlite --lag-report-path data\local\stream-lag.json --supervision-report-path data\local\stream-supervisor.json --allow-critical
+powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -DryRun
+powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical
 uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite
 $env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
 uv run fraud-v2 evidence-export <decision-id> --db-path data\local\fraud_v2.sqlite --output-path data\local\evidence\decision-evidence.enc.json
@@ -400,6 +402,51 @@ letters into a simple `healthy`, `degraded`, or `critical` status. By default it
 does not require Redpanda; pass `--live-lag` to query Redpanda directly. This is
 a local operator artifact, not Alertmanager, PagerDuty, or managed stream
 monitoring.
+
+Run the local Windows stream service loop once:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 `
+  -Once `
+  -CheckLag `
+  -AllowCritical
+```
+
+Dry-run the exact commands without touching Redpanda:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 `
+  -Once `
+  -DryRun
+```
+
+The script writes timestamped supervisor, lag, stream-health JSON, and
+stream-health HTML artifacts under `data\local\stream-service\`. It is intended
+for local laptop supervision and can be wrapped by Windows Task Scheduler. It is
+not installed automatically.
+
+Optional Task Scheduler wrapper:
+
+```powershell
+$repo = "C:\Users\wbrya\OneDrive\Documents\GitHub\fraud-v2"
+$script = Join-Path $repo "scripts\local-stream-service.ps1"
+$args = "-ExecutionPolicy Bypass -File `"$script`" -Once -CheckLag -AllowCritical"
+$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $args -WorkingDirectory $repo
+$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
+  -RepetitionInterval (New-TimeSpan -Minutes 1)
+Register-ScheduledTask `
+  -TaskName "fraud-v2-local-stream-supervisor" `
+  -Action $action `
+  -Trigger $trigger `
+  -Description "Local fraud-v2 stream supervisor and stream-health artifact writer"
+```
+
+This scheduled task assumes the full local Docker profile is running. Delete it
+with:
+
+```powershell
+Unregister-ScheduledTask -TaskName fraud-v2-local-stream-supervisor -Confirm:$false
+```
 
 Show the active default threshold policy:
 
@@ -715,6 +762,7 @@ tests/unit/domain/test_events.py
 | Inspect stream lag | `uv run fraud-v2 stream-lag --bootstrap-servers localhost:19092 --topic fraud.events --group-id fraud-v2-local --output-path data\local\stream-lag.json` | Reports partition watermarks, committed offsets, and total consumer lag. |
 | Inspect stream dead letters | `uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite` | Shows invalid/conflicting stream records stored for admin inspection. |
 | Stream health report | `uv run fraud-v2 stream-health --db-path data\local\fraud_v2.sqlite --lag-report-path data\local\stream-lag.json --output-path data\local\stream-health-report.json --dashboard-path data\local\stream-health-dashboard.html --allow-critical` | Writes JSON and static HTML health artifacts from lag, supervisor, and dead-letter signals. |
+| Local stream service loop | `powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical` | Runs supervised stream consume once and writes timestamped health artifacts for Windows Task Scheduler or manual loops. |
 | Export compliance draft | `uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes a human-review-only local draft. |
 | Export encrypted evidence | `uv run fraud-v2 evidence-export <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes an AES-256-GCM encrypted local decision evidence bundle. |
 | Retention report | `uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite` | Counts expired records without deleting them. |

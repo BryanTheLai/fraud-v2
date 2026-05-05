@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.36.0 - 2026-05-05
+
+- Added `scripts/local-stream-service.ps1` as a Windows-friendly local stream
+  supervision loop that writes supervisor and stream-health artifacts.
+- Added dry-run, once-only, lag-check, DLQ publish, and critical-health options
+  so the runner can be tested safely before being scheduled.
+- Documented a Task Scheduler path for running the local stream supervisor on a
+  laptop without installing a production service.
+
 ## 0.35.0 - 2026-05-05
 
 - Added `fraud-v2 stream-health` to write a local JSON and HTML stream

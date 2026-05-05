@@ -62,6 +62,8 @@ Implemented:
   smoke zero-lag proof.
 - Local stream health report CLI writes JSON and HTML from lag, supervisor, and
   dead-letter signals.
+- Windows local stream service runner wraps supervised consume, optional lag
+  inspection, and stream health artifacts for Task Scheduler or manual loops.
 - GitHub Actions test, Docker build, and API image smoke workflow.
 
 ## Test Plan
@@ -81,8 +83,8 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: pass, 95 collected tests
-- Docker build: pass, installed `fraud-v2==0.35.0`
+- Pytest: pass, 97 collected tests
+- Docker build: pass, installed `fraud-v2==0.36.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Redis feature cache, Neo4j projection, and
@@ -98,8 +100,9 @@ Latest local result:
 - Mock vendors only.
 - Compliance drafts only; no filings.
 - Local bearer-token/JWT auth only; no external user lifecycle or sessions yet.
-- Stream supervisor and stream health reports are local CLI artifacts only; no
-  OS service manager, Alertmanager/PagerDuty path, or managed stream monitor yet.
+- Stream supervisor, stream health reports, and Windows service loop are local
+  artifacts only; no automatically installed OS service, Alertmanager/PagerDuty
+  path, or managed stream monitor yet.
 - Stream dead letters persist safe local diagnostics, not production PII-safe
   evidence storage.
 - Encrypted evidence exports are local passphrase-protected files, not external

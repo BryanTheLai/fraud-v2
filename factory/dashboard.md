@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-035 - Add Stream Health Report](tasks/active/TC-20260505-035-add-stream-health-report.md)
+- [TC-20260505-036 - Add Local Stream Service Runner](tasks/active/TC-20260505-036-add-local-stream-service-runner.md)
 
 ## Runs Waiting For Bryan
 
@@ -43,6 +43,7 @@ Updated: 2026-05-05
 - [RR-20260505-033](runs/RR-20260505-033.md)
 - [RR-20260505-034](runs/RR-20260505-034.md)
 - [RR-20260505-035](runs/RR-20260505-035.md)
+- [RR-20260505-036](runs/RR-20260505-036.md)
 
 ## Blocked Work
 
@@ -100,6 +101,8 @@ Updated: 2026-05-05
 - Added a static local model eval dashboard artifact.
 - Added a local stream health report and dashboard for lag, supervisor, and
   dead-letter signals.
+- Added a Windows local stream service runner for supervised consume and
+  stream-health artifact loops.
 
 ## Lessons Added
 
@@ -111,6 +114,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M35 stream health reporting. Next implementation task
-should add Windows service-manager docs/scripts or distributed tracing if Bryan
-chooses to go deeper.
+Review local MVP through M36 local stream service runner. Next implementation
+task should add distributed tracing or a larger synthetic capacity receipt if
+Bryan chooses to go deeper.
