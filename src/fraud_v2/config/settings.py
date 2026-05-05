@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     jwt_jwks_path: str = ""
     jwt_jwks_url: str = ""
     jwt_oidc_discovery_url: str = ""
+    trace_export_path: Path | None = None
 
 
 def get_settings() -> Settings:

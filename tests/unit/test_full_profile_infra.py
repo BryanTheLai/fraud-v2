@@ -48,6 +48,7 @@ def test_full_smoke_exercises_functional_api_and_observability() -> None:
     assert "fraud_decisions_total" in smoke_script
     assert 'up{job="fraud-v2-api", instance="api:8000"}' in smoke_script
     assert "FraudV2APIUnavailable" in smoke_script
+    assert "trace-report" in smoke_script
     assert "PostgresEventStore" in smoke_script
     assert "pg_isready" in smoke_script
     assert "uv run --no-sync python -" in smoke_script
@@ -95,3 +96,4 @@ def test_full_profile_api_uses_postgres_store_backend() -> None:
 
     assert "FRAUD_STORE_BACKEND: postgres" in compose
     assert "FRAUD_POSTGRES_DSN: postgresql://fraud:fraud@postgres:5432/fraud_v2" in compose
+    assert "FRAUD_TRACE_EXPORT_PATH: /app/data/local/traces.jsonl" in compose

@@ -69,8 +69,10 @@ def test_api_rejects_missing_token(tmp_path) -> None:  # type: ignore[no-untyped
     app.dependency_overrides.clear()
 
 
-def test_api_adds_trace_header_and_request_metrics(tmp_path) -> None:  # type: ignore[no-untyped-def]
+def test_api_adds_trace_header_metrics_and_local_span(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     db = SQLiteStore(tmp_path / "api.sqlite")
+    trace_path = tmp_path / "traces.jsonl"
+    monkeypatch.setenv("FRAUD_TRACE_EXPORT_PATH", str(trace_path))
     app.dependency_overrides[store] = lambda: db
     client = TestClient(app)
 
@@ -82,6 +84,8 @@ def test_api_adds_trace_header_and_request_metrics(tmp_path) -> None:  # type: i
     assert metrics.status_code == 200
     assert "fraud_http_requests_total" in metrics.text
     assert 'route="/health/live"' in metrics.text
+    assert "trace-test-001" in trace_path.read_text(encoding="utf-8")
+    assert '"span_name":"http.request"' in trace_path.read_text(encoding="utf-8")
 
     app.dependency_overrides.clear()
 

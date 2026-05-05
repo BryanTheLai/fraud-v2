@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-036 - Add Local Stream Service Runner](tasks/active/TC-20260505-036-add-local-stream-service-runner.md)
+- [TC-20260505-037 - Add Local Trace Reports](tasks/active/TC-20260505-037-add-local-trace-reports.md)
 
 ## Runs Waiting For Bryan
 
@@ -44,6 +44,7 @@ Updated: 2026-05-05
 - [RR-20260505-034](runs/RR-20260505-034.md)
 - [RR-20260505-035](runs/RR-20260505-035.md)
 - [RR-20260505-036](runs/RR-20260505-036.md)
+- [RR-20260505-037](runs/RR-20260505-037.md)
 
 ## Blocked Work
 
@@ -103,6 +104,7 @@ Updated: 2026-05-05
   dead-letter signals.
 - Added a Windows local stream service runner for supervised consume and
   stream-health artifact loops.
+- Added optional local request trace JSONL export and trace report artifacts.
 
 ## Lessons Added
 
@@ -114,6 +116,6 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M36 local stream service runner. Next implementation
-task should add distributed tracing or a larger synthetic capacity receipt if
-Bryan chooses to go deeper.
+Review local MVP through M37 local trace reports. Next implementation task
+should add secrets hygiene or a larger synthetic capacity receipt if Bryan
+chooses to go deeper.

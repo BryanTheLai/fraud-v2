@@ -37,6 +37,8 @@ Implemented:
   files, direct JWKS URLs, or discovery URLs.
 - Request trace IDs, structured JSON request logs, HTTP metrics, and local
   Prometheus alert rules.
+- Optional local JSONL request trace spans and `trace-report` JSON/HTML
+  artifacts.
 - Tamper-evident local audit log and admin audit verification endpoints.
 - Dry-run local retention reporting plus explicit local retention pruning for
   expired events, decisions, reviews, and outbox records.
@@ -83,15 +85,15 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: pass, 97 collected tests
-- Docker build: pass, installed `fraud-v2==0.36.0`
+- Pytest: pass, 99 collected tests
+- Docker build: pass, installed `fraud-v2==0.37.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Redis feature cache, Neo4j projection, and
   Redpanda publish-consume-to-Postgres with zero stream dead letters on the
   valid path, zero lag after valid consume, supervised stream ingest, stream
-  health report with `status: healthy` and `health_score: 100`, plus
-  invalid-record DLQ topic proof
+  health report with `status: healthy` and `health_score: 100`, local trace
+  report proof, plus invalid-record DLQ topic proof
 
 ## Known Limits
 
@@ -100,7 +102,7 @@ Latest local result:
 - Mock vendors only.
 - Compliance drafts only; no filings.
 - Local bearer-token/JWT auth only; no external user lifecycle or sessions yet.
-- Stream supervisor, stream health reports, and Windows service loop are local
+- Stream supervisor, stream health reports, trace reports, and Windows service loop are local
   artifacts only; no automatically installed OS service, Alertmanager/PagerDuty
   path, or managed stream monitor yet.
 - Stream dead letters persist safe local diagnostics, not production PII-safe

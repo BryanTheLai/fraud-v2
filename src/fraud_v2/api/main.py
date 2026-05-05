@@ -41,6 +41,7 @@ from fraud_v2.observability.metrics import (
     http_request_latency,
     metrics_response,
 )
+from fraud_v2.observability.traces import append_local_trace_span
 from fraud_v2.policy.thresholds import load_threshold_policy
 from fraud_v2.review.service import ReviewService
 from fraud_v2.security.auth import AuthPrincipal, AuthRole, require_roles
@@ -71,6 +72,7 @@ async def add_trace_and_request_metrics(
     trace_id = request.headers.get("X-Request-ID") or new_trace_id()
     token = set_trace_id(trace_id)
     start = time.perf_counter()
+    started_at = datetime.now(UTC)
     route = request.url.path
     status_code = 500
     try:
@@ -100,6 +102,14 @@ async def add_trace_and_request_metrics(
             },
         )
         reset_trace_id(token)
+        _write_request_trace(
+            trace_id=trace_id,
+            route=route,
+            method=request.method,
+            status_code=status_code,
+            started_at=started_at,
+            duration_ms=duration * 1000,
+        )
 
 
 def _route_template(request: Request, fallback: str | None = None) -> str:
@@ -108,6 +118,46 @@ def _route_template(request: Request, fallback: str | None = None) -> str:
     if isinstance(path, str):
         return path
     return fallback or request.url.path
+
+
+def _write_request_trace(
+    *,
+    trace_id: str,
+    route: str,
+    method: str,
+    status_code: int,
+    started_at: datetime,
+    duration_ms: float,
+) -> None:
+    trace_export_path = get_settings().trace_export_path
+    if trace_export_path is None:
+        return
+    try:
+        append_local_trace_span(
+            path=trace_export_path,
+            trace_id=trace_id,
+            span_name="http.request",
+            started_at=started_at,
+            ended_at=datetime.now(UTC),
+            duration_ms=duration_ms,
+            status_code=status_code,
+            attributes={
+                "method": method,
+                "route": route,
+            },
+        )
+    except OSError as exc:
+        logger.warning(
+            "local_trace_export_failed",
+            extra={
+                "trace_id": trace_id,
+                "method": method,
+                "path": route,
+                "status_code": status_code,
+                "duration_ms": round(duration_ms, 3),
+                "error": str(exc)[:300],
+            },
+        )
 
 
 @app.get("/")

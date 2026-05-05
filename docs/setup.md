@@ -63,6 +63,7 @@ Target local services:
 | `FRAUD_JWT_JWKS_PATH` | no | `C:\path\to\jwks.json` | Local JWKS file for offline asymmetric token verification. |
 | `FRAUD_JWT_JWKS_URL` | no | `https://issuer.example/.well-known/jwks.json` | Direct JWKS endpoint. |
 | `FRAUD_JWT_OIDC_DISCOVERY_URL` | no | `https://issuer.example/.well-known/openid-configuration` | OIDC discovery document with `jwks_uri`. |
+| `FRAUD_TRACE_EXPORT_PATH` | no | `data\local\traces.jsonl` | Optional local JSONL request-span export path. |
 | `DATABASE_URL` | yes | `postgresql+psycopg://fraud:fraud@localhost:5432/fraud_v2` | App database. |
 | `REDIS_URL` | yes | `redis://localhost:6379/0` | Online feature store. |
 | `REDPANDA_BOOTSTRAP_SERVERS` | yes | `localhost:19092` | Event bus. |
@@ -194,6 +195,7 @@ uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 stream-health --db-path data\local\fraud_v2.sqlite --lag-report-path data\local\stream-lag.json --supervision-report-path data\local\stream-supervisor.json --allow-critical
 powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -DryRun
 powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical
+uv run fraud-v2 trace-report --trace-path data\local\traces.jsonl --output-path data\local\trace-report.json --dashboard-path data\local\trace-report.html
 uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite
 $env:FRAUD_EVIDENCE_PASSPHRASE="replace-with-local-review-passphrase"
 uv run fraud-v2 evidence-export <decision-id> --db-path data\local\fraud_v2.sqlite --output-path data\local\evidence\decision-evidence.enc.json
@@ -517,6 +519,7 @@ The API emits:
 
 - structured JSON request logs
 - `X-Trace-ID` response headers
+- optional local JSONL request spans when `FRAUD_TRACE_EXPORT_PATH` is set
 - `fraud_http_requests_total`
 - `fraud_http_request_latency_seconds`
 - fraud decision and event counters
@@ -534,6 +537,26 @@ Invoke-RestMethod `
   -Headers @{ Authorization = "Bearer dev-token-change-me" } `
   -Uri http://127.0.0.1:8000/v1/auth/whoami
 ```
+
+Write and summarize local request spans:
+
+```powershell
+$env:FRAUD_TRACE_EXPORT_PATH="data\local\traces.jsonl"
+uv run uvicorn fraud_v2.api.main:app --host 127.0.0.1 --port 8000
+```
+
+After sending API traffic:
+
+```powershell
+uv run fraud-v2 trace-report `
+  --trace-path data\local\traces.jsonl `
+  --output-path data\local\trace-report.json `
+  --dashboard-path data\local\trace-report.html
+```
+
+The trace report summarizes request span counts, unique trace IDs, status codes,
+and latency percentiles. It is local JSONL/HTML evidence, not a distributed
+tracing backend.
 
 ## Local Load Benchmark
 
@@ -763,6 +786,7 @@ tests/unit/domain/test_events.py
 | Inspect stream dead letters | `uv run fraud-v2 stream-dead-letters --db-path data\local\fraud_v2.sqlite` | Shows invalid/conflicting stream records stored for admin inspection. |
 | Stream health report | `uv run fraud-v2 stream-health --db-path data\local\fraud_v2.sqlite --lag-report-path data\local\stream-lag.json --output-path data\local\stream-health-report.json --dashboard-path data\local\stream-health-dashboard.html --allow-critical` | Writes JSON and static HTML health artifacts from lag, supervisor, and dead-letter signals. |
 | Local stream service loop | `powershell -ExecutionPolicy Bypass -File scripts\local-stream-service.ps1 -Once -CheckLag -AllowCritical` | Runs supervised stream consume once and writes timestamped health artifacts for Windows Task Scheduler or manual loops. |
+| Local trace report | `uv run fraud-v2 trace-report --trace-path data\local\traces.jsonl --output-path data\local\trace-report.json --dashboard-path data\local\trace-report.html` | Summarizes optional local request spans into JSON and HTML. |
 | Export compliance draft | `uv run fraud-v2 compliance-draft <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes a human-review-only local draft. |
 | Export encrypted evidence | `uv run fraud-v2 evidence-export <decision-id> --db-path data\local\fraud_v2.sqlite` | Writes an AES-256-GCM encrypted local decision evidence bundle. |
 | Retention report | `uv run fraud-v2 retention-report --db-path data\local\fraud_v2.sqlite` | Counts expired records without deleting them. |

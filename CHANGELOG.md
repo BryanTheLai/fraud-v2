@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.37.0 - 2026-05-05
+
+- Added optional local JSONL trace export for API requests through
+  `FRAUD_TRACE_EXPORT_PATH`.
+- Added `fraud-v2 trace-report` to summarize local trace spans into JSON and
+  static HTML artifacts.
+- Enabled local trace export in the Docker full profile and expanded the full
+  smoke to prove trace report generation.
+
 ## 0.36.0 - 2026-05-05
 
 - Added `scripts/local-stream-service.ps1` as a Windows-friendly local stream

@@ -47,6 +47,7 @@ It now runs locally in two modes:
 | Full Docker profile | Done | Full profile smoke passed locally with API app state on Postgres, review-decision submission, and adapter checks for Redis, Neo4j, and Redpanda. |
 | Grafana observability | Local-safe done | Provisioned dashboard for decisions, latency, ingested events, and API target health. |
 | Request tracing/logging | Local-safe done | `X-Trace-ID`, structured JSON request logs, HTTP metrics, and Prometheus alert rules. |
+| Local trace artifacts | Local-safe done | Optional `FRAUD_TRACE_EXPORT_PATH` writes JSONL request spans; `trace-report` renders JSON and static HTML summaries. |
 | Audit log | Local-safe done | SQLite hash chain for event, decision, review, and outbox actions. |
 | Retention reporting/pruning | Local-safe done | Dry-run per-table retention report plus explicit prune for expired non-audit records. No pruning by default. |
 | Stream ingestion | Local-safe done | Redpanda consumer CLI stores canonical events through SQLite/Postgres with idempotent duplicate handling. Full smoke proves publish-consume-Postgres round trip. |
@@ -72,7 +73,7 @@ It now runs locally in two modes:
 | Policy governance | JSON policy packs, local promotion registry, and local signed approvals exist. No external KMS/HSM, registry service, legal approval system, or enterprise change-management integration yet. |
 | Streaming | Redpanda publisher, bounded consumer, local supervisor CLI, Windows service-loop script, lag CLI, stream health report, app-store dead letters, and optional Redpanda DLQ topic publishing are smoke-tested locally. There is no automatically installed OS service, Alertmanager/PagerDuty path, or Flink/managed-stream deployment yet. |
 | Graph DB | Neo4j projector is smoke-tested; decision engine still uses NetworkX fallback. |
-| Observability | Local metrics, dashboard, request logs, trace IDs, and Prometheus alerts exist; no distributed tracing backend yet. |
+| Observability | Local metrics, dashboard, request logs, trace IDs, trace reports, and Prometheus alerts exist; no distributed tracing backend yet. |
 | Deployment | Local Docker only. No cloud/IaC/production deploy. |
 
 ## Hard Blockers To Real Production

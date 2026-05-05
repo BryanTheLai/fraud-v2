@@ -38,6 +38,7 @@ from fraud_v2.observability.stream_health import (
     load_json_mapping,
     write_stream_health_artifacts,
 )
+from fraud_v2.observability.traces import summarize_local_traces
 from fraud_v2.policy.approvals import (
     JsonPolicyApprovalStore,
     create_policy_approval,
@@ -818,6 +819,20 @@ def model_eval_dashboard(
         shadow_scores_path=shadow_scores_path,
     )
     _print_json(summary)
+
+
+@app.command()
+def trace_report(
+    trace_path: Path = Path("data/local/traces.jsonl"),
+    output_path: Path = Path("data/local/trace-report.json"),
+    dashboard_path: Path = Path("data/local/trace-report.html"),
+) -> None:
+    report = summarize_local_traces(
+        trace_path=trace_path,
+        output_path=output_path,
+        dashboard_path=dashboard_path,
+    )
+    _print_json(report)
 
 
 def _parse_as_of(raw_value: str | None) -> datetime:

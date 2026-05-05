@@ -559,6 +559,19 @@ finally:
   Assert-FraudCondition ($metrics.Content -like "*fraud_decisions_total*") "Metrics missing decisions counter."
   Assert-FraudCondition ($metrics.Content -like "*fraud_events_ingested_total*") "Metrics missing events counter."
 
+  $traceReportResult = docker compose `
+    -p $ComposeProject `
+    -f infra\docker-compose.yml `
+    --profile full `
+    exec -T api uv run --no-sync fraud-v2 trace-report `
+      --trace-path data/local/traces.jsonl `
+      --output-path data/local/full-smoke-trace-report.json `
+      --dashboard-path data/local/full-smoke-trace-report.html 2>&1
+  Assert-FraudCondition ($LASTEXITCODE -eq 0) "Local trace report smoke failed: $traceReportResult"
+  Write-Host ($traceReportResult -join "`n")
+  Assert-FraudCondition (($traceReportResult -join "`n") -like '*"total_spans":*') "Local trace report did not include total spans."
+  Assert-FraudCondition (($traceReportResult -join "`n") -like '*"unique_traces":*') "Local trace report did not include unique trace count."
+
   $grafanaDashboard = Invoke-WebRequest `
     -Uri "$GrafanaBase/d/fraud-v2-overview/fraud-v2-overview" `
     -TimeoutSec 10 `
