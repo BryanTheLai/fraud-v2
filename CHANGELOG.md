@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.33.0 - 2026-05-05
+
+- Added a PaySim public-dataset CSV converter that writes canonical JSONL fraud
+  events for the existing load/replay/train pipeline.
+- Added stable hashing of PaySim account identifiers so source dataset names do
+  not become canonical entity IDs.
+- Ignored local `data/public/` outputs so downloaded or converted public
+  datasets are not accidentally committed.
+
 ## 0.32.0 - 2026-05-05
 
 - Added encrypted local decision-evidence exports using AES-256-GCM with a

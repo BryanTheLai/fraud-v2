@@ -11,6 +11,7 @@ build/
 data/local/
 data/models/
 data/offline/
+data/public/
 data/synthetic/manifests/
 data/synthetic/demo/
 data/synthetic/stress/

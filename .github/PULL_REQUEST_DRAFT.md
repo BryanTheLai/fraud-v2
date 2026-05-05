@@ -8,6 +8,7 @@ Implemented:
 
 - Python/FastAPI local fraud API with token/JWT-protected `/v1/*` routes.
 - Deterministic synthetic data generation and SQLite lite storage.
+- PaySim-style public dataset conversion into canonical event JSONL.
 - Rules + graph decision engine with safe reasons and trace IDs.
 - Manual review case creation.
 - Analyst review decisions append canonical review and label events for replay
@@ -76,7 +77,7 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Pytest: pass, 86 collected tests
+- Pytest: pass, 89 collected tests
 - Docker build: pass
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
@@ -88,6 +89,7 @@ Latest local result:
 ## Known Limits
 
 - Synthetic data only.
+- Public dataset conversion requires manual dataset download and terms review.
 - Mock vendors only.
 - Compliance drafts only; no filings.
 - Local bearer-token/JWT auth only; no external user lifecycle or sessions yet.

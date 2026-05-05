@@ -42,6 +42,7 @@ from fraud_v2.policy.registry import (
     write_active_policy,
 )
 from fraud_v2.policy.thresholds import load_threshold_policy
+from fraud_v2.public_data.paysim import convert_paysim_csv
 from fraud_v2.public_data.registry import describe_public_dataset
 from fraud_v2.replay.runner import run_replay
 from fraud_v2.security.auth import AuthRole
@@ -248,6 +249,23 @@ def llm_generate(
 def public_dataset(name: str) -> None:
     dataset = describe_public_dataset(name)
     _print_json(dataset.__dict__)
+
+
+@app.command()
+def public_dataset_convert(
+    name: str,
+    input_path: Path,
+    output_path: Path = Path("data/public/converted/events.jsonl"),
+    limit_rows: int | None = typer.Option(None, min=1),
+) -> None:
+    if name != "paysim":
+        raise typer.BadParameter("only 'paysim' conversion is implemented locally")
+    report = convert_paysim_csv(
+        input_path=input_path,
+        output_path=output_path,
+        limit_rows=limit_rows,
+    )
+    _print_json(report.__dict__)
 
 
 @app.command()

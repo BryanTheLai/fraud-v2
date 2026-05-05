@@ -27,6 +27,7 @@ It now runs locally in two modes:
 |---|---|---|
 | Domain contracts | Done | Pydantic events, decisions, reviews, outbox, compliance drafts. |
 | Synthetic data | Done | Deterministic local generator and JSONL loader. |
+| Public dataset conversion | Local-safe done | PaySim-style CSVs can be manually downloaded, converted to canonical JSONL events, and loaded through existing storage/replay/training paths. |
 | Lite storage | Done | SQLite event store, decisions, review cases, and outbox. |
 | API | Done | FastAPI routes, role-protected `/v1/*`, health, metrics, docs. |
 | Rules/graph decisions | Done | Rules + NetworkX graph service, graph evidence dashboard, safe reasons, trace IDs. |
@@ -59,7 +60,7 @@ It now runs locally in two modes:
 |---|---|
 | KYC/device/consortium | Mock connectors only. No real vendors. |
 | SAR/adverse action | Drafts only. No filing. No legal compliance claim. |
-| Data | Synthetic only unless public datasets are manually downloaded. |
+| Data | Synthetic by default. PaySim-style public CSV conversion exists after manual dataset download and terms review. |
 | Auth | Local role-token, HS256 JWT, and JWKS/OIDC-shaped JWT verification exist. No real user lifecycle or sessions. |
 | Secrets | `.env` pattern only. No vault/KMS. |
 | Audit immutability | Hash-chained SQLite only. No WORM/object-lock storage. |
@@ -76,7 +77,7 @@ It now runs locally in two modes:
 | Blocker | Why It Matters | Next Practical Step |
 |---|---|---|
 | Real fraud domain and action authority | Rules/legal obligations change by product. | Choose first wedge: instant cash, ATO, card testing, ecommerce, crypto, or lending. |
-| Real labels | ML quality is fake without verified fraud/legit outcomes. | Load public datasets or real redacted labels after governance. |
+| Real labels | Synthetic labels and PaySim-style public labels exist, but verified product labels do not. | Load real redacted labels after governance. |
 | Vendor/legal approval | KYC, liveness, sanctions, SAR, credit decisions need contracts and counsel. | Keep mock adapters until approved. |
 | Data security | Real PII cannot live in this local repo casually. Encrypted local evidence export exists for synthetic/local decision bundles only. | Add external OIDC, field-level encryption, audit retention, secrets manager, DLP rules. |
 | Production deployment target | Architecture differs for VM, Kubernetes, managed cloud, or on-prem. | Pick target environment and SLOs. |

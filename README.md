@@ -30,6 +30,8 @@ Threshold policies also have local signed approval commands for governance
 rehearsal before promotion. A local load benchmark CLI writes repeatable
 synthetic performance receipts for laptop validation. Decision evidence exports
 can be encrypted locally for human review without creating a regulatory filing.
+PaySim-style public fraud CSVs can be converted into canonical local events
+after you manually download a dataset you are allowed to use.
 
 ## Run Lite Mode
 
@@ -171,6 +173,7 @@ uv run fraud-v2 model-register --status shadow
 uv run fraud-v2 model-promote baseline-20260505-001
 uv run fraud-v2 shadow-score --status active
 uv run fraud-v2 public-dataset paysim
+uv run fraud-v2 public-dataset-convert paysim data/public/raw/paysim.csv --output-path data/public/converted/paysim-events.jsonl --limit-rows 10000
 ```
 
 OpenAI/Azure-backed synthetic scenario generation is available through

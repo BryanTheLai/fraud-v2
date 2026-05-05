@@ -206,6 +206,8 @@ uv run fraud-v2 policy-promote-approved strict-policy-test --required-approvals 
 uv run fraud-v2 model-register --status shadow
 uv run fraud-v2 model-promote baseline-20260505-001
 uv run fraud-v2 shadow-score --status active
+uv run fraud-v2 public-dataset paysim
+uv run fraud-v2 public-dataset-convert paysim data\public\raw\paysim.csv --output-path data\public\converted\paysim-events.jsonl --limit-rows 10000
 ```
 
 Local URLs after implementation:
@@ -482,6 +484,27 @@ a local laptop receipt, not a production capacity plan. Increase `--users` and
 `--score-users` when you want a heavier run; keep `--overwrite` explicit so the
 benchmark does not silently mix old and new data.
 
+## Public Dataset Conversion
+
+Public datasets are not downloaded automatically. Download only datasets you are
+allowed to use, keep them under ignored `data\public\raw\`, then convert them:
+
+```powershell
+uv run fraud-v2 public-dataset paysim
+uv run fraud-v2 public-dataset-convert paysim `
+  data\public\raw\paysim.csv `
+  --output-path data\public\converted\paysim-events.jsonl `
+  --limit-rows 10000
+uv run fraud-v2 load data\public\converted\paysim-events.jsonl `
+  --db-path data\local\paysim.sqlite
+```
+
+The PaySim converter expects columns such as `step`, `type`, `amount`,
+`nameOrig`, `nameDest`, and `isFraud`. It hashes source account names into
+stable local entity IDs and writes canonical payment, settlement, chargeback,
+and label events. This is a public/synthetic benchmark path, not permission to
+load real PII.
+
 ## Encrypted Local Evidence Export
 
 After scoring a decision, export an encrypted human-review bundle:
@@ -649,6 +672,8 @@ tests/unit/domain/test_events.py
 | Register model | `uv run fraud-v2 model-register --status shadow` | Stores model/report hashes and metrics in `data\models\registry.json`. |
 | Promote model | `uv run fraud-v2 model-promote baseline-20260505-001` | Marks one model active and demotes the previous active model to shadow. |
 | Shadow score | `uv run fraud-v2 shadow-score --status active` | Scores registered model output without changing decisions. |
+| Describe public dataset | `uv run fraud-v2 public-dataset paysim` | Shows manual download and access notes. |
+| Convert PaySim CSV | `uv run fraud-v2 public-dataset-convert paysim data\public\raw\paysim.csv --output-path data\public\converted\paysim-events.jsonl` | Converts a manually downloaded PaySim-style CSV into canonical events. |
 | Show threshold policy | `uv run fraud-v2 policy-show` | Prints the built-in or file-backed threshold policy. |
 | Register policy | `uv run fraud-v2 policy-register data\policies\strict.json --status candidate` | Hashes and records a threshold policy candidate. |
 | Promote policy | `uv run fraud-v2 policy-promote strict-policy-test` | Marks one policy active and writes `data\policies\active-threshold-policy.json`. |
