@@ -8,9 +8,7 @@ Updated: 2026-05-05
 
 ## Waiting For Bryan
 
-- Review run records in [factory/runs](runs/), latest:
-  [RR-20260505-047](runs/RR-20260505-047.md).
-- Review task cards in [factory/tasks/review](tasks/review/).
+- Review the compact receipt archive documented in [factory/README.md](README.md).
 
 ## Done This Week
 
