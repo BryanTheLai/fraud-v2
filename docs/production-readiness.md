@@ -29,6 +29,7 @@ It now runs locally in two modes:
 | Synthetic data | Done | Deterministic local generator and JSONL loader. |
 | Public dataset conversion | Local-safe done | PaySim-style CSVs can be manually downloaded, converted to canonical JSONL events, and loaded through existing storage/replay/training paths. |
 | Lite storage | Done | SQLite event store, decisions, review cases, and outbox. |
+| Lite backup/restore | Local-safe done | `sqlite-backup` and `sqlite-restore` write SHA-256 verified local recovery artifacts. |
 | API | Done | FastAPI routes, role-protected `/v1/*`, health, metrics, docs. |
 | Rules/graph decisions | Done | Rules + NetworkX graph service, graph evidence dashboard, safe reasons, trace IDs. |
 | Versioned threshold policy | Local-safe done | Green/yellow/red thresholds, degraded floors, and high-amount signals load from validated JSON policy packs. |
@@ -70,7 +71,7 @@ It now runs locally in two modes:
 | Secrets | Local `secrets-scan` checks for real-looking committed credentials. No vault/KMS. |
 | Audit immutability | Hash-chained SQLite plus local archive manifests. No WORM/object-lock storage. |
 | Retention enforcement | Explicit local prune exists for non-audit records. No schedules, legal holds, archive tiers, or WORM audit archival yet. |
-| Persistence | SQLite remains the lite default; Docker full mode uses Postgres for app state. |
+| Persistence | SQLite remains the lite default with local backup/restore rehearsal; Docker full mode uses Postgres for app state. |
 | Policy governance | JSON policy packs, local promotion registry, and local signed approvals exist. No external KMS/HSM, registry service, legal approval system, or enterprise change-management integration yet. |
 | Streaming | Redpanda publisher, bounded consumer, local supervisor CLI, Windows service-loop script, lag CLI, stream health report, app-store dead letters, and optional Redpanda DLQ topic publishing are smoke-tested locally. There is no automatically installed OS service, Alertmanager/PagerDuty path, or Flink/managed-stream deployment yet. |
 | Graph DB | Neo4j projector is smoke-tested; decision engine still uses NetworkX fallback. |

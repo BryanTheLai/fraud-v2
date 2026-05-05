@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.40.0 - 2026-05-05
+
+- Added `fraud-v2 sqlite-backup` to copy the lite-mode SQLite database and
+  write a SHA-256 verified manifest.
+- Added `fraud-v2 sqlite-restore` with explicit `--overwrite` protection for
+  local restore rehearsal.
+- Added backup/restore tests so the laptop persistence path has a repeatable
+  recovery proof.
+
 ## 0.39.0 - 2026-05-05
 
 - Added `fraud-v2 audit-archive` to export local audit entries as JSONL plus a

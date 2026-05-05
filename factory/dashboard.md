@@ -4,7 +4,7 @@ Updated: 2026-05-05
 
 ## Active Task
 
-- [TC-20260505-039 - Add Audit Archive](tasks/active/TC-20260505-039-add-audit-archive.md)
+- [TC-20260505-040 - Add SQLite Backup Restore](tasks/active/TC-20260505-040-add-sqlite-backup-restore.md)
 
 ## Runs Waiting For Bryan
 
@@ -47,6 +47,7 @@ Updated: 2026-05-05
 - [RR-20260505-037](runs/RR-20260505-037.md)
 - [RR-20260505-038](runs/RR-20260505-038.md)
 - [RR-20260505-039](runs/RR-20260505-039.md)
+- [RR-20260505-040](runs/RR-20260505-040.md)
 
 ## Blocked Work
 
@@ -109,6 +110,7 @@ Updated: 2026-05-05
 - Added optional local request trace JSONL export and trace report artifacts.
 - Added local and CI secrets scanning for real-looking committed credentials.
 - Added local audit archive export with manifest hash and chain proof.
+- Added local SQLite backup and restore rehearsal with SHA-256 verification.
 
 ## Lessons Added
 
@@ -120,6 +122,5 @@ Updated: 2026-05-05
 
 ## One Next Task
 
-Review local MVP through M39 audit archive. Next implementation task should
-add a larger synthetic capacity receipt or local backup/restore rehearsal if Bryan
-chooses to go deeper.
+Review local MVP through M40 SQLite backup/restore. Next implementation task
+should add a larger synthetic capacity receipt if Bryan chooses to go deeper.

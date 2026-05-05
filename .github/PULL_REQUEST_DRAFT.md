@@ -43,6 +43,7 @@ Implemented:
   and credential assignments.
 - Tamper-evident local audit log and admin audit verification endpoints.
 - Local audit archive export with JSONL entries and manifest hash/chain proof.
+- Local SQLite backup/restore commands with SHA-256 verification.
 - Dry-run local retention reporting plus explicit local retention pruning for
   expired events, decisions, reviews, and outbox records.
 - Versioned threshold policy packs for green/yellow/red bands, degraded-mode
@@ -88,9 +89,9 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Secrets scan: pass, 234 files scanned, zero findings
-- Pytest: pass, 102 collected tests
-- Docker build: pass, installed `fraud-v2==0.39.0`
+- Secrets scan: pass, 238 files scanned, zero findings
+- Pytest: pass, 104 collected tests
+- Docker build: pass, installed `fraud-v2==0.40.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, audit archive proof, Redis feature cache, Neo4j projection, and

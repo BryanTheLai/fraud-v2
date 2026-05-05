@@ -57,6 +57,7 @@ from fraud_v2.public_data.registry import describe_public_dataset
 from fraud_v2.replay.runner import run_replay
 from fraud_v2.security.auth import AuthRole
 from fraud_v2.security.secrets import report_payload, scan_secrets
+from fraud_v2.storage.backup import restore_sqlite_backup, write_sqlite_backup
 from fraud_v2.storage.ports import FraudStore
 from fraud_v2.storage.postgres_store import PostgresStore
 from fraud_v2.storage.sqlite_store import SQLiteStore
@@ -714,6 +715,29 @@ def audit_archive(
     )
     manifest = write_audit_archive(store=store, output_dir=output_dir, limit=limit)
     _print_json(manifest)
+
+
+@app.command()
+def sqlite_backup(
+    db_path: Path = Path("data/local/fraud_v2.sqlite"),
+    output_dir: Path = Path("data/local/backups/sqlite"),
+) -> None:
+    manifest = write_sqlite_backup(db_path=db_path, output_dir=output_dir)
+    _print_json(manifest)
+
+
+@app.command()
+def sqlite_restore(
+    backup_path: Path,
+    restore_path: Path = Path("data/local/fraud_v2-restored.sqlite"),
+    overwrite: bool = typer.Option(False, "--overwrite"),
+) -> None:
+    report = restore_sqlite_backup(
+        backup_path=backup_path,
+        restore_path=restore_path,
+        overwrite=overwrite,
+    )
+    _print_json(report)
 
 
 @app.command()
