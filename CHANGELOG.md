@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.46.0 - 2026-05-05
+
+- Added `fraud-v2 local-doctor` to generate JSON and HTML runability checks for
+  Python, repo files, disk, RAM, uv, git, Docker, optional NVIDIA GPU visibility,
+  and GitHub handoff blockers.
+- Added scope-aware readiness booleans for lite mode, full-profile Docker mode,
+  and GitHub handoff so laptop blockers are plain instead of buried in logs.
+- Added unit coverage for local-doctor scope classification, Docker blocker
+  handling, artifact writing, and HTML escaping.
+
 ## 0.45.0 - 2026-05-05
 
 - Added `fraud-v2 readiness-report` to generate JSON and HTML local readiness

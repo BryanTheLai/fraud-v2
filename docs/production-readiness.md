@@ -64,6 +64,7 @@ It now runs locally in two modes:
 | GitHub handoff | Local-safe done | `scripts/github-handoff.ps1` reports remote/auth/worktree blockers and can push/create the PR once configured. |
 | Release runbook | Local-safe done | `release-runbook` generates one local operator handoff with run, verify, recovery, GitHub, and hard-limit steps. |
 | Readiness report | Local-safe done | `readiness-report` generates JSON/HTML snapshots of local checks, implemented capabilities, and hard production blockers. |
+| Local doctor | Local-safe done | `local-doctor` generates JSON/HTML laptop runability checks for lite mode, full-profile Docker mode, optional GPU visibility, and GitHub handoff blockers. |
 
 ## Still Fake Or Local-Only
 

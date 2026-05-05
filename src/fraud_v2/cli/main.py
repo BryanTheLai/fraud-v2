@@ -41,6 +41,7 @@ from fraud_v2.observability.stream_health import (
     write_stream_health_artifacts,
 )
 from fraud_v2.observability.traces import summarize_local_traces
+from fraud_v2.operations.local_doctor import write_local_doctor_report
 from fraud_v2.operations.readiness import write_readiness_report
 from fraud_v2.operations.release_runbook import write_release_runbook
 from fraud_v2.policy.approvals import (
@@ -278,6 +279,15 @@ def readiness_report(
     dashboard_path: Path | None = Path("data/local/readiness-report.html"),
 ) -> None:
     report = write_readiness_report(output_path=output_path, dashboard_path=dashboard_path)
+    _print_json(report)
+
+
+@app.command()
+def local_doctor(
+    output_path: Path = Path("data/local/local-doctor.json"),
+    dashboard_path: Path | None = Path("data/local/local-doctor.html"),
+) -> None:
+    report = write_local_doctor_report(output_path=output_path, dashboard_path=dashboard_path)
     _print_json(report)
 
 

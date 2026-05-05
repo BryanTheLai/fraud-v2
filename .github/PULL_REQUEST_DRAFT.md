@@ -81,6 +81,8 @@ Implemented:
 - Generated release runbook CLI for local operator handoff.
 - Generated readiness report CLI for local checks, capabilities, and production
   blockers.
+- Generated local doctor CLI for laptop runability, Docker/full-profile checks,
+  optional GPU visibility, and GitHub handoff blockers.
 
 ## Test Plan
 
@@ -95,6 +97,7 @@ uv run pytest --collect-only -q
 powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1
 uv run fraud-v2 release-runbook --output-path data\local\release-runbook.md
 uv run fraud-v2 readiness-report --output-path data\local\readiness-report.json --dashboard-path data\local\readiness-report.html
+uv run fraud-v2 local-doctor --output-path data\local\local-doctor.json --dashboard-path data\local\local-doctor.html
 uv run fraud-v2 capacity-profile --profile smoke --users 50 --score-users 5 --min-load-events-per-second 0.1 --min-score-decisions-per-second 0.1 --output-dir data\local\ci-capacity --overwrite --fail-on-target-miss
 docker compose -f infra\docker-compose.yml --profile full config --quiet
 docker build -t fraud-v2:local .
@@ -105,17 +108,21 @@ Latest local result:
 
 - Ruff format/check: pass
 - Mypy: pass
-- Secrets scan: pass, 259 files scanned, zero findings
-- Pytest: pass, 116 collected tests
+- Secrets scan: pass, 263 files scanned, zero findings
+- Pytest: pass, 120 collected tests
 - GitHub handoff dry run: pass, reports missing `origin` remote and missing
   `gh auth status` as blockers
 - Release runbook smoke: pass, wrote a 2,356-byte Markdown runbook
-- Readiness report smoke: pass, wrote JSON/HTML, reported 8 checks, 18
+- Readiness report smoke: pass, wrote JSON/HTML, reported 8 checks, 19
   implemented capabilities, 7 production blockers, and blocked status from
   missing GitHub remote/auth
-- Capacity profile smoke: pass, 50 users, 316 events, 123.987 load events/sec,
-  47.366 score decisions/sec, JSON/HTML artifacts written
-- Docker build: pass, installed `fraud-v2==0.45.0`
+- Local doctor smoke: pass, wrote JSON/HTML, reported `lite_ready: true`,
+  `full_profile_ready: true`, `github_handoff_ready: false`, 16 checks, 14
+  pass, 2 blocked, RTX 3050 Laptop GPU visible, 13.9 GiB RAM detected, and
+  41.2 GiB free disk
+- Capacity profile smoke: pass, 50 users, 316 events, 126.492 load events/sec,
+  60.788 score decisions/sec, JSON/HTML artifacts written
+- Docker build: pass, installed `fraud-v2==0.46.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Postgres backup rehearsal with source/restored

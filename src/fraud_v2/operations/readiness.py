@@ -35,6 +35,7 @@ IMPLEMENTED_CAPABILITIES = [
     "secrets scan",
     "GitHub handoff script",
     "release runbook",
+    "local doctor",
 ]
 
 PRODUCTION_BLOCKERS = [
