@@ -2,8 +2,8 @@
 project: fraud-v2
 owner: Bryan
 created_at: 2026-05-04
-updated_at: 2026-05-04
-status: draft
+updated_at: 2026-05-06
+status: current
 source_task: TC-20260504-002
 version: 1
 ---
@@ -86,27 +86,34 @@ The simulator should generate:
 
 ## Dataset Generation Phases
 
-### Phase 1: Tiny Golden Dataset
+### Phase 1: Local Golden/Demo Dataset
 
 Size:
 
-- 100 users
-- 500 events
-- 6 fraud cases
-- 12 false-positive counterexamples
+- 720 users
+- 4,703 events
+- all nine local fraud typologies
+- 16 benign shared-household users as false-positive pressure
+- 12 benign corporate virtual-camera users
+- 12 benign account-recovery users with failed-login bursts
+- 12 benign payment-burst users
+- 8 legitimate dispute/chargeback controls
+- payment bursts, virtual-camera metadata, ATO failed-login bursts, and delayed
+  labels
 
 Purpose:
 
 - unit tests
 - golden decision traces
 - human-readable debugging
+- default cockpit/dashboard visualization
 
-### Phase 2: Local Demo Dataset
+### Phase 2: Larger Local Dataset
 
 Size:
 
 - 10,000 users
-- 100,000 events
+- about 60,000 to 100,000 events
 - 1,000 labeled risky cases
 - 100 graph rings
 
@@ -239,4 +246,3 @@ That is enough to prove:
 - decision rules
 - delayed labels
 - ML training dataset assembly
-

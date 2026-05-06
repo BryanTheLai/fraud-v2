@@ -8,6 +8,11 @@ Implemented:
 
 - Python/FastAPI local fraud API with token/JWT-protected `/v1/*` routes.
 - Deterministic synthetic data generation and SQLite lite storage.
+- Rich default synthetic dataset with 720 users, 4,703 events, all nine local
+  fraud typologies, payment bursts, shared fraud-ring devices, benign household
+  sharing, benign virtual-camera/account-recovery/payment-burst/dispute
+  controls, virtual-camera metadata, ATO failed-login bursts, and delayed
+  labels.
 - PaySim-style public dataset conversion into canonical event JSONL.
 - Rules + graph decision engine with safe reasons and trace IDs.
 - Manual review case creation.
@@ -30,10 +35,12 @@ Implemented:
   with target checks.
 - Cost-weighted model threshold reporting.
 - Demo cockpit with seeded local scenarios, custom scoring controls, and reset.
-- Analyst dashboard with recent decisions and open review queue.
+- Analyst dashboard with recent decisions, open review queue, and synthetic
+  dataset coverage.
 - Primary case detail page with point-in-time timeline, features, graph, and
   simulated decision rail.
-- Graph evidence dashboard for local analyst review.
+- Graph evidence dashboard with shared app shell, entity-type lane layout, and
+  local relationship proof.
 - Human-readable ops dashboard for queue, outbox, DLQ, audit, freshness, and
   Prometheus/Grafana links.
 - In-app ML dashboard for baseline model calibration, Recall at 1 percent FPR,
@@ -137,7 +144,7 @@ Latest local result:
 - Ruff format/check: pass
 - Mypy: pass, 98 source files checked
 - Secrets scan: pass, 183 files scanned, zero findings
-- Pytest: pass, 135 collected tests
+- Pytest: pass, 136 collected tests
 - GitHub handoff dry run: pass, reports configured `origin` remote, clean
   worktree, GitHub CLI auth, and no blockers
 - Verify script: pass for core and `-Full` modes
@@ -147,30 +154,31 @@ Latest local result:
   worktree is clean
 - Local doctor smoke: pass, wrote JSON/HTML, reported `lite_ready: true`,
   `full_profile_ready: true`, `github_handoff_ready: true`, 16 checks, 16
-  pass, RTX 3050 Laptop GPU visible, 13.9 GiB RAM detected, and 40.3 GiB free
+  pass, RTX 3050 Laptop GPU visible, 13.9 GiB RAM detected, and 19.2 GiB free
   disk
-- MLOps report smoke: pass, 120 scored users, PSI `1.343972`, Kappa `0.890177`
+- MLOps report smoke: pass, 720 scored users, PSI `0.856594`, Kappa `0.805836`
 - Signal lab smoke: pass, local camera metadata and public-KYB checks returned
   `REVIEW` without external calls
 - Simulation workbench smoke: pass, returned local-only/no-action red result
   from amount, virtual-camera, graph-neighbor, and APP/BEC knobs
-- Model benchmark smoke: pass, 120 rows, 36 test rows, recommended
-  `sklearn_random_forest`, AUPRC `0.5786`, best profit `749.964`
+- Model benchmark smoke: pass, 720 rows, 216 test rows, recommended
+  `sklearn_random_forest`, AUPRC `0.8745`, best profit `9499.784`
 - Cockpit browser smoke: pass, Edge headless rendered `/cockpit?scenario=graph_ring`
   and wrote a 133,175-byte screenshot artifact
-- Capacity profile smoke: pass, 50 users, 316 events, 94.615 load events/sec,
-  48.027 score decisions/sec, JSON/HTML artifacts written
-- Docker build: pass, installed `fraud-v2==0.51.0`
+- Capacity profile smoke: pass, 50 users, 322 events, 8,581.769 load
+  events/sec, 55.81 score decisions/sec, JSON/HTML artifacts written
+- Docker build: pass, installed `fraud-v2==0.53.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
   scrape, Postgres insert/list, Postgres backup rehearsal with source/restored
-  event counts of 194/194 and `verified: true`, audit archive proof over 196
+  event counts of 198/198 and `verified: true`, audit archive proof over 200
   entries, Redis
   feature cache, Neo4j projection, and
   Redpanda publish-consume-to-Postgres with zero stream dead letters on the
   valid path, zero lag after valid consume, supervised stream ingest, stream
   health report with `status: healthy` and `health_score: 100`, local trace
-  report proof, secrets scan proof, plus invalid-record DLQ topic proof
+  report proof with p95 around 99.499 ms, secrets scan proof, plus
+  invalid-record DLQ topic proof
 - Clean local artifacts: pass, removed removable ignored caches and generated
   smoke artifacts while keeping `.venv` and `data\public`; one generated
   `data\local\fraud_v2.sqlite` file remained locked by Windows and was skipped

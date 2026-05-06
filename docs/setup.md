@@ -80,8 +80,15 @@ and whether lite/full/GitHub handoff paths are ready.
 Generate synthetic data:
 
 ```powershell
-uv run fraud-v2 generate --users 120 --output data\synthetic\tiny\events.jsonl
+uv run fraud-v2 generate --users 720 --output data\synthetic\tiny\events.jsonl
 ```
+
+The default local dataset is deterministic: 720 synthetic users and 4,703
+canonical events covering synthetic identity, ATO, card testing, first-party
+fraud, money mule, APP scam, BEC, deepfake/liveness, bust-out, benign
+household sharing, benign corporate virtual-camera users, benign
+account-recovery login failures, benign payment bursts, legitimate
+dispute/chargeback controls, and delayed labels.
 
 Load SQLite:
 
@@ -92,7 +99,7 @@ uv run fraud-v2 load data\synthetic\tiny\events.jsonl --db-path data\local\fraud
 Or reset the whole seeded local demo database in one command:
 
 ```powershell
-uv run fraud-v2 demo-reset --users 120 --db-path data\local\fraud_v2.sqlite
+uv run fraud-v2 demo-reset --users 720 --db-path data\local\fraud_v2.sqlite
 ```
 
 Score one user:

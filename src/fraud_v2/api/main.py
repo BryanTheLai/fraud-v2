@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import json
 import time
+from collections import Counter
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from html import escape
 from logging import getLogger
-from math import cos, pi, sin
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -36,9 +36,23 @@ from fraud_v2.decision.engine import DecisionEngine
 from fraud_v2.domain.audit import AuditEntry, AuditVerificationReport
 from fraud_v2.domain.decisions import DecisionRequest, DecisionResponse, RiskSignal
 from fraud_v2.domain.entities import EntityRef
-from fraud_v2.domain.enums import EntityType, EventType, FeatureFreshnessStatus, ReviewOutcome
+from fraud_v2.domain.enums import (
+    EntityType,
+    EventType,
+    FeatureFreshnessStatus,
+    LabelValue,
+    ReviewOutcome,
+)
 from fraud_v2.domain.errors import DecisionNotFound, DuplicatePayloadConflict
-from fraud_v2.domain.events import EventEnvelope
+from fraud_v2.domain.events import (
+    CameraMetadataObserved,
+    ChargebackReceived,
+    DeviceObserved,
+    EventEnvelope,
+    LabelCreated,
+    LoginAttempt,
+    PaymentAttempted,
+)
 from fraud_v2.domain.retention import RetentionPolicy, RetentionReport
 from fraud_v2.domain.reviews import ReviewCase, ReviewDecision, ReviewDecisionRequest
 from fraud_v2.domain.stream import StreamDeadLetter
@@ -65,7 +79,7 @@ from fraud_v2.simulation.workbench import SimulationRequest, SimulationResponse,
 from fraud_v2.storage.ports import FraudStore
 from fraud_v2.storage.postgres_store import PostgresStore
 from fraud_v2.storage.sqlite_store import SQLiteStore
-from fraud_v2.synthetic.generator import SyntheticFraudGenerator
+from fraud_v2.synthetic.generator import DEFAULT_SYNTHETIC_USERS, SyntheticFraudGenerator
 
 configure_logging()
 logger = getLogger("fraud_v2.api")
@@ -84,11 +98,25 @@ class DemoScenario:
     action_note: str
 
 
+@dataclass(frozen=True)
+class SyntheticCoverageSummary:
+    events: int
+    users: int
+    fraud_labels: int
+    typologies: tuple[tuple[str, int], ...]
+    event_types: tuple[tuple[str, int], ...]
+    shared_devices: tuple[tuple[str, int], ...]
+    payment_burst_users: int
+    virtual_camera_events: int
+    failed_logins: int
+    false_positive_pressure: tuple[tuple[str, int], ...]
+
+
 DEMO_SCENARIOS: tuple[DemoScenario, ...] = (
     DemoScenario(
         key="clean",
         title="Clean instant-cash applicant",
-        user_id="user_00014",
+        user_id="user_00120",
         amount=250,
         as_of="2026-05-08T12:27:00Z",
         expected="GREEN / APPROVE",
@@ -290,11 +318,13 @@ def instant_cash_cockpit(
     fraud_keys = _confirmed_fraud_graph_keys(events)
     modes = compare_decision_modes(selected, decision, policy)
     contributions = signal_contributions(decision, simulation)
+    coverage = _synthetic_coverage(events)
     benchmark_report = _load_model_report(Path("data/models/benchmark-report.json"))
     return f"""<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Instant Cash Fraud Cockpit</title>
     {_base_style()}
   </head>
@@ -359,6 +389,7 @@ def instant_cash_cockpit(
           {_plain_list(selected.graph_evidence)}
         </div>
         {_model_benchmark_panel(benchmark_report)}
+        {_synthetic_coverage_panel(coverage)}
       </section>
       <aside class="rail">
         {_cockpit_decision_rail(selected, decision, simulation)}
@@ -379,6 +410,7 @@ def demo_cockpit(
     events = db.list_events()
     decisions = db.list_decisions()
     cases = db.list_review_cases()
+    coverage = _synthetic_coverage(events)
     selected_decision = _selected_decision(decision_id, decisions)
     scenario_cards = "".join(_scenario_card(scenario) for scenario in DEMO_SCENARIOS)
     selected_panel = _selected_decision_panel(selected_decision)
@@ -386,6 +418,7 @@ def demo_cockpit(
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>fraud-v2 demo cockpit</title>
     {_base_style()}
     <script>
@@ -434,6 +467,7 @@ def demo_cockpit(
       </section>
       <aside class="rail">
         {_queue_summary(events, decisions, cases)}
+        {_synthetic_coverage_panel(coverage, compact=True)}
         {_action_ladder()}
         {_coverage_map()}
       </aside>
@@ -469,7 +503,7 @@ def run_demo_scenario(
 
 @app.post("/demo/reset")
 def reset_demo_state(db: FraudStore = Depends(store)) -> RedirectResponse:
-    dataset = SyntheticFraudGenerator().generate(users=120)
+    dataset = SyntheticFraudGenerator().generate(users=DEFAULT_SYNTHETIC_USERS)
     resetter = getattr(db, "reset_demo_data", None)
     if not callable(resetter):
         raise HTTPException(status_code=409, detail="demo reset is available for local stores only")
@@ -492,6 +526,7 @@ def case_dashboard(case_id: UUID, db: FraudStore = Depends(store)) -> str:
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>fraud-v2 case {escape(str(case.case_id))}</title>
     {_base_style()}
   </head>
@@ -553,6 +588,7 @@ def simulate_review_decision(
 
 @app.get("/dashboard/ops", response_class=HTMLResponse)
 def ops_dashboard(db: FraudStore = Depends(store)) -> str:
+    _ensure_demo_seed(db)
     events = db.list_events()
     decisions = db.list_decisions()
     cases = db.list_review_cases()
@@ -564,6 +600,7 @@ def ops_dashboard(db: FraudStore = Depends(store)) -> str:
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>fraud-v2 ops dashboard</title>
     {_base_style()}
   </head>
@@ -609,6 +646,7 @@ def ml_dashboard() -> str:
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>fraud-v2 ML dashboard</title>
     {_base_style()}
   </head>
@@ -654,6 +692,7 @@ def signal_lab_dashboard(
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>fraud-v2 signal lab</title>
     {_base_style()}
   </head>
@@ -723,6 +762,7 @@ def simulation_dashboard(
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>fraud-v2 simulation workbench</title>
     {_base_style()}
   </head>
@@ -770,98 +810,83 @@ def simulation_dashboard(
 
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(db: FraudStore = Depends(store)) -> str:
+    _ensure_demo_seed(db)
     events = db.list_events()
     decisions = db.list_decisions()
     cases = db.list_review_cases()
+    coverage = _synthetic_coverage(events)
     red = sum(1 for decision in decisions if decision.risk_tier.value == "RED")
     yellow = sum(1 for decision in decisions if decision.risk_tier.value == "YELLOW")
     green = sum(1 for decision in decisions if decision.risk_tier.value == "GREEN")
-    event_card = _metric_card("Events", len(events))
-    green_card = _metric_card("Green", green)
-    yellow_card = _metric_card("Yellow", yellow)
-    red_card = _metric_card("Red", red)
     recent_decisions = _decision_table(decisions[-12:])
     review_queue = _review_table([case for case in cases if case.status == "open"][:12])
-    return f"""
-    <!doctype html>
-    <html lang="en">
-      <head>
-        <title>fraud-v2 dashboard</title>
-        <style>
-          body {{ font-family: Segoe UI, Arial, sans-serif; margin: 28px; color: #17202a; }}
-          h1 {{ font-size: 24px; margin: 0 0 18px; }}
-          h2 {{ font-size: 16px; margin: 28px 0 10px; }}
-          .grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }}
-          .metric {{ border: 1px solid #d7dde5; border-radius: 6px; padding: 14px; }}
-          .label {{ color: #5d6d7e; font-size: 12px; text-transform: uppercase; }}
-          .value {{ font-size: 28px; font-weight: 700; margin-top: 6px; }}
-          table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
-          th, td {{ border-bottom: 1px solid #e4e8ee; padding: 8px; text-align: left; }}
-          th {{ color: #566573; font-weight: 600; background: #f8fafc; }}
-          .tier-RED {{ color: #a61b1b; font-weight: 700; }}
-          .tier-YELLOW {{ color: #8a5a00; font-weight: 700; }}
-          .tier-GREEN {{ color: #17633a; font-weight: 700; }}
-          a {{ color: #0b5cad; }}
-          @media (max-width: 760px) {{ .grid {{ grid-template-columns: repeat(2, 1fr); }} }}
-        </style>
-      </head>
-      <body>
-        <h1>fraud-v2 analyst dashboard</h1>
-        <div class="grid">
-          {event_card}
-          {green_card}
-          {yellow_card}
-          {red_card}
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>fraud-v2 analyst dashboard</title>
+    {_base_style()}
+  </head>
+  <body>
+    {_top_nav("Analyst Dashboard", "Queue, decisions, and the local synthetic dataset in one work surface.")}
+    <main class="shell">
+      <section class="main">
+        <div class="hero-row">
+          {_plain_tile("Events", len(events), "Canonical synthetic/local events")}
+          {_plain_tile("Green", green, "Approve lane")}
+          {_plain_tile("Yellow", yellow, "Manual review/friction lane")}
+          {_plain_tile("Red", red, "Simulated block/hold lane")}
         </div>
-        <h2>Recent decisions</h2>
-        {recent_decisions}
-        <h2>Open review queue</h2>
-        {review_queue}
-        <p>
-          <a href="/demo">Demo cockpit</a>
-          | <a href="/dashboard/graph?entity_id=user_00000">Graph evidence</a>
-          | <a href="/dashboard/ops">Ops metrics</a>
-          | <a href="/dashboard/ml">ML dashboard</a>
-          | <a href="/dashboard/simulate">Simulation</a>
-          | <a href="/docs">API docs</a>
-          | <a href="/metrics">Metrics</a>
-        </p>
-      </body>
-    </html>
-    """
-
-
-def _metric_card(label: str, value: int) -> str:
-    return (
-        '<div class="metric">'
-        f'<div class="label">{label}</div>'
-        f'<div class="value">{value}</div>'
-        "</div>"
-    )
+        <div class="split">
+          <section class="panel">
+            <h2>Recent decisions</h2>
+            {recent_decisions}
+          </section>
+          <section class="panel">
+            <h2>Open review queue</h2>
+            {review_queue}
+          </section>
+        </div>
+        {_synthetic_coverage_panel(coverage)}
+      </section>
+      <aside class="rail">
+        {_action_ladder()}
+        {_coverage_map()}
+      </aside>
+    </main>
+  </body>
+</html>"""
 
 
 def _base_style() -> str:
     return """<style>
-      :root { --ink:#102033; --muted:#64748b; --line:#d8e0ea; --soft:#f6f8fb; --navy:#0f2238; --orange:#ff5a1f; --red:#c62828; --green:#137a3a; --yellow:#a16207; }
-      body { font-family: Segoe UI, Arial, sans-serif; margin: 0; color: var(--ink); background: #eef2f6; }
+      :root { --ink:#102033; --muted:#64748b; --line:#d8e0ea; --soft:#f6f8fb; --navy:#0f2238; --orange:#ff5a1f; --red:#c62828; --green:#137a3a; --yellow:#a16207; --blue:#2563eb; }
+      * { box-sizing: border-box; }
+      html, body { width:100%; max-width:100%; overflow-x:hidden; }
+      body { font-family: Aptos, Segoe UI, Tahoma, sans-serif; margin: 0; color: var(--ink); background: #edf1f5; font-size: 14px; }
       a { color: #0b5cad; text-decoration: none; }
       a:hover { text-decoration: underline; }
       .top { background: #fff; border-bottom: 1px solid var(--line); padding: 16px 20px; }
       .brand { display: flex; gap: 12px; align-items: center; }
+      .brand > div:last-child { min-width:0; }
       .mark { width: 38px; height: 38px; border-radius: 5px; background: var(--navy); color: #fff; display: grid; place-items: center; font-weight: 800; }
-      h1 { font-size: 18px; margin: 0 0 3px; }
-      h2 { font-size: 16px; margin: 0 0 6px; }
-      h3 { font-size: 13px; margin: 16px 0 8px; color: #40546b; text-transform: uppercase; letter-spacing: .04em; }
+      h1 { font-size: 18px; margin: 0 0 3px; letter-spacing: 0; overflow-wrap:anywhere; }
+      h2 { font-size: 16px; margin: 0 0 6px; letter-spacing: 0; overflow-wrap:anywhere; }
+      h3 { font-size: 13px; margin: 16px 0 8px; color: #40546b; text-transform: uppercase; letter-spacing: .04em; overflow-wrap:anywhere; }
+      p, a, strong, span { overflow-wrap:anywhere; }
       p { color: var(--muted); margin: 0 0 12px; }
       .navlinks { margin-top: 14px; display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; }
-      .shell { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 12px; padding: 12px; }
+      .shell { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; padding: 12px; width:100%; max-width:100vw; overflow-x:hidden; }
       .shell.single { grid-template-columns: 1fr; }
-      .main { display: grid; gap: 12px; align-content: start; }
-      .rail { display: grid; gap: 12px; align-content: start; }
-      .panel, .tile { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
-      .panel-head { display:flex; justify-content:space-between; gap:12px; align-items:start; border-bottom:1px solid var(--line); padding-bottom:12px; margin-bottom:12px; }
+      .main { display: grid; gap: 12px; align-content: start; min-width:0; }
+      .rail { display: grid; gap: 12px; align-content: start; min-width:0; }
+      .shell > *, .split > *, .hero-row > *, .scenario-grid > * { min-width:0; max-width:100%; }
+      .panel, .tile { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px; min-width: 0; max-width:100%; overflow-x: auto; }
+      .panel-head { display:flex; justify-content:space-between; gap:12px; align-items:start; flex-wrap:wrap; border-bottom:1px solid var(--line); padding-bottom:12px; margin-bottom:12px; }
+      .panel-head > * { min-width:0; }
       .scenario-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); gap:10px; }
-      .scenario { background:#f8fafc; border:1px solid var(--line); border-radius:6px; padding:12px; display:grid; gap:8px; }
+      .scenario { background:#f8fafc; border:1px solid var(--line); border-radius:6px; padding:12px; display:grid; gap:8px; min-width:0; max-width:100%; }
       .scenario.active { border-color: var(--orange); background: #fff7ed; }
       .scenario strong { font-size: 14px; }
       .cockpit-hero { border-top:4px solid var(--orange); }
@@ -874,25 +899,35 @@ def _base_style() -> str:
       .button.secondary { background:#fff; border-color:var(--line); color:var(--ink); }
       .button.danger { background:#fff4f2; color:var(--red); border-color:#f2b8b5; }
       .button.good { background:#ecfdf3; color:var(--green); border-color:#a7f3c0; }
-      .badge { display:inline-block; border:1px solid var(--line); border-radius:5px; padding:4px 7px; font-size:12px; font-weight:700; }
+      .badge { display:inline-block; border:1px solid var(--line); border-radius:5px; padding:4px 7px; font-size:12px; font-weight:700; max-width:100%; overflow-wrap:anywhere; }
       .badge.red { color:var(--red); background:#fff4f2; border-color:#f2b8b5; }
       .badge.yellow { color:var(--yellow); background:#fff8e7; border-color:#facc15; }
       .badge.green { color:var(--green); background:#ecfdf3; border-color:#a7f3c0; }
       .badge.neutral { color:#475569; background:#f8fafc; }
       .custom-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin: 8px 0 12px; }
       label { color:#40546b; font-size:12px; font-weight:700; display:grid; gap:5px; }
-      input, select { border:1px solid var(--line); border-radius:4px; padding:8px; font:inherit; background:#fff; }
-      table { width:100%; border-collapse:collapse; font-size:13px; }
-      th, td { border-bottom:1px solid #e5eaf0; padding:8px; text-align:left; vertical-align:top; }
+      input, select { border:1px solid var(--line); border-radius:4px; padding:8px; font:inherit; background:#fff; min-width:0; width:100%; max-width:100%; }
+      table { width:100%; max-width:100%; table-layout:fixed; border-collapse:collapse; font-size:13px; }
+      th, td { border-bottom:1px solid #e5eaf0; padding:8px; text-align:left; vertical-align:top; overflow-wrap:anywhere; }
       th { color:#52616b; background:#f6f8fa; font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
-      .split { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+      pre { white-space:pre-wrap; overflow-wrap:anywhere; }
+      .split { display:grid; grid-template-columns: minmax(0,1fr); gap:12px; }
       .graph { border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#fff; }
-      .bar { min-width:120px; background:#edf2f7; border-radius:4px; overflow:hidden; height:10px; }
+      .graph svg { display:block; width:100%; height:auto; min-height:260px; }
+      .bar { width:100%; min-width:0; background:#edf2f7; border-radius:4px; overflow:hidden; height:10px; }
       .bar span { display:block; height:10px; background:var(--orange); }
+      .bar.green span { background:var(--green); }
+      .bar.yellow span { background:var(--yellow); }
+      .bar.red span { background:var(--red); }
+      .bar.blue span { background:var(--blue); }
       .recommended-row td { background:#fff7ed; font-weight:700; }
+      .tier-RED { color: var(--red); font-weight: 800; }
+      .tier-YELLOW { color: var(--yellow); font-weight: 800; }
+      .tier-GREEN { color: var(--green); font-weight: 800; }
       ul.clean { margin: 8px 0 0; padding-left: 18px; }
       li { margin: 6px 0; }
-      @media (max-width: 900px) { .shell, .split { grid-template-columns: 1fr; } }
+      @media (min-width: 1100px) { .shell:not(.single) { grid-template-columns: minmax(0,1fr) minmax(260px,300px); } .split { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
+      @media (max-width: 520px) { .top { padding:14px 12px; } .shell { padding:8px; } .panel, .tile { padding:12px; } .hero-row, .scenario-grid, .custom-grid { grid-template-columns:1fr; } .navlinks { gap:10px; } .value { font-size:24px; overflow-wrap:anywhere; } }
     </style>"""
 
 
@@ -910,7 +945,7 @@ def _top_nav(title: str, subtitle: str) -> str:
         <a href="/dashboard/ml">ML dashboard</a>
         <a href="/dashboard/signals">Signal lab</a>
         <a href="/dashboard/simulate">Simulation</a>
-        <a href="/dashboard/graph?entity_id=user_00000">Graph</a>
+        <a href="/dashboard/graph?entity_id=user_00000">Graph evidence</a>
         <a href="/docs">API docs</a>
         <a href="/metrics">Raw metrics</a>
       </nav>
@@ -920,7 +955,7 @@ def _top_nav(title: str, subtitle: str) -> str:
 def _ensure_demo_seed(db: FraudStore) -> None:
     if db.list_events():
         return
-    db.add_events(SyntheticFraudGenerator().generate(users=120).events)
+    db.add_events(SyntheticFraudGenerator().generate(users=DEFAULT_SYNTHETIC_USERS).events)
 
 
 def _scenario_by_key(key: str) -> DemoScenario:
@@ -1042,16 +1077,11 @@ def _model_benchmark_panel(report: dict[str, Any] | None) -> str:
           <pre>uv run fraud-v2 model-benchmark --events-path data\\synthetic\\tiny\\events.jsonl --output-path data\\models\\benchmark-report.json</pre>
           <p>Use this as a model proof lane, not as a production claim.</p>
         </div>"""
-    rows = "".join(
-        "<tr>"
-        f"<td>{escape(str(item.get('model_family', '')))}</td>"
-        f"<td>{escape(_fmt(item.get('average_precision')))}</td>"
-        f"<td>{escape(_fmt(item.get('brier_score')))}</td>"
-        f"<td>{escape(_fmt(item.get('recall_at_1pct_fpr')))}</td>"
-        f"<td>{escape(_fmt(item.get('best_profit')))}</td>"
-        "</tr>"
-        for item in report.get("models", [])
+    model_rows = list(report.get("models", []))
+    best_profit = (
+        max((_as_float(item.get("best_profit")) for item in model_rows), default=0.0) or 1.0
     )
+    rows = "".join(_model_benchmark_row(item, best_profit) for item in model_rows)
     return f"""<div class="panel">
       <div class="panel-head">
         <div>
@@ -1060,9 +1090,25 @@ def _model_benchmark_panel(report: dict[str, Any] | None) -> str:
         </div>
         <span class="badge neutral">local sklearn</span>
       </div>
-      <table><thead><tr><th>Model</th><th>AUPRC</th><th>Brier</th><th>Recall @ 1% FPR</th><th>Best profit</th></tr></thead><tbody>{rows}</tbody></table>
+      <table><thead><tr><th>Model</th><th>AUPRC</th><th>Profit visual</th><th>Brier</th><th>Recall @ 1% FPR</th><th>Best profit</th></tr></thead><tbody>{rows}</tbody></table>
       <p>{escape(str(report.get("recommendation", "")))}</p>
     </div>"""
+
+
+def _model_benchmark_row(item: Any, best_profit: float) -> str:
+    row = item if isinstance(item, dict) else {}
+    profit = _as_float(row.get("best_profit"))
+    width = max(0, min(100, round(profit / best_profit * 100)))
+    return (
+        "<tr>"
+        f"<td>{escape(str(row.get('model_family', '')))}</td>"
+        f"<td>{escape(_fmt(row.get('average_precision')))}</td>"
+        f"<td><div class='bar green'><span style='width:{width}%'></span></div></td>"
+        f"<td>{escape(_fmt(row.get('brier_score')))}</td>"
+        f"<td>{escape(_fmt(row.get('recall_at_1pct_fpr')))}</td>"
+        f"<td>{escape(_fmt(row.get('best_profit')))}</td>"
+        "</tr>"
+    )
 
 
 def _scenario_options() -> str:
@@ -1181,6 +1227,173 @@ def _coverage_map() -> str:
             for layer, status, note in rows
         )
         + "</tbody></table></section>"
+    )
+
+
+def _synthetic_coverage(events: list[EventEnvelope]) -> SyntheticCoverageSummary:
+    users = {
+        ref.entity_id
+        for event in events
+        for ref in event.entity_refs
+        if ref.entity_type == EntityType.USER
+    }
+    event_types = Counter(event.event_type.value for event in events)
+    typologies: Counter[str] = Counter()
+    device_counts: Counter[str] = Counter()
+    payment_attempts_by_user: Counter[str] = Counter()
+    failed_logins_by_user: Counter[str] = Counter()
+    chargebacks_by_user: Counter[str] = Counter()
+    fraud_label_users: set[str] = set()
+    virtual_camera_users: set[str] = set()
+    virtual_camera_events = 0
+    failed_logins = 0
+    for event in events:
+        payload = event.payload
+        if isinstance(payload, LabelCreated) and payload.label_value == LabelValue.FRAUD:
+            typologies[payload.typology.value] += 1
+            fraud_label_users.add(payload.target_entity.entity_id)
+        if isinstance(payload, DeviceObserved):
+            device_counts[payload.device_id] += 1
+        if isinstance(payload, PaymentAttempted):
+            payment_attempts_by_user[payload.user_id] += 1
+        if isinstance(payload, CameraMetadataObserved) and payload.software_tag:
+            virtual_camera_events += 1
+            virtual_camera_users.add(payload.user_id)
+        if isinstance(payload, LoginAttempt) and not payload.success:
+            failed_logins_by_user[payload.user_id] += 1
+            failed_logins += 1
+        if isinstance(payload, ChargebackReceived):
+            chargebacks_by_user[payload.user_id] += 1
+    shared_devices = tuple(
+        (device_id, count) for device_id, count in device_counts.most_common(8) if count > 1
+    )
+    payment_burst_users = sum(1 for count in payment_attempts_by_user.values() if count >= 3)
+    benign_burst_users = {
+        user_id
+        for user_id, count in payment_attempts_by_user.items()
+        if count >= 3 and user_id not in fraud_label_users
+    }
+    false_positive_pressure = (
+        (
+            "Benign corporate virtual-camera users",
+            len(virtual_camera_users - fraud_label_users),
+        ),
+        (
+            "Benign account-recovery users",
+            len(set(failed_logins_by_user) - fraud_label_users),
+        ),
+        ("Benign payment-burst users", len(benign_burst_users)),
+        (
+            "Legitimate dispute/chargeback users",
+            len(set(chargebacks_by_user) - fraud_label_users),
+        ),
+    )
+    return SyntheticCoverageSummary(
+        events=len(events),
+        users=len(users),
+        fraud_labels=sum(typologies.values()),
+        typologies=tuple(typologies.most_common()),
+        event_types=tuple(event_types.most_common()),
+        shared_devices=shared_devices,
+        payment_burst_users=payment_burst_users,
+        virtual_camera_events=virtual_camera_events,
+        failed_logins=failed_logins,
+        false_positive_pressure=false_positive_pressure,
+    )
+
+
+def _synthetic_coverage_panel(summary: SyntheticCoverageSummary, *, compact: bool = False) -> str:
+    edge_rows = (
+        ("Payment-burst users", summary.payment_burst_users, "Card testing, APP/BEC, bust-out"),
+        (
+            "Virtual camera events",
+            summary.virtual_camera_events,
+            "Deepfake/liveness-shaped metadata",
+        ),
+        ("ATO failed logins", summary.failed_logins, "Account-takeover password bursts"),
+        (
+            "Shared devices",
+            len(summary.shared_devices),
+            "Fraud rings plus benign household sharing",
+        ),
+    )
+    event_distribution = (
+        ""
+        if compact
+        else f"<h3>Event mix</h3>{_distribution_table(summary.event_types, 'Event type')}"
+    )
+    return f"""<section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Synthetic dataset coverage</h2>
+          <p>Deterministic local data with fraud rings, benign false-positive pressure, payment bursts, delayed labels, and no real PII.</p>
+        </div>
+        <span class="badge neutral">{DEFAULT_SYNTHETIC_USERS} seeded users</span>
+      </div>
+      <div class="hero-row">
+        {_plain_tile("Users", summary.users, "Synthetic applicants")}
+        {_plain_tile("Events", summary.events, "Canonical event envelopes")}
+        {_plain_tile("Fraud labels", summary.fraud_labels, "Delayed ground truth")}
+        {_plain_tile("Burst users", summary.payment_burst_users, "3+ payment attempts")}
+      </div>
+      <h3>Fraud typologies</h3>
+      {_distribution_table(summary.typologies, "Typology")}
+      <h3>Edge-case proof</h3>
+      {_edge_case_table(edge_rows)}
+      <h3>False-positive pressure</h3>
+      {_false_positive_pressure_table(summary.false_positive_pressure)}
+      {_shared_device_table(summary.shared_devices)}
+      {event_distribution}
+    </section>"""
+
+
+def _distribution_table(rows: tuple[tuple[str, int], ...], label: str) -> str:
+    if not rows:
+        return "<p>No distribution data yet.</p>"
+    max_value = max(count for _, count in rows) or 1
+    table_rows = "".join(
+        "<tr>"
+        f"<td>{escape(name)}</td>"
+        f"<td>{count}</td>"
+        f"<td><div class='bar blue'><span style='width:{round(count / max_value * 100)}%'></span></div></td>"
+        "</tr>"
+        for name, count in rows
+    )
+    return (
+        f"<table><thead><tr><th>{escape(label)}</th><th>Count</th><th>Visual</th></tr></thead>"
+        f"<tbody>{table_rows}</tbody></table>"
+    )
+
+
+def _edge_case_table(rows: tuple[tuple[str, int, str], ...]) -> str:
+    return (
+        "<table><thead><tr><th>Edge case</th><th>Count</th><th>Why it exists</th></tr></thead>"
+        "<tbody>"
+        + "".join(
+            f"<tr><td>{escape(label)}</td><td>{count}</td><td>{escape(note)}</td></tr>"
+            for label, count, note in rows
+        )
+        + "</tbody></table>"
+    )
+
+
+def _false_positive_pressure_table(rows: tuple[tuple[str, int], ...]) -> str:
+    return _edge_case_table(
+        tuple((label, count, "Legitimate-looking counterexample") for label, count in rows)
+    )
+
+
+def _shared_device_table(shared_devices: tuple[tuple[str, int], ...]) -> str:
+    if not shared_devices:
+        return ""
+    rows = "".join(
+        f"<tr><td>{escape(device_id)}</td><td>{count}</td></tr>"
+        for device_id, count in shared_devices
+    )
+    return (
+        "<h3>Shared device pressure</h3>"
+        "<table><thead><tr><th>Device</th><th>Observed users/events</th></tr></thead>"
+        f"<tbody>{rows}</tbody></table>"
     )
 
 
@@ -1439,12 +1652,19 @@ def _stale_feature_count(decisions: list[DecisionResponse]) -> int:
 
 def _tier_mix_table(decisions: list[DecisionResponse]) -> str:
     tiers = ["GREEN", "YELLOW", "RED"]
+    counts = {
+        tier: sum(1 for decision in decisions if decision.risk_tier.value == tier) for tier in tiers
+    }
+    max_count = max(counts.values(), default=0) or 1
     rows = []
     for tier in tiers:
-        count = sum(1 for decision in decisions if decision.risk_tier.value == tier)
-        rows.append(f"<tr><td>{tier}</td><td>{count}</td></tr>")
+        count = counts[tier]
+        rows.append(
+            f"<tr><td><span class='badge {tier.lower()}'>{tier}</span></td><td>{count}</td>"
+            f"<td><div class='bar {tier.lower()}'><span style='width:{round(count / max_count * 100)}%'></span></div></td></tr>"
+        )
     return (
-        "<table><thead><tr><th>Tier</th><th>Count</th></tr></thead><tbody>"
+        "<table><thead><tr><th>Tier</th><th>Count</th><th>Mix</th></tr></thead><tbody>"
         + "".join(rows)
         + "</tbody></table>"
     )
@@ -1583,17 +1803,30 @@ def _threshold_candidate_row(candidate: dict[str, Any]) -> str:
 def _feature_importance_table(feature_importances: list[dict[str, Any]]) -> str:
     if not feature_importances:
         return "<p>No feature importance values found in the model report.</p>"
+    max_importance = (
+        max((_as_float(item.get("importance")) for item in feature_importances), default=0.0) or 1.0
+    )
     rows = "".join(
         "<tr>"
         f"<td>{escape(str(item.get('feature', '')))}</td>"
         f"<td>{escape(_fmt(item.get('importance')))}</td>"
+        f"<td><div class='bar blue'><span style='width:{round(_as_float(item.get('importance')) / max_importance * 100)}%'></span></div></td>"
         "</tr>"
         for item in feature_importances
     )
     return (
-        "<table><thead><tr><th>Feature</th><th>Importance</th></tr></thead>"
+        "<table><thead><tr><th>Feature</th><th>Importance</th><th>Visual</th></tr></thead>"
         f"<tbody>{rows}</tbody></table>"
     )
+
+
+def _as_float(value: object) -> float:
+    if isinstance(value, int | float):
+        return float(value)
+    try:
+        return float(str(value))
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _fmt(value: object) -> str:
@@ -1630,6 +1863,13 @@ def _decision_table(decisions: list[DecisionResponse]) -> str:
     )
 
 
+def _entity_type_options(selected: EntityType) -> str:
+    return "".join(
+        f'<option value="{escape(entity_type.value)}"{" selected" if entity_type == selected else ""}>{escape(entity_type.value)}</option>'
+        for entity_type in EntityType
+    )
+
+
 @app.get("/dashboard/graph", response_class=HTMLResponse)
 def graph_dashboard(
     entity_id: str = "user_00000",
@@ -1637,37 +1877,64 @@ def graph_dashboard(
     depth: int = Query(default=2, ge=1, le=4),
     db: FraudStore = Depends(store),
 ) -> str:
+    _ensure_demo_seed(db)
     target = EntityRef(entity_type=entity_type, entity_id=entity_id)
     events = db.list_events()
     graph = GraphService(events).neighborhood(target, depth=depth)
     svg = _graph_svg(graph, target.graph_key, _confirmed_fraud_graph_keys(events))
     relationships = _graph_relationship_table(graph["edges"])
-    return f"""
-    <!doctype html>
-    <html lang="en">
-      <head>
-        <title>fraud-v2 graph evidence</title>
-        <style>
-          body {{ font-family: Segoe UI, Arial, sans-serif; margin: 28px; color: #17202a; }}
-          h1 {{ font-size: 24px; margin: 0 0 8px; }}
-          .meta {{ color: #5d6d7e; margin: 0 0 18px; }}
-          .graph {{ border: 1px solid #d7dde5; border-radius: 6px; overflow: hidden; }}
-          table {{ width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 18px; }}
-          th, td {{ border-bottom: 1px solid #e4e8ee; padding: 8px; text-align: left; }}
-          th {{ color: #566573; font-weight: 600; background: #f8fafc; }}
-          a {{ color: #0b5cad; }}
-        </style>
-      </head>
-      <body>
-        <p><a href="/dashboard">Dashboard</a></p>
-        <h1>Graph evidence</h1>
-        <p class="meta">Entity: {escape(target.graph_key)} | Depth: {depth}</p>
-        <div class="graph">{svg}</div>
-        <h2>Relationships</h2>
-        {relationships}
-      </body>
-    </html>
-    """
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>fraud-v2 graph evidence</title>
+    {_base_style()}
+  </head>
+  <body>
+    {_top_nav("Graph evidence", "Local entity neighborhood with type lanes, fraud labels, and relationship proof.")}
+    <main class="shell">
+      <section class="main">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>{escape(target.graph_key)}</h2>
+              <p>Depth {depth}. Red nodes are confirmed synthetic fraud labels; bold orange edges touch target or confirmed fraud.</p>
+            </div>
+            <span class="badge neutral">{len(graph["nodes"])} nodes / {len(graph["edges"])} edges</span>
+          </div>
+          <form method="get" action="/dashboard/graph" class="custom-grid">
+            <label>Entity<input name="entity_id" value="{escape(entity_id)}"></label>
+            <label>Type<select name="entity_type">{_entity_type_options(entity_type)}</select></label>
+            <label>Depth<input name="depth" value="{depth}" type="number" min="1" max="4"></label>
+            <button class="button" type="submit">Render graph</button>
+          </form>
+          <div class="graph">{svg}</div>
+        </section>
+        <section class="panel">
+          <h2>Relationships</h2>
+          {relationships}
+        </section>
+      </section>
+      <aside class="rail">
+        {_graph_summary_panel(graph)}
+        {_coverage_map()}
+      </aside>
+    </main>
+  </body>
+</html>"""
+
+
+def _graph_summary_panel(graph: dict[str, list[dict[str, str]]]) -> str:
+    node_types = Counter(node["label"] for node in graph["nodes"])
+    edge_types = Counter(edge["relationship"] for edge in graph["edges"])
+    return f"""<section class="panel">
+      <h2>Graph mix</h2>
+      <h3>Node types</h3>
+      {_distribution_table(tuple(node_types.most_common()), "Node type")}
+      <h3>Relationship types</h3>
+      {_distribution_table(tuple(edge_types.most_common()), "Relationship")}
+    </section>"""
 
 
 def _graph_svg(
@@ -1685,16 +1952,8 @@ def _graph_svg(
 
     width = 900
     height = 520
-    center_x = width / 2
-    center_y = height / 2
-    radius = 185
     ordered_nodes = sorted(nodes, key=lambda node: (node["id"] != target_key, node["id"]))
-    positions: dict[str, tuple[float, float]] = {}
-    positions[ordered_nodes[0]["id"]] = (center_x, center_y)
-    outer_nodes = ordered_nodes[1:]
-    for index, node in enumerate(outer_nodes):
-        angle = (2 * pi * index / max(len(outer_nodes), 1)) - (pi / 2)
-        positions[node["id"]] = (center_x + radius * cos(angle), center_y + radius * sin(angle))
+    positions = _graph_positions(ordered_nodes, target_key, width=width, height=height)
 
     visible = set(positions)
     edge_lines = []
@@ -1743,13 +2002,56 @@ def _graph_svg(
         f'<svg viewBox="0 0 {width} {height}" width="100%" height="520" role="img" '
         f'aria-label="Graph evidence for {escape(target_key)}">'
         '<rect width="900" height="520" fill="#ffffff" />'
-        '<text x="24" y="32" font-size="13" font-weight="700" fill="#102033">Highlighted edges touch the target or a confirmed fraud node</text>'
+        '<text x="24" y="32" font-size="13" font-weight="700" fill="#102033">Lane layout: network/device to the left, target center, transactions to the right, users below</text>'
+        '<text x="150" y="70" font-size="11" font-weight="700" fill="#64748b">Network</text>'
+        '<text x="292" y="70" font-size="11" font-weight="700" fill="#64748b">Device</text>'
+        '<text x="428" y="70" font-size="11" font-weight="700" fill="#64748b">Applicant</text>'
+        '<text x="626" y="70" font-size="11" font-weight="700" fill="#64748b">Payment</text>'
         '<rect x="24" y="448" width="852" height="48" rx="6" fill="#f8fafc" stroke="#d8e0ea" />'
         '<text x="42" y="478" font-size="12" fill="#102033">U=user  D=device  IP=network  $=bank account  T=transaction  A=application  red node=confirmed fraud</text>'
         + "".join(edge_lines)
         + "".join(node_shapes)
         + "</svg>"
     )
+
+
+def _graph_positions(
+    nodes: list[dict[str, str]],
+    target_key: str,
+    *,
+    width: int,
+    height: int,
+) -> dict[str, tuple[float, float]]:
+    target_node = next((node for node in nodes if node["id"] == target_key), nodes[0])
+    positions: dict[str, tuple[float, float]] = {target_node["id"]: (width / 2, height / 2)}
+    grouped: dict[str, list[dict[str, str]]] = {}
+    for node in nodes:
+        if node["id"] == target_node["id"]:
+            continue
+        grouped.setdefault(node["label"], []).append(node)
+    vertical_lanes = {
+        "IP_ADDRESS": (150.0, 100.0, 300.0),
+        "DEVICE": (300.0, 100.0, 310.0),
+        "TRANSACTION": (640.0, 105.0, 310.0),
+        "BANK_ACCOUNT": (760.0, 140.0, 230.0),
+    }
+    for label, lane_nodes in grouped.items():
+        lane_nodes = sorted(lane_nodes, key=lambda item: item["id"])
+        if label == "USER":
+            for index, node in enumerate(lane_nodes):
+                x = 235.0 + (430.0 * (index + 1) / (len(lane_nodes) + 1))
+                positions[node["id"]] = (x, 405.0)
+            continue
+        if label == "APPLICATION":
+            for index, node in enumerate(lane_nodes):
+                x = 395.0 + (110.0 * (index + 1) / (len(lane_nodes) + 1))
+                positions[node["id"]] = (x, 110.0)
+            continue
+        x, y_start, y_span = vertical_lanes.get(label, (760.0, 150.0, 220.0))
+        for index, node in enumerate(lane_nodes):
+            y = y_start + (y_span * (index + 1) / (len(lane_nodes) + 1))
+            positions[node["id"]] = (x, y)
+    return positions
 
 
 def _graph_relationship_table(edges: list[dict[str, str]]) -> str:
@@ -1988,7 +2290,7 @@ def ingest_event(event: EventEnvelope, db: FraudStore = Depends(store)) -> Event
     "/v1/synthetic/generate", dependencies=[Depends(require_roles(AuthRole.ADMIN, AuthRole.SYSTEM))]
 )
 def generate_synthetic(
-    users: int = Query(default=120, ge=10, le=10000),
+    users: int = Query(default=DEFAULT_SYNTHETIC_USERS, ge=10, le=10000),
     output: Path | None = None,
     db: FraudStore = Depends(store),
 ) -> dict[str, int | str]:

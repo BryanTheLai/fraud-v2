@@ -116,56 +116,61 @@ class SQLiteStore:
     def add_event(
         self, event: EventEnvelope, outbox_topic: str | None = "fraud.events"
     ) -> EventEnvelope:
-        event_json = event.model_dump_json()
-        payload_hash = hashlib.sha256(event_json.encode("utf-8")).hexdigest()
         with self._connect() as conn:
-            existing = conn.execute(
-                "select event_json, payload_hash from events where idempotency_key = ?",
-                (event.idempotency_key,),
-            ).fetchone()
-            if existing:
-                if existing["payload_hash"] != payload_hash:
-                    raise DuplicatePayloadConflict(
-                        f"idempotency key conflict: {event.idempotency_key}"
-                    )
-                return EventEnvelope.model_validate_json(str(existing["event_json"]))
-            conn.execute(
-                """
-                insert into events(
-                  event_id, event_type, occurred_at, idempotency_key, payload_hash, event_json
-                )
-                values (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    str(event.event_id),
-                    event.event_type.value,
-                    event.occurred_at.isoformat(),
-                    event.idempotency_key,
-                    payload_hash,
-                    event_json,
-                ),
-            )
-            if outbox_topic is not None:
-                self._enqueue_outbox(conn, event, event_json, outbox_topic)
-            self._append_audit(
-                conn,
-                actor="local-system",
-                action="event.ingested",
-                target_type="event",
-                target_id=str(event.event_id),
-                payload={
-                    "event_type": event.event_type.value,
-                    "idempotency_key": event.idempotency_key,
-                },
-            )
-        return event
+            return self._add_event(conn, event, outbox_topic)
 
     def add_events(self, events: list[EventEnvelope]) -> int:
-        inserted = 0
-        for event in events:
-            self.add_event(event)
-            inserted += 1
-        return inserted
+        with self._connect() as conn:
+            for event in events:
+                self._add_event(conn, event, "fraud.events")
+        return len(events)
+
+    def _add_event(
+        self,
+        conn: sqlite3.Connection,
+        event: EventEnvelope,
+        outbox_topic: str | None,
+    ) -> EventEnvelope:
+        event_json = event.model_dump_json()
+        payload_hash = hashlib.sha256(event_json.encode("utf-8")).hexdigest()
+        existing = conn.execute(
+            "select event_json, payload_hash from events where idempotency_key = ?",
+            (event.idempotency_key,),
+        ).fetchone()
+        if existing:
+            if existing["payload_hash"] != payload_hash:
+                raise DuplicatePayloadConflict(f"idempotency key conflict: {event.idempotency_key}")
+            return EventEnvelope.model_validate_json(str(existing["event_json"]))
+        conn.execute(
+            """
+            insert into events(
+              event_id, event_type, occurred_at, idempotency_key, payload_hash, event_json
+            )
+            values (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                str(event.event_id),
+                event.event_type.value,
+                event.occurred_at.isoformat(),
+                event.idempotency_key,
+                payload_hash,
+                event_json,
+            ),
+        )
+        if outbox_topic is not None:
+            self._enqueue_outbox(conn, event, event_json, outbox_topic)
+        self._append_audit(
+            conn,
+            actor="local-system",
+            action="event.ingested",
+            target_type="event",
+            target_id=str(event.event_id),
+            payload={
+                "event_type": event.event_type.value,
+                "idempotency_key": event.idempotency_key,
+            },
+        )
+        return event
 
     def reset_demo_data(self, events: list[EventEnvelope]) -> dict[str, int]:
         with self._connect() as conn:

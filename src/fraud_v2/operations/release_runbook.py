@@ -4,6 +4,8 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
+from fraud_v2.synthetic.generator import DEFAULT_SYNTHETIC_USERS
+
 
 def write_release_runbook(
     *,
@@ -47,7 +49,9 @@ Generated: {generated_at.isoformat()}
 
 ```powershell
 uv sync --extra dev
-uv run fraud-v2 generate --users 120 --output data\\synthetic\\tiny\\events.jsonl
+uv run fraud-v2 generate `
+  --users {DEFAULT_SYNTHETIC_USERS} `
+  --output data\\synthetic\\tiny\\events.jsonl
 uv run fraud-v2 load data\\synthetic\\tiny\\events.jsonl --db-path data\\local\\fraud_v2.sqlite
 uv run fraud-v2 score user_00000 --db-path data\\local\\fraud_v2.sqlite
 uv run uvicorn fraud_v2.api.main:app --host 127.0.0.1 --port 8000

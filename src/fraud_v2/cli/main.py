@@ -69,7 +69,11 @@ from fraud_v2.storage.backup import restore_sqlite_backup, write_sqlite_backup
 from fraud_v2.storage.ports import FraudStore
 from fraud_v2.storage.postgres_store import PostgresStore
 from fraud_v2.storage.sqlite_store import SQLiteStore
-from fraud_v2.synthetic.generator import SyntheticFraudGenerator, load_events_jsonl
+from fraud_v2.synthetic.generator import (
+    DEFAULT_SYNTHETIC_USERS,
+    SyntheticFraudGenerator,
+    load_events_jsonl,
+)
 from fraud_v2.workers.outbox import DryRunEventPublisher, OutboxWorker
 from fraud_v2.workers.stream_consumer import RedpandaConsumerFactory, StreamIngestionWorker
 from fraud_v2.workers.stream_supervisor import StreamSupervisor
@@ -153,7 +157,7 @@ def auth_token(
 
 @app.command()
 def generate(
-    users: int = typer.Option(120, min=10),
+    users: int = typer.Option(DEFAULT_SYNTHETIC_USERS, min=10),
     output: Path = Path("data/synthetic/tiny/events.jsonl"),
 ) -> None:
     dataset = SyntheticFraudGenerator().generate(users=users)
@@ -174,7 +178,7 @@ def load(
 
 @app.command()
 def demo_reset(
-    users: int = typer.Option(120, min=10),
+    users: int = typer.Option(DEFAULT_SYNTHETIC_USERS, min=10),
     db_path: Path = Path("data/local/fraud_v2.sqlite"),
 ) -> None:
     dataset = SyntheticFraudGenerator().generate(users=users)

@@ -45,6 +45,14 @@ Implementation update:
 - `fraud-v2 model-benchmark` compares logistic regression and random forest
   with AUPRC, Brier score, Recall at 1 percent FPR, and best-profit threshold;
   `/cockpit` renders that report when present.
+- The default synthetic dataset now seeds 720 users and 4,703 events with all
+  nine local fraud typologies, shared fraud-ring devices, benign household
+  sharing, benign corporate virtual-camera users, benign account-recovery
+  login failures, benign payment bursts, legitimate dispute/chargeback
+  controls, payment bursts, virtual-camera metadata, ATO failed logins,
+  delayed labels, and dashboard/cockpit coverage panels.
+- `/dashboard` and `/dashboard/graph` now use the shared app shell. Graphs use
+  lane layout by entity type instead of a same-looking circle for every case.
 - Yellow case rails can render a Break-the-Spell draft checklist; no real
   customer message is sent.
 - Graph SVG now has a legend, node type markers, confirmed-fraud styling, and
@@ -62,7 +70,7 @@ Implementation update:
 | Analyst case detail | Current dashboard has rows but no full case file. | Row-only; drawer; case page. | Case page is best for presentation and evidence. | Continue: build case page. |
 | UI-based simulation | Built locally; no real external actions. | Keep UI/CLI knobs; add raw JSON editor; wire to live seeded DB. | Current knobs are simple and presentable. Raw JSON is powerful but intimidating. DB mutation can confuse demos. | Keep implemented UI/CLI knobs; defer raw JSON editor. |
 | Demo reset | Built locally for seeded demo DB. | Keep current reset; add snapshots; no reset. | Current reset is enough for demos. Snapshots help later if scenarios branch more. | Keep implemented reset. |
-| Graph visual | Current graph is truthful but flat. | Better SVG; Cytoscape.js; D3; Neo4j Browser. | Better SVG is low-risk. Cytoscape is better later. | Continue: improve SVG now; pause Cytoscape. |
+| Graph visual | Shared shell and lane SVG are implemented; true interaction is still future. | Better SVG; Cytoscape.js; D3; Neo4j Browser. | Better SVG is low-risk and runs offline. Cytoscape is better if graph becomes the main product surface. | Keep lane SVG now; pause Cytoscape. |
 | Graph ML | Blog implies GNN/message passing. | Rules only; graph features; node2vec; GraphSAGE/PyG. | True GNN is attractive but easy to fake without labels. Graph features are honest and useful. | Continue: graph features; pause production GNN. |
 | Metrics UX | Raw Prometheus is machine-facing. | Keep raw only; add `/dashboard/ops`; rely on Grafana. | Raw stays required. Grafana needs full mode. Human ops page helps lite mode. | Continue: add `/dashboard/ops`. |
 | ML dashboard | Model pieces exist but are not prominent. | Static report only; in-app ML dashboard; notebook. | In-app dashboard makes the ML project visible. Notebook is less demoable. | Continue: build ML dashboard. |
@@ -85,7 +93,7 @@ Implementation update:
 | Production auth/RBAC | Local token is not production access control. | Keep token; OIDC/JWT; enterprise IAM. | OIDC is useful later but not needed for laptop demo. | Pause for now; keep role-shaped local auth. |
 | Full cloud deployment | Local Docker exists, cloud target unknown. | Stay local; single VM; managed cloud/Kubernetes. | Cloud/IaC depends on target and budget. | Pause; keep local-first. |
 | GitHub PR/push | Remote exists and GitHub CLI auth passes on this machine. | Push only; `github-handoff.ps1 -Execute`; create PR manually in browser. | Scripted handoff is now available. Manual browser PR remains backup. | Use scripted handoff. |
-| Synthetic data expansion | Current data is enough but narrow. | Deterministic generator; LLM edge cases; public datasets. | Deterministic base keeps tests stable. LLM adds breadth. | Continue: deterministic core plus LLM edge cases. |
+| Synthetic data expansion | Deterministic 720-user/4,703-event dataset now covers all nine local typologies, better chart density, and explicit benign false-positive controls. | Deterministic generator; LLM edge cases; public datasets. | Deterministic base keeps tests stable. LLM adds breadth, but generated stories still need validation. Larger tracked fixtures add some repository weight, but 4.7k events remains laptop-cheap. | Keep deterministic core; use LLM edge manifests as an optional expansion lane. |
 | LLM role | Tempting to use as scorer. | Data generation; analyst note drafting; final risk scoring. | LLM scoring is non-deterministic and hard to govern. | Continue for data/eval/notes; pause final scoring. |
 | Production claim | Tempting to call it production-ready. | Production-shaped local lab; regulated production system. | Truth matters. | Continue calling it local lab; pause production claims. |
 
@@ -134,7 +142,9 @@ Build `/demo` or make `/dashboard` into a cockpit.
 
 ## Graph Improvements
 
-Current graph proves relationships but looks visually flat.
+The current graph proves relationships with a zero-dependency SVG lane layout:
+network/device nodes sit left, the target stays center, payment nodes sit
+right, related users sit below, and target/fraud-touching edges are highlighted.
 
 | Problem | Possible Solutions | Tradeoffs | Recommendation |
 |---|---|---|---|
@@ -142,7 +152,7 @@ Current graph proves relationships but looks visually flat.
 | Fraud path unclear | Highlight shortest path; highlight only risky edges; fade background graph | Highlighting makes the story obvious. Too much fading can hide context. | Highlight target-to-risk-cluster path and keep rest muted. |
 | Labels too small | Bigger text; tooltips; side detail panel | Bigger text may clutter. Tooltips need JS. Side panel scales better. | Bigger primary labels plus side evidence panel. |
 | Edges unexplained | Edge labels; relationship table; edge badges | Labels clutter SVG. Table is readable. | Keep table, group it by relationship type, and show edge badges only for critical edges. |
-| Static layout | Hand-rolled SVG; Cytoscape.js; D3; vis-network | SVG has zero dependency but limited interaction. Cytoscape is best for graph UI. D3 is flexible but more work. | Improve SVG now; add Cytoscape later if graph becomes the main demo. |
+| Static layout | Hand-rolled SVG; Cytoscape.js; D3; vis-network | SVG has zero dependency but limited interaction. Cytoscape is best for graph UI. D3 is flexible but more work. | Keep SVG now; add Cytoscape later if graph becomes the main demo. |
 
 ## Metrics Page
 
@@ -266,15 +276,17 @@ Research lane:
    timeline, ML/rules/hybrid comparison, blockers, and no-action boundaries.
 2. Done: `/demo` cockpit with scenario buttons, reset, and result panel.
 3. Done: case detail page using TNG-style timeline, facts, missing data, decision rail.
-4. Done: graph visual upgrade with legend, node markers, and highlighted risk edges.
+4. Done: graph visual upgrade with lane layout, legend, node markers, and highlighted risk edges.
 5. Done: `/dashboard/ops` human metrics page, keeping raw `/metrics`.
 6. Done: ML dashboard with training report, calibration, PSI, Kappa, profit threshold, Recall@1% FPR, and feature importance.
 7. Done: `/dashboard/simulate` plus `fraud-v2 simulate-risk` for UI/CLI manual simulation.
 8. Done: `fraud-v2 model-benchmark` for local model-family comparison.
-9. Instant Cash expansion: Benford, repayment/default timeline, chargeback ratio,
-   idempotency proof, Break-the-Spell simulated prompt.
-10. Public-data adapters: local public-KYB-shaped connector exists; live
+9. Done: richer deterministic synthetic demo data with typology/edge-case
+   coverage panels in `/cockpit`, `/demo`, and `/dashboard`.
+10. Instant Cash expansion: deeper repayment/default timeline, chargeback ratio,
+   idempotency proof, and Break-the-Spell simulated prompt polish.
+11. Public-data adapters: local public-KYB-shaped connector exists; live
    OFAC/GLEIF/Companies House calls stay paused until terms, rate limits, and
    secrets/access are decided.
-11. Optional sandbox adapters for Stripe Identity or Persona only if credentials
+12. Optional sandbox adapters for Stripe Identity or Persona only if credentials
    are available and the integration is clearly marked as sandbox.

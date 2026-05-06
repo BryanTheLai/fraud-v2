@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.53.0 - 2026-05-06
+
+- Expanded the deterministic demo dataset again to 720 users and 4,703
+  canonical events so typology, edge-case, and model visualizations have clearer
+  presentation density while remaining laptop-cheap.
+- Added benign false-positive control cohorts for corporate virtual cameras,
+  account-recovery failed logins, payment bursts, shared households, and
+  legitimate dispute/chargeback cases.
+- Added false-positive pressure counts to the synthetic coverage panels so the
+  cockpit shows not just fraud patterns, but also why naive rules would hurt
+  good users.
+- Reworked the shared dashboard shell to be mobile-first and keep cockpit,
+  graph, demo, metrics, ML, signal, and simulation pages inside the viewport.
+
+## 0.52.0 - 2026-05-06
+
+- Expanded the deterministic local synthetic dataset to 360 users and 2,314
+  canonical events across all nine local fraud typologies, including payment
+  bursts, shared fraud-ring devices, benign household sharing, virtual-camera
+  metadata, ATO failed-login bursts, bust-out cashouts, and delayed labels.
+- Added synthetic dataset coverage panels to the cockpit, demo, and analyst
+  dashboard so typology/event/edge-case coverage is visible in the UI.
+- Reworked the analyst dashboard and graph evidence page onto the shared app
+  shell, and upgraded graph rendering from a same-looking circle to
+  entity-type lanes with target/fraud edge emphasis.
+- Added model/feature visual bars to the ML benchmark and feature-importance
+  tables for clearer local presentation.
+
 ## 0.51.0 - 2026-05-06
 
 - Added `/cockpit` as the main Instant Cash Fraud Cockpit with scenario tabs,

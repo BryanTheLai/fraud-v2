@@ -18,7 +18,7 @@ money movement.
 | Full | Docker API, Postgres, Redis, Redpanda, Neo4j, Prometheus, Grafana | Production-shaped local smoke proof. |
 | ML | Local sklearn training/eval artifacts | Baseline model, feature importance, and threshold experiments. |
 
-Latest verified version: `0.51.0`.
+Latest verified version: `0.53.0`.
 
 ## System Map
 
@@ -61,7 +61,8 @@ uv run fraud-v2 local-doctor `
 Reset the local demo database, train the baseline, score one user:
 
 ```powershell
-uv run fraud-v2 demo-reset --users 120 --db-path data\local\fraud_v2.sqlite
+uv run fraud-v2 generate --users 720 --output data\synthetic\tiny\events.jsonl
+uv run fraud-v2 demo-reset --users 720 --db-path data\local\fraud_v2.sqlite
 uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline
 uv run fraud-v2 model-benchmark --events-path data\synthetic\tiny\events.jsonl --output-path data\models\benchmark-report.json
 uv run fraud-v2 mlops-report --events-path data\synthetic\tiny\events.jsonl --output-path data\local\mlops-report.json
@@ -210,8 +211,8 @@ Expand-Archive -LiteralPath factory\archive\code-factory-receipts-20260504-20260
 
 | Job | Command |
 |---|---|
-| Reset seeded local demo | `uv run fraud-v2 demo-reset --users 120 --db-path data\local\fraud_v2.sqlite` |
-| Generate synthetic events | `uv run fraud-v2 generate --users 120 --output data\synthetic\tiny\events.jsonl` |
+| Reset seeded local demo | `uv run fraud-v2 demo-reset --users 720 --db-path data\local\fraud_v2.sqlite` |
+| Generate synthetic events | `uv run fraud-v2 generate --users 720 --output data\synthetic\tiny\events.jsonl` |
 | Load events | `uv run fraud-v2 load data\synthetic\tiny\events.jsonl --db-path data\local\fraud_v2.sqlite` |
 | Score one user | `uv run fraud-v2 score user_00000 --db-path data\local\fraud_v2.sqlite` |
 | Train baseline | `uv run fraud-v2 train --events-path data\synthetic\tiny\events.jsonl --output-dir data\models\baseline` |
@@ -237,6 +238,17 @@ Run `uv run fraud-v2 --help` for the full CLI list.
 - LLMs can generate synthetic scenarios and edge cases, but they do not make
   final fraud decisions.
 - GPU is optional. CPU-first workflows must stay runnable on the Windows laptop.
+
+## Seeded Demo Data
+
+`data\synthetic\tiny\events.jsonl` is deterministic and intentionally richer
+than a tiny unit fixture: 720 synthetic users, 4,703 canonical events, all nine
+local fraud typologies, payment bursts, shared fraud-ring devices, a benign
+shared-household device, benign corporate virtual-camera users, benign
+account-recovery login failures, benign payment bursts, legitimate
+dispute/chargeback controls, and delayed chargeback/label events. The cockpit
+and analyst dashboard render this coverage directly so demos do not depend on
+hidden JSON.
 
 ## Documentation
 

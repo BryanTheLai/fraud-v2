@@ -63,7 +63,7 @@ def cockpit_scenarios() -> tuple[CockpitScenario, ...]:
             title="Clean applicant",
             blog_category="Gateway / baseline applicant",
             typology="LEGITIMATE_CONTROL",
-            user_id="user_00049",
+            user_id="user_00120",
             amount=100,
             as_of="2026-05-01T14:00:00Z",
             narrative=(
@@ -260,7 +260,7 @@ def cockpit_scenarios() -> tuple[CockpitScenario, ...]:
             title="Model/graph outage",
             blog_category="Reliability / degraded mode",
             typology="DEPENDENCY_DEGRADED",
-            user_id="user_00014",
+            user_id="user_00121",
             amount=250,
             as_of="2026-05-08T12:27:00Z",
             narrative=(
