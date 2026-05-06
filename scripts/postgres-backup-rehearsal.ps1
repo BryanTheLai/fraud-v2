@@ -67,6 +67,33 @@ function Copy-PostgresFileFromContainer {
   }
 }
 
+function Copy-PostgresFileToContainer {
+  param(
+    [string]$SourcePath,
+    [string]$ContainerPath
+  )
+
+  $containerId = Invoke-FraudCompose ps -q postgres
+  Assert-LastExitCode "Could not resolve Postgres container id."
+  $containerId = ($containerId | Select-Object -Last 1).Trim()
+  if ([string]::IsNullOrWhiteSpace($containerId)) {
+    throw "Postgres container id was empty."
+  }
+
+  $previousErrorActionPreference = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    $copyOutput = & docker cp $SourcePath "${containerId}:$ContainerPath" 2>&1
+    $copyExitCode = $LASTEXITCODE
+  }
+  finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
+  if ($copyExitCode -ne 0) {
+    throw "docker cp failed for '$SourcePath': $copyOutput"
+  }
+}
+
 $timestamp = (Get-Date).ToUniversalTime().ToString("yyyyMMdd_HHmmss")
 if ([string]::IsNullOrWhiteSpace($RestoreDatabase)) {
   $RestoreDatabase = "fraud_v2_restore_$timestamp"
@@ -76,6 +103,7 @@ New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
 $backupPath = Join-Path $BackupDir "fraud_v2-$timestamp.dump"
 $manifestPath = Join-Path $BackupDir "postgres-backup-manifest-$timestamp.json"
 $containerBackupPath = "/tmp/fraud_v2-$timestamp.dump"
+$containerRestorePath = "/tmp/fraud_v2-restore-$timestamp.dump"
 
 Invoke-FraudCompose exec -T postgres pg_dump -U $DatabaseUser -d $Database -Fc -f $containerBackupPath
 Assert-LastExitCode "pg_dump failed for database '$Database'."
@@ -108,7 +136,8 @@ try {
     Assert-LastExitCode "createdb failed for scratch restore database '$RestoreDatabase'."
 
     try {
-      Invoke-FraudCompose exec -T postgres pg_restore -U $DatabaseUser -d $RestoreDatabase $containerBackupPath
+      Copy-PostgresFileToContainer -SourcePath $backupPath -ContainerPath $containerRestorePath
+      Invoke-FraudCompose exec -T postgres pg_restore -U $DatabaseUser -d $RestoreDatabase $containerRestorePath
       Assert-LastExitCode "pg_restore failed for scratch restore database '$RestoreDatabase'."
 
       $sourceEvents = [int](Invoke-PostgresScalar `
@@ -137,7 +166,7 @@ try {
   }
 }
 finally {
-  Invoke-FraudCompose exec -T postgres rm -f $containerBackupPath | Out-Null
+  Invoke-FraudCompose exec -T postgres rm -f $containerBackupPath $containerRestorePath | Out-Null
 }
 
 $manifest | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $manifestPath -Encoding UTF8

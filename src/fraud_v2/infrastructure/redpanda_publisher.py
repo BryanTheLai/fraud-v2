@@ -18,4 +18,8 @@ class RedpandaEventPublisher:
             key=event.idempotency_key.encode("utf-8"),
             value=event.model_dump_json().encode("utf-8"),
         )
-        producer.flush(10)
+        pending_messages = producer.flush(10)
+        if pending_messages:
+            raise TimeoutError(
+                f"redpanda publish timed out with {pending_messages} message(s) still queued"
+            )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from fraud_v2.operations.release_runbook import build_release_runbook, write_release_runbook
+from fraud_v2.operations.release_runbook import _git, build_release_runbook, write_release_runbook
 
 
 def test_release_runbook_contains_local_handoff_sections() -> None:
@@ -35,3 +35,12 @@ def test_release_runbook_writes_markdown(tmp_path) -> None:  # type: ignore[no-u
     assert output_path.exists()
     assert output_path.read_text(encoding="utf-8") == runbook
     assert "0.44.0" in runbook
+
+
+def test_git_helper_handles_missing_git_binary(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    def raise_oserror(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+        raise OSError("git missing")
+
+    monkeypatch.setattr("fraud_v2.operations.release_runbook.subprocess.run", raise_oserror)
+
+    assert _git(["branch", "--show-current"]) is None

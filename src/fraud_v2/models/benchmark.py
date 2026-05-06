@@ -26,7 +26,9 @@ def benchmark_model_families(events_path: Path, output_path: Path) -> dict[str, 
 
     stratify = frame[dataset.label_column]
     if int(stratify.value_counts().min()) < 2:
-        stratify = None
+        raise ValueError(
+            "benchmark needs at least two rows per class for a stratified train/test split"
+        )
     x_train, x_test, y_train, y_test = train_test_split(
         frame[dataset.feature_columns],
         frame[dataset.label_column],

@@ -20,6 +20,9 @@ def test_github_handoff_reports_blockers_as_json() -> None:
     assert "github-handoff-v1" in script
     assert "remote_configured" in script
     assert "gh_authenticated" in script
+    assert "branch_available" in script
+    assert "$branchAvailable" in script
+    assert "branch_attached" in script
     assert "worktree_clean" in script
     assert "blockers" in script
     assert "next_commands" in script

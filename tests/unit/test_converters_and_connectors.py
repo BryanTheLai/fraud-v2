@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import pytest
 
 from fraud_v2.connectors.mock_vendors import (
@@ -25,6 +27,37 @@ def test_application_converter_builds_canonical_event() -> None:
     assert event.event_type == EventType.APPLICATION_SUBMITTED
     assert event.idempotency_key == "application:app_123"
     assert len(event.entity_refs) == 3
+    assert event.occurred_at.tzinfo == UTC
+
+
+def test_application_converter_normalizes_naive_datetimes_to_utc() -> None:
+    event = RawEventConverter().application_submitted(
+        {
+            "application_id": "app_123",
+            "user_id": "user_123",
+            "device_id": "dev_123",
+            "requested_amount": "500.00",
+            "declared_income": "90000",
+            "occurred_at": datetime(2026, 5, 1, 12, 0),
+        }
+    )
+
+    assert event.occurred_at == datetime(2026, 5, 1, 12, 0, tzinfo=UTC)
+
+
+def test_application_converter_normalizes_offset_strings_to_utc() -> None:
+    event = RawEventConverter().application_submitted(
+        {
+            "application_id": "app_123",
+            "user_id": "user_123",
+            "device_id": "dev_123",
+            "requested_amount": "500.00",
+            "declared_income": "90000",
+            "occurred_at": "2026-05-01T20:00:00+08:00",
+        }
+    )
+
+    assert event.occurred_at == datetime(2026, 5, 1, 12, 0, tzinfo=UTC)
 
 
 def test_payment_converter_rejects_bad_rail() -> None:

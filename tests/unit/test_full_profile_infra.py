@@ -73,6 +73,8 @@ def test_prometheus_alert_rules_are_loaded_by_config() -> None:
     alerts = (ROOT / "infra" / "prometheus-alerts.yml").read_text(encoding="utf-8")
 
     assert "prometheus-alerts.yml" in prometheus
+    assert 'targets: ["api:8000"]' in prometheus
+    assert "host.docker.internal:8000" not in prometheus
     assert "FraudV2APIUnavailable" in alerts
     assert "FraudV2DecisionLatencyP95High" in alerts
     assert "FraudV2HTTPServerErrors" in alerts
@@ -94,7 +96,10 @@ def test_redpanda_has_internal_and_host_listeners() -> None:
 
 def test_full_profile_api_uses_postgres_store_backend() -> None:
     compose = (ROOT / "infra" / "docker-compose.yml").read_text(encoding="utf-8")
+    env_example = (ROOT / ".env.example").read_text(encoding="utf-8")
 
     assert "FRAUD_STORE_BACKEND: postgres" in compose
     assert "FRAUD_POSTGRES_DSN: postgresql://fraud:fraud@postgres:5432/fraud_v2" in compose
     assert "FRAUD_TRACE_EXPORT_PATH: /app/data/local/traces.jsonl" in compose
+    assert "FRAUD_POSTGRES_DSN=postgresql://fraud:fraud@localhost:5432/fraud_v2" in env_example
+    assert "DATABASE_URL=postgresql://fraud:fraud@localhost:5432/fraud_v2" not in env_example

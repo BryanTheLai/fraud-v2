@@ -59,12 +59,17 @@ $bodyExists = Test-Path -LiteralPath $BodyFile
 $remoteConfigured = $remoteResult.ExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($remoteResult.Output)
 $ghAuthenticated = $authResult.ExitCode -eq 0
 $worktreeClean = [string]::IsNullOrWhiteSpace($dirty)
-$ready = $remoteConfigured -and $ghAuthenticated -and $bodyExists -and $worktreeClean
+$branchAvailable = -not [string]::IsNullOrWhiteSpace($branch)
+$ready = $remoteConfigured -and $ghAuthenticated -and $bodyExists -and $worktreeClean -and $branchAvailable
 
-$pushCommand = "git push -u $RemoteName $branch"
+$pushCommand = if ($branchAvailable) { "git push -u $RemoteName $branch" } else { "git push -u $RemoteName <branch>" }
 $prCommand = "gh pr create --base $Base --title `"$Title`" --body-file $BodyFile"
 $blockers = @()
 $nextCommands = @()
+if (-not $branchAvailable) {
+  $blockers += "branch_attached"
+  $nextCommands += "git switch <branch-name>"
+}
 if (-not $ghAuthenticated) {
   $blockers += "github_auth"
   $nextCommands += "gh auth login"
@@ -86,6 +91,7 @@ $nextCommands += $prCommand
 $report = [ordered]@{
   schema_version = "github-handoff-v1"
   branch = $branch
+  branch_available = $branchAvailable
   remote_name = $RemoteName
   remote_configured = $remoteConfigured
   remote_url = if ($remoteConfigured) { $remoteResult.Output } else { $null }

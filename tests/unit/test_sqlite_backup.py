@@ -18,6 +18,8 @@ def test_sqlite_backup_and_restore_round_trip(tmp_path) -> None:  # type: ignore
     )
 
     assert manifest["verified"] is True
+    assert manifest["snapshot_method"] == "sqlite_backup_api"
+    assert manifest["integrity_check"] == "ok"
     assert manifest["bytes"] > 0
     assert restore["verified"] is True
     assert SQLiteStore(tmp_path / "restored.sqlite").list_events()

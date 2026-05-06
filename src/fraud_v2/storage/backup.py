@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -18,19 +19,22 @@ def write_sqlite_backup(
     output_dir.mkdir(parents=True, exist_ok=True)
     backup_path = output_dir / f"{db_path.stem}.sqlite.bak"
     manifest_path = output_dir / "sqlite-backup-manifest.json"
-    shutil.copy2(db_path, backup_path)
+    _backup_sqlite_database(db_path, backup_path)
     source_sha256 = _sha256(db_path)
     backup_sha256 = _sha256(backup_path)
+    integrity_check = _sqlite_integrity_check(backup_path)
     manifest = {
         "schema_version": "sqlite-backup-v1",
         "created_at": datetime.now(UTC).isoformat(),
         "source_path": str(db_path),
         "backup_path": str(backup_path),
         "manifest_path": str(manifest_path),
+        "snapshot_method": "sqlite_backup_api",
         "source_sha256": source_sha256,
         "backup_sha256": backup_sha256,
+        "integrity_check": integrity_check,
         "bytes": backup_path.stat().st_size,
-        "verified": source_sha256 == backup_sha256,
+        "verified": integrity_check == "ok" and backup_path.stat().st_size > 0,
         "local_only": True,
     }
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -71,3 +75,18 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: file.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _backup_sqlite_database(source: Path, destination: Path) -> None:
+    if destination.exists():
+        destination.unlink()
+    with sqlite3.connect(source) as source_conn, sqlite3.connect(destination) as backup_conn:
+        source_conn.backup(backup_conn)
+
+
+def _sqlite_integrity_check(path: Path) -> str:
+    with sqlite3.connect(path) as conn:
+        row = conn.execute("pragma integrity_check").fetchone()
+    if row is None:
+        return "missing"
+    return str(row[0])

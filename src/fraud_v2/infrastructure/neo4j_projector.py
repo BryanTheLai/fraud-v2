@@ -17,25 +17,27 @@ class Neo4jGraphProjector:
         neo4j = optional_module("neo4j", "infra")
         graph = GraphService(events).graph
         driver = neo4j.GraphDatabase.driver(self.uri, auth=(self.user, self.password))
-        with driver.session() as session:
-            session.run("match (n) detach delete n")
-            for node, data in graph.nodes(data=True):
-                session.run(
-                    "merge (n:Entity {id: $id}) set n.entity_type = $entity_type",
-                    id=node,
-                    entity_type=data.get("entity_type", "UNKNOWN"),
-                )
-            for source, target, data in graph.edges(data=True):
-                session.run(
-                    """
-                    match (a:Entity {id: $source}), (b:Entity {id: $target})
-                    merge (a)-[r:RELATED {relationship: $relationship}]->(b)
-                    set r.confidence = $confidence
-                    """,
-                    source=source,
-                    target=target,
-                    relationship=data.get("relationship", "RELATED"),
-                    confidence=float(data.get("confidence", 1.0)),
-                )
-        driver.close()
+        try:
+            with driver.session() as session:
+                session.run("match (n) detach delete n")
+                for node, data in graph.nodes(data=True):
+                    session.run(
+                        "merge (n:Entity {id: $id}) set n.entity_type = $entity_type",
+                        id=node,
+                        entity_type=data.get("entity_type", "UNKNOWN"),
+                    )
+                for source, target, data in graph.edges(data=True):
+                    session.run(
+                        """
+                        match (a:Entity {id: $source}), (b:Entity {id: $target})
+                        merge (a)-[r:RELATED {relationship: $relationship}]->(b)
+                        set r.confidence = $confidence
+                        """,
+                        source=source,
+                        target=target,
+                        relationship=data.get("relationship", "RELATED"),
+                        confidence=float(data.get("confidence", 1.0)),
+                    )
+        finally:
+            driver.close()
         return graph.number_of_edges()

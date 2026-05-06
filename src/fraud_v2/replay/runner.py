@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fraud_v2.decision.engine import DecisionEngine
@@ -23,7 +24,7 @@ def run_replay(events_path: Path, db_path: Path, report_path: Path) -> dict[str,
             if ref.entity_type == EntityType.USER
         }
     )
-    as_of = max(event.occurred_at for event in events)
+    as_of = max((event.occurred_at for event in events), default=datetime.now(UTC))
     engine = DecisionEngine(store)
     decisions = [
         engine.score(

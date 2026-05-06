@@ -27,11 +27,13 @@ def cost_weighted_threshold_report(
         fp = int(((predictions == 1) & (labels == 0)).sum())
         tn = int(((predictions == 0) & (labels == 0)).sum())
         fn = int(((predictions == 0) & (labels == 1)).sum())
+        manual_reviews = tp + fp
         fpr = fp / max(fp + tn, 1)
         recall = tp / max(tp + fn, 1)
         profit = (
             tp * assumptions.fraud_loss
             - fp * assumptions.false_positive_cost
+            - manual_reviews * assumptions.manual_review_cost
             - fn * assumptions.fraud_loss * (1.0 - assumptions.recovery_rate_on_missed_fraud)
             - len(labels) * assumptions.compute_cost_per_score
         )
@@ -43,6 +45,7 @@ def cost_weighted_threshold_report(
                 "fp": fp,
                 "tn": tn,
                 "fn": fn,
+                "manual_reviews": manual_reviews,
                 "fpr": float(fpr),
                 "recall": float(recall),
             }

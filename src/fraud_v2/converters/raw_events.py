@@ -78,5 +78,11 @@ def _occurred_at(raw: Mapping[str, Any]) -> datetime:
     if value is None:
         return datetime.now(UTC)
     if isinstance(value, datetime):
-        return value
-    return datetime.fromisoformat(str(value))
+        return _normalize_utc(value)
+    return _normalize_utc(datetime.fromisoformat(str(value).replace("Z", "+00:00")))
+
+
+def _normalize_utc(value: datetime) -> datetime:
+    if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)

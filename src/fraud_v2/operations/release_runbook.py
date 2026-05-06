@@ -118,12 +118,15 @@ powershell -ExecutionPolicy Bypass -File scripts\\github-handoff.ps1 -Execute
 
 
 def _git(args: list[str]) -> str | None:
-    result = subprocess.run(
-        ["git", *args],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return None
     if result.returncode != 0:
         return None
     return result.stdout.strip()

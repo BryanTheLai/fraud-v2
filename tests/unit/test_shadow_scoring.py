@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 
 import joblib
 import numpy as np
@@ -45,3 +46,41 @@ def test_write_shadow_scores_from_registered_active_model(tmp_path) -> None:  # 
     assert payload[0]["model_version"] == "shadow-test-001"
     assert payload[0]["model_status"] == "active"
     assert "feature_values" in payload[0]
+
+
+def test_write_shadow_scores_handles_empty_event_file_without_loading_model(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    events_path = tmp_path / "empty.jsonl"
+    registry_path = tmp_path / "registry.json"
+    output_path = tmp_path / "shadow.json"
+    events_path.write_text("", encoding="utf-8")
+    registry_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "updated_at": datetime(2026, 5, 6, tzinfo=UTC).isoformat(),
+                "models": [
+                    {
+                        "model_version": "empty-test-001",
+                        "model_family": "dummy",
+                        "status": ModelStatus.ACTIVE.value,
+                        "artifact_path": str(tmp_path / "missing.joblib"),
+                        "report_path": str(tmp_path / "missing-report.json"),
+                        "artifact_sha256": "0" * 64,
+                        "report_sha256": "1" * 64,
+                        "feature_columns": ["failed_login_count_3m"],
+                        "threshold": 0.5,
+                        "cost_weighted_threshold": None,
+                        "registered_at": datetime(2026, 5, 6, tzinfo=UTC).isoformat(),
+                        "notes": "",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = write_shadow_scores(events_path, registry_path, output_path)
+
+    assert report["rows"] == 0
+    assert report["would_flag"] == 0
+    assert json.loads(output_path.read_text(encoding="utf-8")) == []

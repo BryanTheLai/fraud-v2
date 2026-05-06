@@ -19,6 +19,22 @@ def test_replay_report(tmp_path: Path) -> None:
     assert report["red"] > 0
 
 
+def test_replay_report_handles_empty_event_file(tmp_path: Path) -> None:
+    events_path = tmp_path / "empty.jsonl"
+    events_path.write_text("", encoding="utf-8")
+
+    report = run_replay(events_path, tmp_path / "empty.sqlite", tmp_path / "replay.json")
+
+    assert report == {
+        "events": 0,
+        "users": 0,
+        "decisions": 0,
+        "green": 0,
+        "yellow": 0,
+        "red": 0,
+    }
+
+
 def test_monitoring_report(tmp_path: Path) -> None:
     events_path = tmp_path / "events.jsonl"
     SyntheticFraudGenerator(seed=7).generate(users=30).write_jsonl(events_path)
@@ -32,6 +48,21 @@ def test_monitoring_report(tmp_path: Path) -> None:
     assert report["rows"] == 30
     assert "psi_first_half_vs_second_half" in report
     assert "fairness_proxy" in report
+
+
+def test_monitoring_report_handles_empty_event_file(tmp_path: Path) -> None:
+    events_path = tmp_path / "empty.jsonl"
+    events_path.write_text("", encoding="utf-8")
+
+    report = write_monitoring_report(
+        events_path,
+        tmp_path / "empty-monitor.sqlite",
+        tmp_path / "monitoring.json",
+    )
+
+    assert report["rows"] == 0
+    assert report["score_summary"] == {"min": 0.0, "p50": 0.0, "max": 0.0, "mean": 0.0}
+    assert report["fairness_proxy"] == {}
 
 
 def test_mlops_report_includes_drift_and_kappa(tmp_path: Path) -> None:

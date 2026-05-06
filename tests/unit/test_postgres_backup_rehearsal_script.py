@@ -12,6 +12,10 @@ def test_postgres_backup_rehearsal_uses_pg_dump_restore_and_manifest() -> None:
     assert "postgres-backup-rehearsal-v1" in script
     assert "not_managed_backup" in script
     assert "KeepRestoreDatabase" in script
+    assert "Copy-PostgresFileToContainer" in script
+    assert "$containerRestorePath" in script
+    assert "pg_restore -U $DatabaseUser -d $RestoreDatabase $containerRestorePath" in script
+    assert "pg_restore -U $DatabaseUser -d $RestoreDatabase $containerBackupPath" not in script
 
 
 def test_full_smoke_runs_postgres_backup_rehearsal() -> None:

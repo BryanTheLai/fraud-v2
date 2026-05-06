@@ -18,4 +18,9 @@ class RedpandaDeadLetterPublisher:
             key=str(dead_letter.dead_letter_id).encode("utf-8"),
             value=dead_letter.model_dump_json().encode("utf-8"),
         )
-        producer.flush(10)
+        pending_messages = producer.flush(10)
+        if pending_messages:
+            raise TimeoutError(
+                "redpanda dead-letter publish timed out "
+                f"with {pending_messages} message(s) still queued"
+            )

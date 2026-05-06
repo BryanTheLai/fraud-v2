@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TypedDict
 
@@ -36,7 +37,7 @@ def write_monitoring_report(
             if ref.entity_type == EntityType.USER
         }
     )
-    as_of = max(event.occurred_at for event in events)
+    as_of = max((event.occurred_at for event in events), default=datetime.now(UTC))
     engine = DecisionEngine(store)
     rows: list[MonitoringRow] = []
     fraud_users = _fraud_users(events)
@@ -88,6 +89,8 @@ def _fraud_users(events: list[EventEnvelope]) -> set[str]:
 
 
 def _score_summary(scores: list[int]) -> dict[str, float]:
+    if not scores:
+        return {"min": 0.0, "p50": 0.0, "max": 0.0, "mean": 0.0}
     ordered = sorted(scores)
     return {
         "min": float(ordered[0]),

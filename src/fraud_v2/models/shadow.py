@@ -58,6 +58,8 @@ def write_shadow_scores(
 def score_events_with_model(
     events: list[EventEnvelope], model_record: RegisteredModel
 ) -> list[ShadowScore]:
+    if not events:
+        return []
     users = sorted(
         {
             ref.entity_id
@@ -66,6 +68,8 @@ def score_events_with_model(
             if ref.entity_type == EntityType.USER
         }
     )
+    if not users:
+        return []
     as_of = max(event.occurred_at for event in events)
     builder = FeatureBuilder(events)
     rows: list[dict[str, float | int]] = []

@@ -1,13 +1,14 @@
 import json
 
 import numpy as np
+import pytest
 
 from fraud_v2.compliance.drafts import build_compliance_draft, write_compliance_draft
 from fraud_v2.decision.engine import DecisionEngine
 from fraud_v2.domain.decisions import DecisionRequest
 from fraud_v2.domain.entities import EntityRef
 from fraud_v2.domain.enums import EntityType
-from fraud_v2.models.thresholds import cost_weighted_threshold_report
+from fraud_v2.models.thresholds import CostAssumptions, cost_weighted_threshold_report
 from fraud_v2.storage.sqlite_store import SQLiteStore
 from fraud_v2.synthetic.generator import SyntheticFraudGenerator
 
@@ -60,3 +61,24 @@ def test_cost_weighted_threshold_report_prefers_profitable_threshold() -> None:
     assert report["best_profit_threshold"]["profit"] > 0
     assert report["best_recall_under_1pct_fpr"]["fpr"] <= 0.01
     assert len(report["candidates"]) == 19
+
+
+def test_cost_weighted_threshold_report_charges_manual_review_cost() -> None:
+    labels = np.array([1, 0])
+    probabilities = np.array([0.9, 0.9])
+
+    no_review_cost = cost_weighted_threshold_report(
+        labels,
+        probabilities,
+        assumptions=CostAssumptions(manual_review_cost=0),
+    )
+    with_review_cost = cost_weighted_threshold_report(
+        labels,
+        probabilities,
+        assumptions=CostAssumptions(manual_review_cost=10),
+    )
+
+    assert with_review_cost["candidates"][0]["manual_reviews"] == 2
+    assert with_review_cost["candidates"][0]["profit"] == pytest.approx(
+        no_review_cost["candidates"][0]["profit"] - 20
+    )
