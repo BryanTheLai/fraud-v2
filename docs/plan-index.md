@@ -47,6 +47,8 @@ production-shaped local fraud lab:
 | `data-strategy.md` | How to get data, what public datasets cover, what they miss, and how to synthesize the rest. | You need inputs for training and demos. |
 | `llm-synthetic-data-lab.md` | How to use GPT-5.5/Azure/OpenAI tokens to generate edge cases and synthetic data safely. | You need high-volume synthetic generation. |
 | `blockers-and-vague-decisions.md` | Blunt blockers, options, tradeoffs, and recommendations. | You need the open decisions in ELI10 form. |
+| `target-goal-gap-and-issue-spec.md` | Current comparison against the Bryan's Lab Fraud Detection V2 article, vagueness register, production contracts, and GitHub issue split. | You need to turn the target article into specific PR-sized work. |
+| `issue-evaluation-ranking.md` | Ranked and feasibility-scored GitHub issue map with required classes, connectors, blockers, and build order. | You need to decide which issue to pick up next. |
 
 ## Current Implementation Snapshot
 

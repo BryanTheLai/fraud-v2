@@ -908,12 +908,12 @@ def _base_style() -> str:
       label { color:#40546b; font-size:12px; font-weight:700; display:grid; gap:5px; }
       input, select { border:1px solid var(--line); border-radius:4px; padding:8px; font:inherit; background:#fff; min-width:0; width:100%; max-width:100%; }
       table { width:100%; max-width:100%; table-layout:fixed; border-collapse:collapse; font-size:13px; }
-      th, td { border-bottom:1px solid #e5eaf0; padding:8px; text-align:left; vertical-align:top; overflow-wrap:anywhere; }
+      th, td { border-bottom:1px solid #e5eaf0; padding:8px; text-align:left; vertical-align:top; line-height:1.35; overflow-wrap:anywhere; word-break:normal; }
       th { color:#52616b; background:#f6f8fa; font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
       pre { white-space:pre-wrap; overflow-wrap:anywhere; }
       .split { display:grid; grid-template-columns: minmax(0,1fr); gap:12px; }
       .graph { border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#fff; }
-      .graph svg { display:block; width:100%; height:auto; min-height:260px; }
+      .graph svg { display:block; width:100%; height:auto; min-height:320px; }
       .bar { width:100%; min-width:0; background:#edf2f7; border-radius:4px; overflow:hidden; height:10px; }
       .bar span { display:block; height:10px; background:var(--orange); }
       .bar.green span { background:var(--green); }
@@ -926,7 +926,9 @@ def _base_style() -> str:
       .tier-GREEN { color: var(--green); font-weight: 800; }
       ul.clean { margin: 8px 0 0; padding-left: 18px; }
       li { margin: 6px 0; }
-      @media (min-width: 1100px) { .shell:not(.single) { grid-template-columns: minmax(0,1fr) minmax(260px,300px); } .split { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
+      @media (min-width: 1100px) { .shell:not(.single) { grid-template-columns: minmax(0,1fr) minmax(260px,300px); } .shell.single .split { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
+      @media (min-width: 1500px) { .shell:not(.single) .split { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
+      @media (max-width: 760px) { .main table { min-width:620px; } .rail table { min-width:0; } }
       @media (max-width: 520px) { .top { padding:14px 12px; } .shell { padding:8px; } .panel, .tile { padding:12px; } .hero-row, .scenario-grid, .custom-grid { grid-template-columns:1fr; } .navlinks { gap:10px; } .value { font-size:24px; overflow-wrap:anywhere; } }
     </style>"""
 
@@ -1943,16 +1945,20 @@ def _graph_svg(
     fraud_keys: set[str] | None = None,
 ) -> str:
     fraud_keys = fraud_keys or set()
-    nodes = graph["nodes"][:18]
+    ordered_all_nodes = sorted(
+        graph["nodes"],
+        key=lambda node: (node["id"] != target_key, node["id"] not in fraud_keys, node["id"]),
+    )
+    nodes = ordered_all_nodes[:18]
     if not nodes:
         return (
-            '<svg viewBox="0 0 900 520" width="100%" height="520">'
+            '<svg viewBox="0 0 900 760" width="100%" height="760">'
             '<text x="32" y="48">No graph evidence found.</text></svg>'
         )
 
     width = 900
-    height = 520
-    ordered_nodes = sorted(nodes, key=lambda node: (node["id"] != target_key, node["id"]))
+    height = 760
+    ordered_nodes = nodes
     positions = _graph_positions(ordered_nodes, target_key, width=width, height=height)
 
     visible = set(positions)
@@ -1988,27 +1994,25 @@ def _graph_svg(
         label = _short_node_label(node_id)
         icon = _graph_node_icon(node["label"])
         node_shapes.append(
-            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="26" fill="{color}" '
+            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="24" fill="{color}" '
             f'stroke="{stroke}" stroke-width="{stroke_width}" />'
             f'<text x="{x:.1f}" y="{y + 5:.1f}" text-anchor="middle" '
             'font-size="13" font-weight="800" fill="#ffffff">'
             f"{escape(icon)}</text>"
-            f'<text x="{x:.1f}" y="{y + 43:.1f}" text-anchor="middle" '
-            'font-size="12" font-weight="650" fill="#17202a">'
-            f"{escape(label)}</text>"
+            f"{_graph_node_label(label, x, y + 43)}"
         )
 
     return (
-        f'<svg viewBox="0 0 {width} {height}" width="100%" height="520" role="img" '
+        f'<svg viewBox="0 0 {width} {height}" width="100%" height="760" role="img" '
         f'aria-label="Graph evidence for {escape(target_key)}">'
-        '<rect width="900" height="520" fill="#ffffff" />'
+        f'<rect width="{width}" height="{height}" fill="#ffffff" />'
         '<text x="24" y="32" font-size="13" font-weight="700" fill="#102033">Lane layout: network/device to the left, target center, transactions to the right, users below</text>'
-        '<text x="150" y="70" font-size="11" font-weight="700" fill="#64748b">Network</text>'
-        '<text x="292" y="70" font-size="11" font-weight="700" fill="#64748b">Device</text>'
-        '<text x="428" y="70" font-size="11" font-weight="700" fill="#64748b">Applicant</text>'
-        '<text x="626" y="70" font-size="11" font-weight="700" fill="#64748b">Payment</text>'
-        '<rect x="24" y="448" width="852" height="48" rx="6" fill="#f8fafc" stroke="#d8e0ea" />'
-        '<text x="42" y="478" font-size="12" fill="#102033">U=user  D=device  IP=network  $=bank account  T=transaction  A=application  red node=confirmed fraud</text>'
+        '<text x="140" y="72" font-size="11" font-weight="700" fill="#64748b" text-anchor="middle">Network</text>'
+        '<text x="285" y="72" font-size="11" font-weight="700" fill="#64748b" text-anchor="middle">Device</text>'
+        '<text x="450" y="72" font-size="11" font-weight="700" fill="#64748b" text-anchor="middle">Applicant</text>'
+        '<text x="650" y="72" font-size="11" font-weight="700" fill="#64748b" text-anchor="middle">Payment</text>'
+        '<rect x="24" y="695" width="852" height="42" rx="6" fill="#f8fafc" stroke="#d8e0ea" />'
+        '<text x="42" y="721" font-size="12" fill="#102033">U=user  D=device  IP=network  $=bank account  T=transaction  A=application  red node=confirmed fraud</text>'
         + "".join(edge_lines)
         + "".join(node_shapes)
         + "</svg>"
@@ -2023,33 +2027,47 @@ def _graph_positions(
     height: int,
 ) -> dict[str, tuple[float, float]]:
     target_node = next((node for node in nodes if node["id"] == target_key), nodes[0])
-    positions: dict[str, tuple[float, float]] = {target_node["id"]: (width / 2, height / 2)}
+    target_y = height / 2 - 40
+    positions: dict[str, tuple[float, float]] = {target_node["id"]: (width / 2, target_y)}
     grouped: dict[str, list[dict[str, str]]] = {}
     for node in nodes:
         if node["id"] == target_node["id"]:
             continue
         grouped.setdefault(node["label"], []).append(node)
     vertical_lanes = {
-        "IP_ADDRESS": (150.0, 100.0, 300.0),
-        "DEVICE": (300.0, 100.0, 310.0),
-        "TRANSACTION": (640.0, 105.0, 310.0),
-        "BANK_ACCOUNT": (760.0, 140.0, 230.0),
+        "IP_ADDRESS": (140.0, 220.0, 260.0),
+        "DEVICE": (285.0, 190.0, 310.0),
+        "TRANSACTION": (650.0, 170.0, 420.0),
+        "BANK_ACCOUNT": (790.0, 260.0, 220.0),
     }
     for label, lane_nodes in grouped.items():
         lane_nodes = sorted(lane_nodes, key=lambda item: item["id"])
         if label == "USER":
             for index, node in enumerate(lane_nodes):
-                x = 235.0 + (430.0 * (index + 1) / (len(lane_nodes) + 1))
-                positions[node["id"]] = (x, 405.0)
+                x = 170.0 + (520.0 * (index + 1) / (len(lane_nodes) + 1))
+                positions[node["id"]] = (x, 620.0)
             continue
         if label == "APPLICATION":
             for index, node in enumerate(lane_nodes):
-                x = 395.0 + (110.0 * (index + 1) / (len(lane_nodes) + 1))
-                positions[node["id"]] = (x, 110.0)
+                columns = min(3, len(lane_nodes))
+                row = index // columns
+                column = index % columns
+                x = 360.0 + (90.0 * column)
+                y = 125.0 + (86.0 * row)
+                if len(lane_nodes) == 1:
+                    x = width / 2
+                    y = 130.0
+                positions[node["id"]] = (x, y)
             continue
-        x, y_start, y_span = vertical_lanes.get(label, (760.0, 150.0, 220.0))
+        base_x, y_start, y_span = vertical_lanes.get(label, (760.0, 150.0, 220.0))
         for index, node in enumerate(lane_nodes):
-            y = y_start + (y_span * (index + 1) / (len(lane_nodes) + 1))
+            columns = min(3, max(1, (len(lane_nodes) + 3) // 4))
+            rows = (len(lane_nodes) + columns - 1) // columns
+            row = index % rows
+            column = index // rows
+            x_offset = (column - ((columns - 1) / 2)) * 88.0
+            y = y_start + (y_span * (row + 1) / (rows + 1))
+            x = base_x + x_offset
             positions[node["id"]] = (x, y)
     return positions
 
@@ -2094,6 +2112,18 @@ def _graph_node_icon(label: str) -> str:
     }.get(label, "?")
 
 
+def _graph_node_label(label: str, x: float, y: float) -> str:
+    width = min(132, max(48, len(label) * 6 + 12))
+    rect_x = x - width / 2
+    return (
+        f'<rect x="{rect_x:.1f}" y="{y - 14:.1f}" width="{width:.1f}" height="20" '
+        'rx="4" fill="#ffffff" fill-opacity="0.92" />'
+        f'<text x="{x:.1f}" y="{y:.1f}" text-anchor="middle" '
+        'font-size="11" font-weight="700" fill="#17202a">'
+        f"{escape(label)}</text>"
+    )
+
+
 def _confirmed_fraud_graph_keys(events: list[EventEnvelope]) -> set[str]:
     keys: set[str] = set()
     for event in events:
@@ -2111,9 +2141,21 @@ def _confirmed_fraud_graph_keys(events: list[EventEnvelope]) -> set[str]:
 
 def _short_node_label(node_id: str) -> str:
     if ":" not in node_id:
-        return node_id[:24]
+        return node_id[:16]
     entity_type, entity_id = node_id.split(":", 1)
-    return f"{entity_type}:{entity_id[-12:]}"
+    if entity_type == "USER":
+        return f"USER:{entity_id.removeprefix('user_')}"
+    if entity_type == "DEVICE":
+        return f"DEVICE:{entity_id.removeprefix('dev_')}"
+    if entity_type == "IP_ADDRESS":
+        return f"IP:{entity_id}"
+    if entity_type == "TRANSACTION":
+        return f"TXN:{entity_id.removeprefix('txn_')}"
+    if entity_type == "BANK_ACCOUNT":
+        return f"ACCT:{entity_id.removeprefix('payee_')}"
+    if entity_type == "APPLICATION":
+        return f"APP:{entity_id.removeprefix('app_')}"
+    return f"{entity_type}:{entity_id[-10:]}"
 
 
 def _review_table(cases: list[ReviewCase]) -> str:

@@ -5,6 +5,7 @@ Code Factory workflow.
 
 ## Rules
 
+- Truth-First: Always ask what is real, fake, blocked, or vague. Do not build demos that lie. Think of all possible solutions, explain tradeoffs for each, recommend one, and explicitly state whether to implement now, simulate locally, defer, or keep as-is. Don't be afraid to boil the ocean, but separate effort from resources: ignore coding effort, but honestly call out hard resource blockers (vendor access, PII, legal, money movement, real labels). If it's blocked, simulate it truthfully.
 - Ship verified outcomes, not claims.
 - Think of all possible solutions, think of tradeoffs for each, then think about whether we should implement or keep it as is. Do this for everything we are talking about. Don't be afraid to boil the ocean, but do keep in mind hard blockers like lack of enterprise-level access and whether the juice is worth the squeeze. Do not confuse effort to build with resources to build; effort to build should be ignored, but resources should be evaluated properly.
 - Keep local laptop runability as a hard requirement.
