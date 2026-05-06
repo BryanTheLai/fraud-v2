@@ -1,0 +1,124 @@
+---
+project: fraud-v2
+owner: Bryan
+created_at: 2026-05-05
+status: current
+---
+
+# Production Readiness: Fraud V2
+
+## Current Verdict
+
+This repo is a production-shaped local fraud lab. It is not a regulated
+production fraud system yet.
+
+It now runs locally in two modes:
+
+- Lite mode: Python, FastAPI, SQLite, synthetic data, rules, graph features,
+  baseline ML, replay, monitoring, compliance drafts, model registry, shadow
+  scoring, and analyst dashboard.
+- Full mode: Docker Compose starts API, Postgres, Redis, Redpanda, Neo4j,
+  Prometheus, and Grafana with Postgres as the primary app store, verified by
+  `scripts/full-smoke.ps1`.
+
+## Implemented
+
+| Area | Status | Proof |
+|---|---|---|
+| Domain contracts | Done | Pydantic events, decisions, reviews, outbox, compliance drafts. |
+| Synthetic data | Done | Deterministic local generator and JSONL loader. |
+| Public dataset conversion | Local-safe done | PaySim-style CSVs can be manually downloaded, converted to canonical JSONL events, and loaded through existing storage/replay/training paths. |
+| Lite storage | Done | SQLite event store, decisions, review cases, and outbox. |
+| Lite backup/restore | Local-safe done | `sqlite-backup` and `sqlite-restore` write SHA-256 verified local recovery artifacts. |
+| Full-profile Postgres backup | Local-safe done | `scripts/postgres-backup-rehearsal.ps1` runs `pg_dump`, scratch restore, event-count verification, and manifest writing. |
+| API | Done | FastAPI routes, role-protected `/v1/*`, health, metrics, docs. |
+| Demo cockpit | Local-safe done | `/demo` runs seeded scenarios, customized local scores, and local demo reset. |
+| Simulation workbench | Local-safe done | `/dashboard/simulate` and `simulate-risk` expose manual risk knobs for presentation, policy rehearsal, outage simulation, and APP/BEC Break-the-Spell previews without real actions. |
+| Rules/graph decisions | Done | Rules + NetworkX graph service, graph evidence dashboard, safe reasons, trace IDs. |
+| Versioned threshold policy | Local-safe done | Green/yellow/red thresholds, degraded floors, and high-amount signals load from validated JSON policy packs. |
+| Policy promotion registry | Local-safe done | Local JSON registry hashes candidate policies and promotes one active policy file for API loading. |
+| Signed policy approvals | Local-safe done | Ed25519 approval records bind policy version/hash to distinct approvers; `policy-promote-approved` enforces the configured approval count. |
+| Review workflow | Done | Manual-review decisions create cases and confirmed analyst outcomes append replayable label events. |
+| Compliance drafts | Local-safe done | Draft export only; no filings, no legal claim. |
+| Encrypted evidence export | Local-safe done | `evidence-export` writes AES-256-GCM encrypted decision bundles with safe fields and no-filing metadata. |
+| Baseline ML | Done | sklearn random forest training report with feature importances. |
+| Cost evaluation | Done | Profit threshold and recall under 1 percent FPR. |
+| Local load benchmark | Local-safe done | `load-benchmark` writes generation/load/scoring throughput receipts against deterministic synthetic data and SQLite. |
+| Capacity profile | Local-safe done | `capacity-profile` writes named synthetic capacity receipts with target checks plus JSON/HTML artifacts. |
+| Model registry | Done | JSON-backed artifact/report hashing and status controls. |
+| Shadow scoring | Done | Registered model probabilities logged without changing decisions. |
+| Model eval dashboard | Local-safe done | Static HTML eval dashboard renders baseline report metrics, threshold candidates, features, and optional shadow-score summary. |
+| In-app ML dashboard | Local-safe done | `/dashboard/ml` surfaces calibration, Brier score, Recall at 1 percent FPR, profit thresholds, feature importances, and Benford-derived features from the baseline report. |
+| MLOps drift and IRR | Local-safe done | `mlops-report` writes PSI score drift, red-threshold confusion proxy, and simulated analyst Cohen's Kappa; `/dashboard/ml` renders it when present. |
+| Signal lab | Local-safe done | `/dashboard/signals` and `signal-lab` run local camera-metadata and public-KYB-style checks without external vendor calls. |
+| Break-the-Spell | Local-safe done | Yellow case rails can render a draft customer intervention checklist; no real customer message is sent. |
+| LLM synthetic lab | Local-safe done | Offline default plus OpenAI/Azure provider boundary. |
+| Full Docker profile | Done | Full profile smoke passed locally with API app state on Postgres, review-decision submission, and adapter checks for Redis, Neo4j, and Redpanda. |
+| Grafana observability | Local-safe done | Provisioned dashboard for decisions, latency, ingested events, and API target health. |
+| Human ops dashboard | Local-safe done | `/dashboard/ops` summarizes queue depth, decision mix, DLQ count, outbox status, audit chain, feature freshness, and links raw Prometheus/Grafana. |
+| Request tracing/logging | Local-safe done | `X-Trace-ID`, structured JSON request logs, HTTP metrics, and Prometheus alert rules. |
+| Local trace artifacts | Local-safe done | Optional `FRAUD_TRACE_EXPORT_PATH` writes JSONL request spans; `trace-report` renders JSON and static HTML summaries. |
+| Audit log | Local-safe done | SQLite hash chain for event, decision, review, and outbox actions. |
+| Audit archive | Local-safe done | `audit-archive` exports audit entries plus manifest with archive SHA-256, root entry hash, and chain verification. |
+| Retention reporting/pruning | Local-safe done | Dry-run per-table retention report plus explicit prune for expired non-audit records. No pruning by default. |
+| Stream ingestion | Local-safe done | Redpanda consumer CLI stores canonical events through SQLite/Postgres with idempotent duplicate handling. Full smoke proves publish-consume-Postgres round trip. |
+| Stream supervision | Local-safe done | `stream-supervise` runs repeated bounded consume batches with backoff, failure accounting, idle accounting, and full-smoke Postgres ingest proof. |
+| Windows stream runner | Local-safe done | `scripts/local-stream-service.ps1` wraps supervised stream consume, optional lag inspection, and stream health artifacts for laptop Task Scheduler use. |
+| Stream lag inspection | Local-safe done | `stream-lag` reports partition watermarks, committed offsets, and total consumer-group lag. Full smoke proves zero lag after consume. |
+| Stream health reporting | Local-safe done | `stream-health` writes JSON and static HTML operator artifacts from lag, supervisor, and stream dead-letter signals. |
+| Stream dead letters | Local-safe done | Invalid stream records, empty payloads, message errors, and idempotency conflicts persist to SQLite/Postgres for admin inspection. Optional Redpanda DLQ topic publishing is full-smoke verified. |
+| CI | Done | GitHub Actions for tests, capacity-profile artifact upload, Docker build, and API image smoke. |
+| GitHub handoff | Local-safe done | `scripts/github-handoff.ps1` reports remote/auth/worktree blockers and can push/create the PR; current local auth is available. |
+| Release runbook | Local-safe done | `release-runbook` generates one local operator handoff with run, verify, recovery, GitHub, and hard-limit steps. |
+| Readiness report | Local-safe done | `readiness-report` generates JSON/HTML snapshots of local checks, implemented capabilities, and hard production blockers. |
+| Local doctor | Local-safe done | `local-doctor` generates JSON/HTML laptop runability checks for lite mode, full-profile Docker mode, optional GPU visibility, and GitHub handoff blockers. |
+| Verification/cleanup scripts | Local-safe done | `scripts\verify.ps1` runs the gate from one command; `scripts\clean-local.ps1` removes ignored caches and smoke artifacts without touching tracked files. |
+
+## Still Fake Or Local-Only
+
+| Area | Reality |
+|---|---|
+| KYC/device/consortium/KYB | Mock and public-shape local connectors only. No real vendors and no live sanctions/KYB calls. |
+| SAR/adverse action | Drafts only. No filing. No legal compliance claim. |
+| Data | Synthetic by default. PaySim-style public CSV conversion exists after manual dataset download and terms review. |
+| Simulation | UI/CLI simulation is deterministic and local-only. It is not evidence of real identity, sanctions, liveness, or money movement. |
+| Auth | Local role-token, HS256 JWT, and JWKS/OIDC-shaped JWT verification exist. No real user lifecycle or sessions. |
+| Secrets | Local `secrets-scan` checks for real-looking committed credentials. No vault/KMS. |
+| Audit immutability | Hash-chained SQLite plus local archive manifests. No WORM/object-lock storage. |
+| Retention enforcement | Explicit local prune exists for non-audit records. No schedules, legal holds, archive tiers, or WORM audit archival yet. |
+| Persistence | SQLite remains the lite default with local backup/restore rehearsal; Docker full mode uses Postgres for app state and local `pg_dump` rehearsal. |
+| Policy governance | JSON policy packs, local promotion registry, and local signed approvals exist. No external KMS/HSM, registry service, legal approval system, or enterprise change-management integration yet. |
+| Streaming | Redpanda publisher, bounded consumer, local supervisor CLI, Windows service-loop script, lag CLI, stream health report, app-store dead letters, and optional Redpanda DLQ topic publishing are smoke-tested locally. There is no automatically installed OS service, Alertmanager/PagerDuty path, or Flink/managed-stream deployment yet. |
+| Graph DB | Neo4j projector is smoke-tested; decision engine still uses NetworkX fallback. |
+| Observability | Local metrics, dashboard, request logs, trace IDs, trace reports, and Prometheus alerts exist; no distributed tracing backend yet. |
+| Deployment | Local Docker only. No cloud/IaC/production deploy. |
+
+## Hard Blockers To Real Production
+
+| Blocker | Why It Matters | Next Practical Step |
+|---|---|---|
+| Real fraud domain and action authority | Rules/legal obligations change by product. | Choose first wedge: instant cash, ATO, card testing, ecommerce, crypto, or lending. |
+| Real labels | Synthetic labels and PaySim-style public labels exist, but verified product labels do not. | Load real redacted labels after governance. |
+| Vendor/legal approval | KYC, liveness, sanctions, SAR, credit decisions need contracts and counsel. | Keep mock adapters until approved. |
+| Data security | Real PII cannot live in this local repo casually. Encrypted local evidence export exists for synthetic/local decision bundles only. | Add external OIDC, field-level encryption, audit retention, secrets manager, DLP rules. |
+| Production deployment target | Architecture differs for VM, Kubernetes, managed cloud, or on-prem. | Pick target environment and SLOs. |
+| Production capacity plan | Named local capacity receipts exist, but no real traffic or SLO model. | Run larger synthetic profiles and then replay real redacted event distributions. |
+## Commands That Passed
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\verify.ps1 -Full
+uv run fraud-v2 mlops-report --events-path data\synthetic\tiny\events.jsonl --output-path data\local\mlops-report.json --simulate-score-shift-points 12
+uv run fraud-v2 signal-lab
+```
+
+## Current Branch
+
+```text
+feature/full-profile-adapters
+```
+
+## GitHub Handoff
+
+GitHub CLI authentication is available on this machine. Run
+`powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1 -Execute`
+to push and create or update the PR.

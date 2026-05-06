@@ -15,6 +15,16 @@ event_counter = Counter(
     "Events ingested by type.",
     ["event_type"],
 )
+http_request_counter = Counter(
+    "fraud_http_requests_total",
+    "HTTP requests by method, route, and status.",
+    ["method", "route", "status"],
+)
+http_request_latency = Histogram(
+    "fraud_http_request_latency_seconds",
+    "HTTP request latency by method and route.",
+    ["method", "route"],
+)
 
 
 def metrics_response() -> Response:

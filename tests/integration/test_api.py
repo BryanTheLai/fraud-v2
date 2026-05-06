@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from fraud_v2.api.main import app, store
+from fraud_v2.config.settings import Settings, get_settings
 from fraud_v2.storage.sqlite_store import SQLiteStore
 
 
@@ -8,13 +9,15 @@ def test_api_generate_and_score(tmp_path) -> None:  # type: ignore[no-untyped-de
     db = SQLiteStore(tmp_path / "api.sqlite")
     app.dependency_overrides[store] = lambda: db
     client = TestClient(app)
+    headers = {"Authorization": "Bearer dev-token-change-me"}
 
-    generated = client.post("/v1/synthetic/generate?users=30")
+    generated = client.post("/v1/synthetic/generate?users=30", headers=headers)
     assert generated.status_code == 200
     assert generated.json()["events"] > 0
 
     response = client.post(
         "/v1/decisions/score",
+        headers=headers,
         json={
             "target_entity": {"entity_type": "USER", "entity_id": "user_00000"},
             "as_of": "2026-05-10T00:00:00Z",
@@ -26,7 +29,143 @@ def test_api_generate_and_score(tmp_path) -> None:  # type: ignore[no-untyped-de
     body = response.json()
     assert body["risk_score"] >= 80
 
-    cases = client.get("/v1/review/cases")
+    cases = client.get("/v1/review/cases", headers=headers)
     assert cases.status_code == 200
+    audit = client.get("/v1/audit/entries", headers=headers)
+    assert audit.status_code == 200
+    assert any(entry["action"] == "decision.created" for entry in audit.json())
+    audit_verify = client.get("/v1/audit/verify", headers=headers)
+    assert audit_verify.status_code == 200
+    assert audit_verify.json()["valid"] is True
+    retention = client.get("/v1/retention/report", headers=headers)
+    assert retention.status_code == 200
+    assert retention.json()["policy"]["event_days"] == 90
+    whoami = client.get("/v1/auth/whoami", headers=headers)
+    assert whoami.status_code == 200
+    assert whoami.json()["roles"] == ["admin", "analyst", "system"]
+    dashboard = client.get("/dashboard")
+    assert dashboard.status_code == 200
+    assert "Recent decisions" in dashboard.text
+    assert "Open review queue" in dashboard.text
+    assert "Synthetic dataset coverage" in dashboard.text
+    assert "False-positive pressure" in dashboard.text
+    assert "user_00000" in dashboard.text
+    assert "Graph evidence" in dashboard.text
+    graph = client.get("/dashboard/graph?entity_id=user_00000")
+    assert graph.status_code == 200
+    assert "<svg" in graph.text
+    assert "Graph evidence" in graph.text
+    assert "Lane layout" in graph.text
+    assert "USED_DEVICE" in graph.text
+
+    demo = client.get("/demo")
+    assert demo.status_code == 200
+    assert "Run a seeded scenario" in demo.text
+    assert "Blog layer coverage" in demo.text
+
+    cockpit = client.get("/cockpit?scenario=graph_ring")
+    assert cockpit.status_code == 200
+    assert "Instant Cash Fraud Cockpit" in cockpit.text
+    assert "Rules-only vs model-only vs hybrid" in cockpit.text
+    assert "Graph ring applicant" in cockpit.text
+    assert "Production blockers" in cockpit.text
+    assert "No real action happened" in cockpit.text
+    assert "Synthetic dataset coverage" in cockpit.text
+    assert "Benign payment-burst users" in cockpit.text
+
+    demo_run = client.post("/demo/run?scenario=graph_neighbor", follow_redirects=False)
+    assert demo_run.status_code == 303
+    assert "/demo?decision_id=" in demo_run.headers["location"]
+
+    ops = client.get("/dashboard/ops")
+    assert ops.status_code == 200
+    assert "Reliability checks" in ops.text
+    assert "Raw Prometheus" in ops.text
+
+    ml = client.get("/dashboard/ml")
+    assert ml.status_code == 200
+    assert "ML Dashboard" in ml.text
+
+    signals = client.get("/dashboard/signals")
+    assert signals.status_code == 200
+    assert "Signal Lab" in signals.text
+    assert "Public KYB" in signals.text
+    assert "No external calls" in signals.text
+
+    simulate = client.get(
+        "/dashboard/simulate?amount=1000&virtual_camera=true&one_hop_from_fraud=true"
+    )
+    assert simulate.status_code == 200
+    assert "Simulation Workbench" in simulate.text
+    assert "ONE_HOP_FROM_CONFIRMED_FRAUD" in simulate.text
+    assert "No real action" in simulate.text
+
+    reset = client.post("/demo/reset", follow_redirects=False)
+    assert reset.status_code == 303
+
+    app.dependency_overrides.clear()
+
+
+def test_api_rejects_missing_token(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    db = SQLiteStore(tmp_path / "api.sqlite")
+    app.dependency_overrides[store] = lambda: db
+    client = TestClient(app)
+
+    response = client.post("/v1/synthetic/generate?users=30")
+
+    assert response.status_code == 401
+    app.dependency_overrides.clear()
+
+
+def test_api_adds_trace_header_metrics_and_local_span(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    db = SQLiteStore(tmp_path / "api.sqlite")
+    trace_path = tmp_path / "traces.jsonl"
+    monkeypatch.setenv("FRAUD_TRACE_EXPORT_PATH", str(trace_path))
+    app.dependency_overrides[store] = lambda: db
+    client = TestClient(app)
+
+    response = client.get("/health/live", headers={"X-Request-ID": "trace-test-001"})
+    assert response.status_code == 200
+    assert response.headers["X-Trace-ID"] == "trace-test-001"
+
+    metrics = client.get("/metrics")
+    assert metrics.status_code == 200
+    assert "fraud_http_requests_total" in metrics.text
+    assert 'route="/health/live"' in metrics.text
+    assert "trace-test-001" in trace_path.read_text(encoding="utf-8")
+    assert '"span_name":"http.request"' in trace_path.read_text(encoding="utf-8")
+
+    app.dependency_overrides.clear()
+
+
+def test_role_tokens_enforce_api_boundaries(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    db = SQLiteStore(tmp_path / "api.sqlite")
+    app.dependency_overrides[store] = lambda: db
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        api_token="",
+        api_tokens="analyst:analyst-token,system:system-token,admin:admin-token",
+    )
+    client = TestClient(app)
+
+    analyst_headers = {"Authorization": "Bearer analyst-token"}
+    system_headers = {"Authorization": "Bearer system-token"}
+
+    analyst_generate = client.post("/v1/synthetic/generate?users=30", headers=analyst_headers)
+    assert analyst_generate.status_code == 403
+
+    system_generate = client.post("/v1/synthetic/generate?users=30", headers=system_headers)
+    assert system_generate.status_code == 200
+
+    analyst_cases = client.get("/v1/review/cases", headers=analyst_headers)
+    assert analyst_cases.status_code == 200
+
+    system_cases = client.get("/v1/review/cases", headers=system_headers)
+    assert system_cases.status_code == 403
+
+    analyst_audit = client.get("/v1/audit/entries", headers=analyst_headers)
+    assert analyst_audit.status_code == 403
+
+    analyst_retention = client.get("/v1/retention/report", headers=analyst_headers)
+    assert analyst_retention.status_code == 403
 
     app.dependency_overrides.clear()

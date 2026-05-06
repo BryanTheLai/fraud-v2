@@ -2,13 +2,16 @@
 project: fraud-v2
 owner: Bryan
 created_at: 2026-05-04
-updated_at: 2026-05-04
-status: draft
+updated_at: 2026-05-05
+status: current
 source_task: TC-20260504-002
-version: 1
+version: 2
 ---
 
 # Local Production Profile
+
+This is the current laptop-safe operating profile. It describes what the repo
+actually runs now, not the older expanded target plan.
 
 ## Machine Constraint
 
@@ -16,191 +19,118 @@ Observed target machine:
 
 | Resource | Value |
 |---|---|
-| CPU | AMD Ryzen 7 5800H, 8 cores, 16 logical processors |
-| GPU | NVIDIA GeForce RTX 3050 Laptop GPU |
-| VRAM | 4096 MiB |
+| OS | Windows 11 |
 | Python | 3.12.9 |
-| uv | 0.7.3 |
+| CPU | AMD Ryzen 7 class laptop CPU |
+| RAM | about 14 GiB visible to Python |
+| GPU | NVIDIA GeForce RTX 3050 Laptop GPU, optional |
+| VRAM | 4096 MiB |
 | Docker | 28.4.0 |
 | NVIDIA driver | 565.90 |
-| CUDA reported by driver | 12.7 |
 
-Implication:
+Implications:
 
-- API, workers, Postgres, Redis, Redpanda, Neo4j, and observability can run
-  locally if dataset sizes are controlled.
-- GPU must be optional.
-- GNN training must be optional and small-batch only.
-- XGBoost/LightGBM CPU training is the practical baseline.
+- Lite mode must run without Docker.
+- Full mode can run with Docker Desktop but dataset sizes must stay bounded.
+- GPU is optional and should be used only for experiments.
+- CPU tabular baselines remain the practical default.
 
 ## Run Profiles
 
-### Lite
+| Profile | Components | Target Use |
+|---|---|---|
+| Lite | Python API, SQLite, NetworkX, local files, Prometheus metrics endpoint | Coding, tests, fast demos. |
+| Full | Docker API, Postgres, Redis, Redpanda, Neo4j, Prometheus, Grafana | Production-shaped local proof. |
+| ML | Local Python, sklearn, pandas/numpy, model registry files | Training and eval artifacts. |
 
-Use for coding and fast tests.
+## Full-Mode Service Budget
 
-| Component | Mode |
-|---|---|
-| API | local process |
-| DB | SQLite or Postgres |
-| Feature online | in-memory or Redis |
-| Feature offline | DuckDB/Parquet |
-| Graph | NetworkX |
-| Stream | disabled or in-process queue |
-| Observability | metrics endpoint and logs only |
-
-Target:
-
-- start under 15 seconds
-- run unit tests under 30 seconds
-- tiny dataset under 500 events
-
-### Full
-
-Use for the real local demo.
-
-| Component | Mode |
-|---|---|
-| API | local process or container |
-| DB | Postgres |
-| Feature online | Redis |
-| Feature offline | DuckDB/Parquet |
-| Event bus | Redpanda |
-| Graph | Neo4j |
-| Observability | Prometheus, Grafana, Loki, OTel Collector |
-| UI | NiceGUI |
-
-Target:
-
-- 100k event demo dataset
-- 50 events/sec replay
-- p95 decision under 500ms without external vendors
-- feature freshness p95 under 3s for velocity features
-
-### ML
-
-Use for training and evaluation.
-
-| Component | Mode |
-|---|---|
-| Training | local Python process |
-| Dataset | DuckDB/Parquet |
-| Model registry | local file plus Postgres metadata |
-| GPU | optional |
-
-Target:
-
-- baseline train under 15 minutes on 100k event dataset
-- evaluate thresholds and write report
-- no service uptime required
-
-## Local Service Budgets
-
-Initial Docker memory targets:
-
-| Service | Memory Budget | Notes |
+| Service | Memory Shape | Current Role |
 |---|---:|---|
-| Postgres | 512 MB | Enough for local event/review tables. |
-| Redis | 128 MB | Feature cache and circuit state. |
-| Redpanda | 768 MB | Single-node local. |
-| Neo4j | 1.0-1.5 GB | Keep graph dataset bounded. |
-| Prometheus | 256 MB | Local retention only. |
-| Grafana | 256 MB | Dashboards. |
-| Loki | 512 MB | Local logs only. |
-| OTel Collector | 128 MB | Local collector. |
-| API + workers | 1-2 GB total | Python processes. |
+| API | 512 MB-1 GB | FastAPI app and local dashboards. |
+| Postgres | 512 MB | Full-profile app state. |
+| Redis | 128 MB | Feature/cache adapter proof. |
+| Redpanda | 768 MB | Kafka-compatible event bus. |
+| Neo4j | 1-1.5 GB | Graph adapter and graph evidence proof. |
+| Prometheus | 256 MB | Metrics and alert rules. |
+| Grafana | 256 MB | Provisioned dashboard. |
 
 Laptop guardrail:
 
-- full profile should stay under roughly 6-8 GB active memory before browser
-  overhead.
-- stress generation and ML training should not run while full profile is under
-  heavy replay unless testing resource contention.
+- Keep full mode under roughly 6-8 GB active memory before browser overhead.
+- Do not run heavy stress generation and full smoke at the same time.
+- Keep normal verification on the `smoke` capacity profile.
 
 ## Dataset Size Limits
 
-| Dataset | Events | Entities | Use |
-|---|---:|---:|---|
-| tiny | 500 | 100 | tests and golden cases |
-| demo | 100,000 | 10,000 | local product demo and baseline ML |
-| stress | 1,000,000 | 100,000 | optional throughput and graph guard testing |
+| Dataset | Events | Use |
+|---|---:|---|
+| tiny | hundreds | Unit tests and quick local demos. |
+| smoke | generated by `capacity-profile --profile smoke` | Fast verification receipt. |
+| laptop | larger synthetic run | Manual local throughput proof. |
+| stress | optional large run | Guard/performance experiments only. |
 
-Stress dataset rules:
-
-- generated in chunks
-- not loaded all into memory
-- optional command
-- never required for normal tests
+Public datasets are not downloaded automatically. Keep manually downloaded files
+under ignored `data\public`.
 
 ## GPU Policy
 
 Use GPU only for:
 
-- small PyTorch/PyG experiments
-- embedding experiments if memory fits
-- optional profiling
+- optional PyTorch/PyG experiments
+- small graph-ML or embedding experiments
+- profiling work that can fail without blocking normal workflows
 
-Do not use GPU for:
+Do not require GPU for:
 
 - API serving
-- required tests
+- tests
+- full smoke
 - default model training
-- default local demo
-
-Why:
-
-- 4GB VRAM is tight for graph neural networks.
-- CPU GBDT models are strong for structured fraud features.
-- Required workflows must not fail because CUDA packages are missing.
+- release verification
 
 ## Production-Shaped Local Controls
 
-| Control | Local Implementation |
+| Control | Current Local Implementation |
 |---|---|
-| Idempotency | request key plus payload hash in Postgres |
-| Outbox | Postgres outbox table plus publisher worker |
-| DLQ | `dead_letters` table plus Redpanda topic |
-| Circuit breaker | per dependency state in Redis or process fallback |
-| Health | `/health/live` and `/health/ready` |
-| Metrics | `/metrics` plus Prometheus |
-| Traces | OTel spans around decision path |
-| Logs | JSON logs with redaction |
-| Replay | read event stream from Parquet/DuckDB and compare decisions |
-| Model rollback | active model pointer in registry |
-| Shadow mode | candidate scores logged but no action impact |
-| Safe reasons | reason-code registry and compliance converter |
+| Auth | Local bearer token, role tokens, HS/JWKS JWT-shaped verification. |
+| Storage | SQLite lite store; Postgres full-profile store. |
+| Idempotency | Store-level duplicate handling and stream idempotency keys. |
+| Outbox | Transactional local outbox plus drain CLI. |
+| Streams | Redpanda bounded consumer, supervisor, lag report, dead letters, optional DLQ topic. |
+| Graph | NetworkX lite graph and Neo4j full-profile adapter proof. |
+| Metrics | `/metrics`, Prometheus scrape, alert rules. |
+| Dashboard | FastAPI analyst pages plus Grafana overview. |
+| Traces | `X-Trace-ID` and optional local JSONL trace reports. |
+| Logs | Structured request logs. |
+| Audit | SQLite/Postgres hash chain plus local archive manifest. |
+| Recovery | SQLite backup/restore and Postgres `pg_dump` scratch restore rehearsal. |
+| Model governance | Local registry, active/shadow status, shadow score report. |
+| Policy governance | JSON threshold policies, promotion registry, local signed approvals. |
+| Safe reasons | Reason-code based decision and compliance-draft output. |
 
-## What Would Not Be Production Yet
+## Still Not Production
 
-Even with full local profile, these are not production complete:
+Even full mode is not production. Missing pieces include:
 
-- legal approval
-- real auth/RBAC
-- secrets manager
-- cloud backups
-- retention policy
-- vendor contracts
-- incident on-call
-- real customer communication
-- SAR filing integration
-- fairness/disparate-impact review
-- penetration test
-- model risk committee
+- real fraud product wedge and action authority
+- real verified labels
+- legal/vendor approval
+- production PII security design
+- external OIDC/user lifecycle
+- secrets manager/KMS/HSM
+- WORM/object-lock audit storage
+- managed backups and disaster recovery
+- production deployment target
+- SLOs, alert routing, on-call, incident process
+- fairness/disparate-impact and model-risk review
 
-## Minimum Production Readiness Bar
+## Minimum Bar Before Real Data
 
-Before any real data or real action:
-
-1. security review
-2. privacy review
-3. data retention policy
-4. RBAC
-5. secret manager
-6. audit immutability plan
-7. vendor contract review
-8. adverse action counsel review if credit-adjacent
-9. SAR process review if AML-adjacent
-10. incident response runbook
-11. model governance and rollback procedure
-12. fairness/disparate impact analysis
-
+1. Pick the production product and action boundary.
+2. Approve legal/vendor/data-use constraints.
+3. Add production auth, RBAC, secret management, and PII storage design.
+4. Add immutable audit and retention/legal-hold policy.
+5. Pick deployment target and SLOs.
+6. Replay real redacted distributions and validate labels.
+7. Run security, privacy, model-risk, and incident-response reviews.

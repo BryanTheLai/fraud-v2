@@ -1,4 +1,19 @@
 services:
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      FRAUD_ENV: local
+      FRAUD_STORE_BACKEND: postgres
+      FRAUD_POSTGRES_DSN: postgresql://fraud:fraud@postgres:5432/fraud_v2
+      FRAUD_SQLITE_PATH: /app/data/local/fraud_v2.sqlite
+      FRAUD_API_TOKEN: dev-token-change-me
+      FRAUD_TRACE_EXPORT_PATH: /app/data/local/traces.jsonl
+    ports:
+      - "${FRAUD_API_PORT:-8000}:8000"
+    profiles: ["full"]
+
   postgres:
     image: postgres:16
     environment:
@@ -6,13 +21,13 @@ services:
       POSTGRES_PASSWORD: fraud
       POSTGRES_DB: fraud_v2
     ports:
-      - "5432:5432"
+      - "${FRAUD_POSTGRES_PORT:-5432}:5432"
     profiles: ["full"]
 
   redis:
     image: redis:7
     ports:
-      - "6379:6379"
+      - "${FRAUD_REDIS_PORT:-6379}:6379"
     profiles: ["full"]
 
   redpanda:
@@ -30,9 +45,17 @@ services:
       - --node-id
       - "0"
       - --check=false
+      - --kafka-addr
+      - internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr
+      - internal://redpanda:9092,external://localhost:${FRAUD_REDPANDA_PORT:-19092}
+      - --rpc-addr
+      - redpanda:33145
+      - --advertise-rpc-addr
+      - redpanda:33145
     ports:
-      - "9092:9092"
-      - "9644:9644"
+      - "${FRAUD_REDPANDA_PORT:-19092}:19092"
+      - "${FRAUD_REDPANDA_ADMIN_PORT:-9644}:9644"
     profiles: ["full"]
 
   neo4j:
@@ -42,20 +65,28 @@ services:
       NEO4J_server_memory_heap_initial__size: 512m
       NEO4J_server_memory_heap_max__size: 1G
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - "${FRAUD_NEO4J_HTTP_PORT:-7474}:7474"
+      - "${FRAUD_NEO4J_BOLT_PORT:-7687}:7687"
     profiles: ["full"]
 
   prometheus:
     image: prom/prometheus:latest
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus-alerts.yml:/etc/prometheus/prometheus-alerts.yml:ro
     ports:
-      - "9090:9090"
+      - "${FRAUD_PROMETHEUS_PORT:-9090}:9090"
     profiles: ["full"]
 
   grafana:
     image: grafana/grafana:latest
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/fraud-v2-overview.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
-      - "3000:3000"
+      - "${FRAUD_GRAFANA_PORT:-3000}:3000"
     profiles: ["full"]

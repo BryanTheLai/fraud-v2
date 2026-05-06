@@ -8,7 +8,22 @@ class Settings(BaseSettings):
 
     env: str = "local"
     sqlite_path: Path = Path("data/local/fraud_v2.sqlite")
+    store_backend: str = "sqlite"
+    postgres_dsn: str = "postgresql://fraud:fraud@localhost:5432/fraud_v2"
+    policy_path: Path | None = None
     api_token: str = "dev-token-change-me"
+    api_tokens: str = ""
+    auth_mode: str = "token"
+    jwt_secret: str = ""
+    jwt_issuer: str = "fraud-v2-local"
+    jwt_audience: str = "fraud-v2-api"
+    jwt_leeway_seconds: int = 30
+    jwt_roles_claim: str = "roles"
+    jwt_algorithms: str = "HS256"
+    jwt_jwks_path: str = ""
+    jwt_jwks_url: str = ""
+    jwt_oidc_discovery_url: str = ""
+    trace_export_path: Path | None = None
 
 
 def get_settings() -> Settings:

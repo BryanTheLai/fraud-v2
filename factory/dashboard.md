@@ -1,35 +1,50 @@
 # Code Factory Dashboard: fraud-v2
 
-Updated: 2026-05-04
+Updated: 2026-05-06
 
 ## Active Task
 
-- [TC-20260505-001 - Implement Local Fraud V2 MVP](tasks/active/TC-20260505-001-implement-local-mvp.md)
+- None. Instant Cash cockpit, enriched synthetic data, local model-benchmark,
+  and planning-doc sync are implemented and verified; PR #1 is updated.
 
-## Runs Waiting For Bryan
+## Waiting For Bryan
 
-- [RR-20260505-001](runs/RR-20260505-001.md)
-
-## Blocked Work
-
-- None.
+- Review the compact receipt archive documented in [factory/README.md](README.md).
 
 ## Done This Week
 
-- Drafted the initial spec and setup docs.
-- Added detailed vagueness, tradeoff, dependency, data, LLM synthetic data, and local production specs.
-- Bryan approved the planning artifacts with `lgtm for now`.
-- Implemented the local MVP and left it waiting for review.
+- Planned the Fraud V2 product boundary, blockers, tradeoffs, dependencies,
+  data strategy, LLM synthetic lab, and local production profile.
+- Built the local Python/FastAPI fraud lab with synthetic data, SQLite lite
+  mode, rules, graph features, baseline ML, analyst review, safe compliance
+  drafts, model governance, policy governance, audit, retention, and reports.
+- Added Docker full mode with Postgres, Redis, Redpanda, Neo4j, Prometheus,
+  Grafana, stream ingestion/supervision, stream lag, dead letters, DLQ proof,
+  backup rehearsals, and full smoke verification.
+- Added local operations tooling: secrets scan, trace reports, audit archive,
+  SQLite backup/restore, capacity profile, GitHub handoff, release runbook,
+  readiness report, local doctor, verify script, and cleanup script.
+- Added the local simulation workbench (`/dashboard/simulate` and
+  `fraud-v2 simulate-risk`) plus baseline model feature-importance reporting.
+- Added `/cockpit` as the main presentation surface with scenario tabs,
+  graph/timeline/evidence, production blockers, no-action boundaries, and
+  rules-only vs model-only vs hybrid expected-profit comparison.
+- Added `fraud-v2 model-benchmark` for local logistic regression vs random
+  forest comparison on AUPRC, Brier, Recall at 1 percent FPR, and profit.
+- Expanded the tracked deterministic dataset to 720 users and 4,703 events
+  across all nine local fraud typologies plus benign false-positive controls.
+- Synced the vagueness register, blocker register, and plan index to the
+  current implementation instead of the old six-typology/M1 planning state.
 
-## Lessons Added
+## Current Blockers
 
-- None. This run did not create reusable evidence beyond the spec.
+- No local GitHub handoff blocker remains. `origin` exists and `gh auth status`
+  passes on this machine.
+- Regulated production still needs a real fraud wedge, real labels, legal/vendor
+  approval, real PII security design, deployment target, and production SLOs.
 
-## Stale Lessons
+## Next Practical Command
 
-- None.
-
-## One Next Task
-
-Review the local MVP. If approved, create M2 for full-profile infrastructure
-adapters: Postgres, Redis, Redpanda workers, and Neo4j projection.
+```powershell
+gh pr view 1 --web
+```

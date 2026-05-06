@@ -15,6 +15,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 
 from fraud_v2.models.dataset import build_training_dataset
+from fraud_v2.models.thresholds import cost_weighted_threshold_report
 from fraud_v2.synthetic.generator import load_events_jsonl
 
 
@@ -40,15 +41,21 @@ def train_baseline(events_path: Path, output_dir: Path) -> dict[str, Any]:
     model.fit(x_train, y_train)
     probabilities = model.predict_proba(x_test)[:, 1]
     threshold, best_f1 = _best_threshold(y_test.to_numpy(), probabilities)
+    cost_report = cost_weighted_threshold_report(y_test.to_numpy(), probabilities)
     predictions = (probabilities >= threshold).astype(int)
     precision, recall, f1, _ = precision_recall_fscore_support(
         y_test, predictions, average="binary", zero_division=0
+    )
+    feature_importances = _feature_importances(
+        dataset.feature_columns,
+        model.feature_importances_,
     )
     report = {
         "model_family": "sklearn_random_forest",
         "model_version": "baseline-20260505-001",
         "rows": int(len(frame)),
         "features": dataset.feature_columns,
+        "feature_importances": feature_importances,
         "average_precision": float(average_precision_score(y_test, probabilities)),
         "brier_score": float(brier_score_loss(y_test, probabilities)),
         "precision_at_threshold": float(precision),
@@ -56,11 +63,27 @@ def train_baseline(events_path: Path, output_dir: Path) -> dict[str, Any]:
         "f1_at_threshold": float(f1),
         "best_f1": float(best_f1),
         "threshold": float(threshold),
+        "cost_weighted_threshold": cost_report["best_profit_threshold"],
+        "recall_under_1pct_fpr_threshold": cost_report["best_recall_under_1pct_fpr"],
+        "threshold_candidates": cost_report["candidates"],
+        "cost_assumptions": cost_report["cost_assumptions"],
     }
     output_dir.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, output_dir / "baseline.joblib")
     (output_dir / "baseline-report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     return report
+
+
+def _feature_importances(
+    feature_columns: list[str],
+    importances: np.ndarray,
+) -> list[dict[str, float | str]]:
+    ranked = sorted(
+        zip(feature_columns, importances, strict=True),
+        key=lambda item: float(item[1]),
+        reverse=True,
+    )
+    return [{"feature": feature, "importance": float(importance)} for feature, importance in ranked]
 
 
 def _best_threshold(labels: np.ndarray, probabilities: np.ndarray) -> tuple[float, float]:
