@@ -1,10 +1,29 @@
 # Kumo.ai Secret Sauce: Algorithmic Brief
 
 Date: 2026-05-06
-Audience: Yao / fraud-v2 research
+Audience: fraud-v2 research
 Status: public-source research, not proprietary source-code access
 
 ## TL;DR
+
+Short version:
+
+> Kumo's trick is that they do not flatten tables into features. They compile a
+> predictive query into labels and timestamps, turn the relational DB into a
+> temporal heterogeneous graph, sample the relevant neighborhood around the
+> target entity, encode arbitrary rows/columns with schema-agnostic encoders,
+> run a Relational Graph Transformer over the subgraph, then use in-context
+> learning or fine-tuning to predict. The "feature engineering automation" is
+> learned joins, learned group-bys, learned recency windows, and learned
+> multi-hop graph traversal. Their moat seems less like one model and more like
+> the whole stack: PQL label generation + temporal graph sampler + feature store
+> + relational transformer + context label generation + model planner.
+
+> For our fraud-v2 work, this is exactly relevant because fraud/payment data is
+> multi-table, graphy, temporal, and label-delayed. But we should not depend on
+> Kumo as the primary scorer yet. We should benchmark it offline against our
+> rules, graph features, and sklearn/LightGBM baselines once our synthetic or
+> public delayed-label data is shaped correctly.
 
 Kumo's secret sauce is not "AutoML for CSVs." It is closer to:
 
@@ -523,28 +542,7 @@ First predictive queries worth testing:
 5. Will ACH attempt return unauthorized/NSF/admin failure?
 ```
 
-## What To Send Yao
 
-Send this short version:
-
-> Kumo's trick is that they do not flatten tables into features. They compile a
-> predictive query into labels and timestamps, turn the relational DB into a
-> temporal heterogeneous graph, sample the relevant neighborhood around the
-> target entity, encode arbitrary rows/columns with schema-agnostic encoders,
-> run a Relational Graph Transformer over the subgraph, then use in-context
-> learning or fine-tuning to predict. The "feature engineering automation" is
-> learned joins, learned group-bys, learned recency windows, and learned
-> multi-hop graph traversal. Their moat seems less like one model and more like
-> the whole stack: PQL label generation + temporal graph sampler + feature store
-> + relational transformer + context label generation + model planner.
-
-Then add:
-
-> For our fraud-v2 work, this is exactly relevant because fraud/payment data is
-> multi-table, graphy, temporal, and label-delayed. But we should not depend on
-> Kumo as the primary scorer yet. We should benchmark it offline against our
-> rules, graph features, and sklearn/LightGBM baselines once our synthetic or
-> public delayed-label data is shaped correctly.
 
 ## Due Diligence Questions For Kumo
 
