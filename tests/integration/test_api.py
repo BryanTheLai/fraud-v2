@@ -54,9 +54,15 @@ def test_api_generate_and_score(tmp_path) -> None:  # type: ignore[no-untyped-de
     graph = client.get("/dashboard/graph?entity_id=user_00000")
     assert graph.status_code == 200
     assert "<svg" in graph.text
+    assert 'viewBox="0 0 900 760"' in graph.text
     assert "Graph evidence" in graph.text
     assert "Lane layout" in graph.text
+    assert "USER:00000" in graph.text
+    assert "TXN:" in graph.text
     assert "USED_DEVICE" in graph.text
+    graph_depth = client.get("/dashboard/graph?entity_id=user_00006&depth=4")
+    assert graph_depth.status_code == 200
+    assert "USER:00006" in graph_depth.text
 
     demo = client.get("/demo")
     assert demo.status_code == 200
