@@ -13,6 +13,8 @@
   good users.
 - Reworked the shared dashboard shell to be mobile-first and keep cockpit,
   graph, demo, metrics, ML, signal, and simulation pages inside the viewport.
+- Synced the blocker/vagueness/plan/factory docs to the current nine-typology
+  local build and sklearn-first ML baseline.
 
 ## 0.52.0 - 2026-05-06
 

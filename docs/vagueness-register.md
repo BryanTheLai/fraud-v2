@@ -2,10 +2,10 @@
 project: fraud-v2
 owner: Bryan
 created_at: 2026-05-04
-updated_at: 2026-05-04
-status: draft
+updated_at: 2026-05-06
+status: current
 source_task: TC-20260504-002
-version: 1
+version: 2
 ---
 
 # Vagueness Register
@@ -36,12 +36,12 @@ Vague requirements are not ignored. They get one of three treatments:
 | Behavioral biometrics | Keystroke/touch/mouse features need client instrumentation. | Collection may be invasive and noisy. | `DECIDED_FOR_LOCAL_V1`: generate synthetic telemetry and entropy features. | `OPEN_FOR_PRODUCTION`: privacy review and consent language. |
 | Consortium data | Shared blacklist availability is unknown. | Real consortium data is contractual and regulated. | `DECIDED_FOR_LOCAL_V1`: local mock risk list. | `BLOCKER`: contract and permitted-use review. |
 | Payment rails | ACH, RTP, debit, push-to-card have different costs and finality. | Financial reward function and controls depend on rail economics. | `DECIDED_FOR_LOCAL_V1`: simulate ACH, RTP, debit, push-to-card with configurable costs. | `OPEN_FOR_PRODUCTION`: real unit economics required. |
-| Fraud typologies | The blog names many typologies. Scope can explode. | Too many typologies early causes fake completeness. | `DECIDED_FOR_LOCAL_V1`: model six first: synthetic identity, ATO, card testing, first-party fraud, money mule, APP/BEC. | `OPEN_FOR_PRODUCTION`: expand only with data. |
+| Fraud typologies | The blog names many typologies. Scope can explode. | Too many typologies early causes fake completeness. | `DECIDED_FOR_LOCAL_V1`: cover nine local typologies in deterministic synthetic data: synthetic identity, ATO, card testing, first-party fraud, money mule, APP scam, BEC, deepfake liveness, and bust-out. | `OPEN_FOR_PRODUCTION`: expand policy only with real labels and action authority. |
 | Thresholds | Green/yellow/red thresholds are illustrative. | Thresholds control financial and customer harm. | `DECIDED_FOR_LOCAL_V1`: start 0-20, 21-79, 80-100, then optimize by reward. | `OPEN_FOR_PRODUCTION`: threshold governance required. |
 | SLOs | "Real time" is vague. | Stack choices differ for 50ms, 500ms, and 5s. | `DECIDED_FOR_LOCAL_V1`: local p95 decision under 500ms without vendors. | `OPEN_FOR_PRODUCTION`: real SLO and traffic profile. |
-| Throughput | Local and production event rates are unknown. | Redpanda, Redis, Postgres, and workers need sizing. | `DECIDED_FOR_LOCAL_V1`: 50 events/sec replay target, 100k event demo dataset. | `OPEN_FOR_PRODUCTION`: load model and capacity plan. |
+| Throughput | Local and production event rates are unknown. | Redpanda, Redis, Postgres, and workers need sizing. | `DECIDED_FOR_LOCAL_V1`: laptop capacity receipt plus a tracked 720-user/4,703-event demo dataset; larger synthetic runs are generated on demand instead of committed. | `OPEN_FOR_PRODUCTION`: traffic model, SLO, and capacity plan. |
 | Stream semantics | Exactly-once vs at-least-once is not specified. | Fraud systems must tolerate retries without double actions. | `DECIDED_FOR_LOCAL_V1`: at-least-once stream plus idempotent consumers and outbox. | `OPEN_FOR_PRODUCTION`: Flink/exactly-once only if needed. |
-| Feature store | Feast, Tecton, custom Redis, or pure SQL are all possible. | Online/offline parity and point-in-time correctness are core. | `DECIDED_FOR_LOCAL_V1`: custom explicit Redis plus DuckDB/Parquet with Feast-compatible abstractions. | `OPEN_FOR_PRODUCTION`: evaluate Feast/Tecton after M3. |
+| Feature store | Feast, Tecton, custom Redis, or pure SQL are all possible. | Online/offline parity and point-in-time correctness are core. | `DECIDED_FOR_LOCAL_V1`: explicit feature builder over canonical events, SQLite/Postgres storage, Redis full-profile cache, and JSON/HTML model reports. | `OPEN_FOR_PRODUCTION`: add DuckDB/Parquet/Feast/Tecton only after real scale or parity needs justify it. |
 | Graph database | Neo4j, NetworkX, Postgres recursive CTEs, TigerGraph, Memgraph are options. | Analyst explainability and graph algorithms depend on this. | `DECIDED_FOR_LOCAL_V1`: Neo4j Community plus NetworkX fallback. | `OPEN_FOR_PRODUCTION`: choose managed graph or graph-in-warehouse strategy. |
 | GNN | The blog mentions GNNs, but GNNs need graph labels and careful eval. | GNN-first can waste time and underperform tabular models. | `DECIDED_FOR_LOCAL_V1`: graph rules and graph features first; PyG optional. | `OPEN_FOR_PRODUCTION`: use only after baseline beats rules. |
 | LLM role | GPT-5.5 tokens could be used in many ways. | LLM scoring can be expensive, non-deterministic, and hard to govern. | `DECIDED_FOR_LOCAL_V1`: LLM generates scenarios, data, analyst notes, and evals; does not make final fraud decisions. | `OPEN_FOR_PRODUCTION`: LLM policy and eval gates needed. |
@@ -65,11 +65,10 @@ Vague requirements are not ignored. They get one of three treatments:
 For local implementation, these defaults are specific enough:
 
 - domain: instant-cash fintech simulation
-- data: synthetic plus optional public datasets
+- data: deterministic 720-user synthetic core plus optional public datasets
 - action: simulated only
-- model: rules plus calibrated tabular ML
+- model: rules plus calibrated sklearn tabular ML; XGBoost/LightGBM remain optional next champions
 - graph: Neo4j plus NetworkX
 - stream: Redpanda plus Python workers
 - UI: analyst queue plus operator dashboard
 - LLM: data generation and eval support, not final scoring
-

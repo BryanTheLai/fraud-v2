@@ -2,10 +2,10 @@
 project: fraud-v2
 owner: Bryan
 created_at: 2026-05-04
-updated_at: 2026-05-04
+updated_at: 2026-05-06
 status: current
 source_task: TC-20260504-002
-version: 2
+version: 3
 ---
 
 # Plan Index
@@ -70,10 +70,10 @@ production-shaped local fraud lab:
 | Local infrastructure | Docker Compose | Available locally and enough for Postgres, Redis, Redpanda, Neo4j, and observability. |
 | Serving model | Hybrid rules plus tabular ML | More practical than an LLM fraud classifier and stronger baseline than graph deep learning first. |
 | LLM role | Synthetic data generator, edge-case inventor, analyst-note generator, reason-code evaluator | LLMs help create coverage and review artifacts; they should not be the primary fraud scoring model. |
-| Default ML baseline | XGBoost or LightGBM plus calibration | Strong for tabular fraud data and CPU-friendly. |
+| Default ML baseline | sklearn logistic regression/random forest plus calibration and profit thresholding | Implemented locally, CPU-friendly, and enough to compare model families honestly before adding optional XGBoost/LightGBM. |
 | Graph V1 | Neo4j plus NetworkX fallback | Gives analyst graph queries while keeping tests local and deterministic. |
 | Stream V1 | Redpanda plus Python stream workers | Kafka-compatible without running a heavy JVM stack. |
-| Feature store V1 | Explicit Redis online store plus DuckDB/Parquet offline store | Easier to understand and test locally than installing a full feature platform first. |
+| Feature store V1 | Explicit event-derived feature builder, SQLite/Postgres events, Redis full-profile cache, and JSON/HTML reports | Easier to understand and test locally than installing a full feature platform first; DuckDB/Parquet remains an upgrade path, not current runtime. |
 | Feature-store upgrade path | Feast-compatible abstractions | Leaves a path to Feast/Tecton without committing early. |
 | UI V1 | FastAPI HTML dashboards | Already implemented and sufficient for the local analyst/review workflow. React can come later if UI complexity demands it. |
 
@@ -140,7 +140,7 @@ Goal:
 
 - dataset builder
 - point-in-time feature assembly
-- XGBoost/LightGBM baseline
+- sklearn tabular baseline, with XGBoost/LightGBM left as optional champion candidates
 - calibration
 - threshold optimization by financial reward
 

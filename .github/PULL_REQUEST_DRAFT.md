@@ -112,6 +112,8 @@ Implemented:
 - Generated local doctor CLI for laptop runability, Docker/full-profile checks,
   optional GPU visibility, and GitHub handoff blockers.
 - Single-command verify and local cleanup scripts for lower-noise handoff.
+- Synced Code Factory, vagueness, blocker, and plan-index docs to the current
+  nine-typology, sklearn-first local build.
 
 ## Test Plan
 
@@ -154,7 +156,7 @@ Latest local result:
   worktree is clean
 - Local doctor smoke: pass, wrote JSON/HTML, reported `lite_ready: true`,
   `full_profile_ready: true`, `github_handoff_ready: true`, 16 checks, 16
-  pass, RTX 3050 Laptop GPU visible, 13.9 GiB RAM detected, and 19.2 GiB free
+  pass, RTX 3050 Laptop GPU visible, 13.9 GiB RAM detected, and 19.1 GiB free
   disk
 - MLOps report smoke: pass, 720 scored users, PSI `0.856594`, Kappa `0.805836`
 - Signal lab smoke: pass, local camera metadata and public-KYB checks returned
@@ -165,8 +167,8 @@ Latest local result:
   `sklearn_random_forest`, AUPRC `0.8745`, best profit `9499.784`
 - Cockpit browser smoke: pass, Edge headless rendered `/cockpit?scenario=graph_ring`
   and wrote a 133,175-byte screenshot artifact
-- Capacity profile smoke: pass, 50 users, 322 events, 8,581.769 load
-  events/sec, 55.81 score decisions/sec, JSON/HTML artifacts written
+- Capacity profile smoke: pass, 50 users, 322 events, 8,089.192 load
+  events/sec, 50.138 score decisions/sec, JSON/HTML artifacts written
 - Docker build: pass, installed `fraud-v2==0.53.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus

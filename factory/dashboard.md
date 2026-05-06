@@ -4,8 +4,8 @@ Updated: 2026-05-06
 
 ## Active Task
 
-- None. Instant Cash cockpit and local model-benchmark release is implemented
-  and verified; GitHub handoff remains ready.
+- None. Instant Cash cockpit, enriched synthetic data, local model-benchmark,
+  and planning-doc sync are implemented and verified; PR #1 is updated.
 
 ## Waiting For Bryan
 
@@ -31,6 +31,10 @@ Updated: 2026-05-06
   rules-only vs model-only vs hybrid expected-profit comparison.
 - Added `fraud-v2 model-benchmark` for local logistic regression vs random
   forest comparison on AUPRC, Brier, Recall at 1 percent FPR, and profit.
+- Expanded the tracked deterministic dataset to 720 users and 4,703 events
+  across all nine local fraud typologies plus benign false-positive controls.
+- Synced the vagueness register, blocker register, and plan index to the
+  current implementation instead of the old six-typology/M1 planning state.
 
 ## Current Blockers
 
@@ -42,5 +46,5 @@ Updated: 2026-05-06
 ## Next Practical Command
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1 -Execute
+gh pr view 1 --web
 ```
