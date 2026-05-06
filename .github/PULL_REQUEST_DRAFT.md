@@ -114,6 +114,10 @@ Implemented:
 - Single-command verify and local cleanup scripts for lower-noise handoff.
 - Synced Code Factory, vagueness, blocker, and plan-index docs to the current
   nine-typology, sklearn-first local build.
+- Cubic review reliability remediation for SQLite snapshot backups,
+  host-artifact Postgres restore proof, Redpanda publish timeouts, empty-input
+  report guards, branch-aware GitHub handoff, UTC raw-event normalization, and
+  manual review cost accounting.
 
 ## Test Plan
 
@@ -126,6 +130,7 @@ uv run mypy src
 uv run pytest -q
 uv run pytest --collect-only -q
 powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
+powershell -ExecutionPolicy Bypass -File scripts\verify.ps1 -Full
 powershell -ExecutionPolicy Bypass -File scripts\github-handoff.ps1
 uv run fraud-v2 release-runbook --output-path data\local\release-runbook.md
 uv run fraud-v2 readiness-report --output-path data\local\readiness-report.json --dashboard-path data\local\readiness-report.html
@@ -146,17 +151,20 @@ Latest local result:
 - Ruff format/check: pass
 - Mypy: pass, 98 source files checked
 - Secrets scan: pass, 183 files scanned, zero findings
-- Pytest: pass, 136 collected tests
-- GitHub handoff dry run: pass, reports configured `origin` remote, clean
-  worktree, GitHub CLI auth, and no blockers
-- Verify script: pass for core and `-Full` modes
-- Release runbook smoke: pass, wrote a 2,356-byte Markdown runbook
+- Pytest: pass, 147 collected tests
+- Cubic remediation: pass, all 16 bot findings addressed with code changes or
+  regression tests.
+- GitHub handoff dry run: pass, reports `branch_available: true`, configured
+  `origin` remote, clean worktree, GitHub CLI auth, `ready: true`, and no
+  blockers
+- Verify script: pass for core and `-Full` modes on May 6, 2026
+- Release runbook smoke: pass, wrote a 2,364-byte Markdown runbook
 - Readiness report smoke: pass, wrote JSON/HTML, reported 8 checks, 27
-  implemented capabilities, 6 production blockers, and ready status once the
-  worktree is clean
+  implemented capabilities, 6 production blockers, zero warnings after commit,
+  and `status: ready`
 - Local doctor smoke: pass, wrote JSON/HTML, reported `lite_ready: true`,
   `full_profile_ready: true`, `github_handoff_ready: true`, 16 checks, 16
-  pass, RTX 3050 Laptop GPU visible, 13.9 GiB RAM detected, and 19.1 GiB free
+  pass, RTX 3050 Laptop GPU visible, 13.9 GiB RAM detected, and 17.5 GiB free
   disk
 - MLOps report smoke: pass, 720 scored users, PSI `0.856594`, Kappa `0.805836`
 - Signal lab smoke: pass, local camera metadata and public-KYB checks returned
@@ -164,22 +172,24 @@ Latest local result:
 - Simulation workbench smoke: pass, returned local-only/no-action red result
   from amount, virtual-camera, graph-neighbor, and APP/BEC knobs
 - Model benchmark smoke: pass, 720 rows, 216 test rows, recommended
-  `sklearn_random_forest`, AUPRC `0.8745`, best profit `9499.784`
+  `sklearn_random_forest`, AUPRC `0.8745`, best profit `9219.784` after
+  including manual-review cost
 - Cockpit browser smoke: pass, Edge headless rendered `/cockpit?scenario=graph_ring`
   and wrote a 133,175-byte screenshot artifact
-- Capacity profile smoke: pass, 50 users, 322 events, 8,089.192 load
-  events/sec, 50.138 score decisions/sec, JSON/HTML artifacts written
+- Capacity profile smoke: pass, 50 users, 322 events, 6,015.319 load events/sec
+  and 31.826 score decisions/sec in `verify.ps1 -Full`, with JSON/HTML artifacts
+  written
 - Docker build: pass, installed `fraud-v2==0.53.0`
 - Full profile smoke: pass, including API scoring, review-decision submission,
   retention prune dry-run/execute, dashboard, metrics, Grafana, Prometheus
-  scrape, Postgres insert/list, Postgres backup rehearsal with source/restored
-  event counts of 198/198 and `verified: true`, audit archive proof over 200
-  entries, Redis
+  scrape, Postgres insert/list, host-artifact Postgres backup rehearsal with
+  source/restored event counts of 198/198 and `verified: true`, audit archive
+  proof over 200 entries, Redis
   feature cache, Neo4j projection, and
   Redpanda publish-consume-to-Postgres with zero stream dead letters on the
   valid path, zero lag after valid consume, supervised stream ingest, stream
   health report with `status: healthy` and `health_score: 100`, local trace
-  report proof with p95 around 99.499 ms, secrets scan proof, plus
+  report proof with p95 around 145.159 ms, secrets scan proof, plus
   invalid-record DLQ topic proof
 - Clean local artifacts: pass, removed removable ignored caches and generated
   smoke artifacts while keeping `.venv` and `data\public`; one generated
